@@ -26,6 +26,8 @@ class Model:
         self.use_pca = self.config.use_pca
         self.des_weight_norm_mult = self.config.des_weight_norm
         self.gen_weight_norm_mult = self.config.gen_weight_norm
+        self.prior_mult = self.config.prior_mult
+        self.sigmoid_energy = self.config.sigmoid_energy
 
         self.d_lr = self.config.d_lr
         self.g_lr = self.config.g_lr
@@ -228,11 +230,16 @@ class Model:
             h = tf.layers.dense(h, units=128)
             h = tf.nn.leaky_relu(h)
             energy = tf.layers.dense(h, units=1)
+            if self.sigmoid_energy:
+                energy = tf.nn.sigmoid(energy)
             return energy
         
     def prior_descriptor(self, z, reuse=False):
         with tf.variable_scope('des_p', reuse=reuse):
-            return tf.reduce_sum(tf.math.square(z))
+            energy = tf.reduce_sum(tf.math.square(z)) * self.prior_mult
+            if self.sigmoid_energy:
+                energy = tf.nn.sigmoid(energy)
+            return energy
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
@@ -243,7 +250,7 @@ class Model:
                 energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True)
                 grad_z = tf.gradients(energy, z)[0]
                 grad_z = tf.clip_by_norm(grad_z, 1)
-                z = z + self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
+                z = z + self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
                 return z, r, tf.add(i, 1)
             
             with tf.name_scope('langevin_dynamics'):

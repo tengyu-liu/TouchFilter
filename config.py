@@ -12,6 +12,7 @@ tf.flags.DEFINE_bool('use_generator', False, '')
 tf.flags.DEFINE_bool('use_pca', False, '')
 tf.flags.DEFINE_float('step_size', 0.1, '')
 tf.flags.DEFINE_integer('n_channel', 1, '')
+tf.flags.DEFINE_bool('sigmoid_energy', False, '')
 
 tf.flags.DEFINE_float('d_lr', 1e-3, '')
 tf.flags.DEFINE_float('g_lr', 1e-3, '')
@@ -20,6 +21,7 @@ tf.flags.DEFINE_float('beta2', 0.999, '')
 
 tf.flags.DEFINE_float('des_weight_norm', 1e-3, '')
 tf.flags.DEFINE_float('gen_weight_norm', 1e-3, '')
+tf.flags.DEFINE_float('prior_mult', 1e-3, '')
 
 tf.flags.DEFINE_integer('n_filter', 10, '')
 
