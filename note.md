@@ -16,7 +16,7 @@
         * C1F20DW3GW-2
             * 1 channel
             * 20 filters
-            * descriptor is regularized with 3x L2 norm
+            * descriptor is regularized with 10x L2 norm    <!-- this is a typo in exp name. descriptor L2 is 10x instead of 3x -->
             * generator is regularized with 0.01x L2 norm
         * C1F20DW10GW-1
             * 1 channel
@@ -65,10 +65,10 @@
 * Current experiments:
     * On bear: continue C1F20DW1GW1P-1, C1F20DW1GW1P-2, C1F20DW1GW1P-3, C1F20DW1GW1P0
     * On camel: 
-        * C1F20DW3GW-2MG
+        * C1F20DW10GW-2MG
             * 1 channel
             * 20 filters
-            * descriptor is regularized with 3x L2 norm
+            * descriptor is regularized with 10x L2 norm
             * generator is regularized with 0.01x L2 norm
             * langevin update adapts to mean of gradients
         * C1F20DW10GW-1MG
@@ -83,10 +83,10 @@
             * descriptor is regularized with 10x L2 norm
             * generator is regularized with 1x L2 norm
             * langevin update adapts to mean of gradients
-        * C1F20DW3GW-2MG-S: 
+        * C1F20DW10GW-2MG-S: 
             * 1 channel
             * 20 filters
-            * descriptor is regularized with 3x L2 norm
+            * descriptor is regularized with 10x L2 norm
             * generator is regularized with 0.01x L2 norm
             * langevin update adapts to mean of gradients
             * energy output is altered by a sigmoid function

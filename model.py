@@ -204,7 +204,10 @@ class Model:
                 return tf.random.normal([self.batch_size, self.hand_z_size + 9])
         
     def descriptor(self, z, r, m, reuse=False):
-        return self.touch_descriptor(z,r,m,reuse) + self.prior_descriptor(z, reuse)
+        if self.sigmoid_energy:
+            return self.touch_descriptor(z,r,m,reuse) * self.prior_descriptor(z, reuse)
+        else:
+            return self.touch_descriptor(z,r,m,reuse) + self.prior_descriptor(z, reuse)
 
     def touch_descriptor(self, z, r, m, reuse=False):
         with tf.variable_scope('des_t', reuse=reuse):
