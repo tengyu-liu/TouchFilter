@@ -28,6 +28,7 @@ class Model:
         self.gen_weight_norm_mult = self.config.gen_weight_norm
         self.prior_mult = self.config.prior_mult
         self.sigmoid_energy = self.config.sigmoid_energy
+        self.adaptive_langevin = self.config.adaptive_langevin
 
         self.d_lr = self.config.d_lr
         self.g_lr = self.config.g_lr
@@ -60,6 +61,7 @@ class Model:
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
         self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + 9], 'gt_z')
         self.z_input = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + 9], 'z_input')
+        self.mean_gradient = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + 9], 'mean_gradient')
 
         self.obs_touch_energy_summ_in = tf.placeholder(tf.float32, [], 'obs_touch_energy_summ_in')
         self.obs_prior_energy_summ_in = tf.placeholder(tf.float32, [], 'obs_prior_energy_summ_in')
@@ -103,9 +105,11 @@ class Model:
         self.initial_z = { i : self.generator(self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11) }
         self.initial_touch_energy = { i : tf.reduce_mean(self.touch_descriptor(self.initial_z[i], self.cup_r, self.cup_models[i], reuse=True)) for i in range(1,11) }
         self.initial_prior_energy = { i : tf.reduce_mean(self.prior_descriptor(self.initial_z[i], reuse=True)) for i in range(1,11) }
+        if self.adaptive_langevin:
+            self.initial_gradient = {i : tf.gradients(self.initial_touch_energy[i] + self.initial_prior_energy[i], self.initial_z[i])[0] for i in range(1,11)}
 
         # 1. Synthesize Z' with D
-        self.syn_z = { i : self.langevin_dynamics[i](self.z_input, self.cup_r) for i in range(1,11) }
+        self.syn_z, self.syn_g = { i : self.langevin_dynamics[i](self.z_input, self.cup_r) for i in range(1,11) }
         self.syn_touch_energy = { i : tf.reduce_mean(self.touch_descriptor(self.z_input, self.cup_r, self.cup_models[i], reuse=True)) for i in range(1,11) }
         self.syn_prior_energy = { i : tf.reduce_mean(self.prior_descriptor(self.z_input, reuse=True)) for i in range(1,11) }
 
@@ -249,7 +253,10 @@ class Model:
             def _body(z,r,i):
                 energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True)
                 grad_z = tf.gradients(energy, z)[0]
-                grad_z = tf.clip_by_norm(grad_z, 1)
+                if self.adaptive_langevin:
+                    grad_z = grad_z / self.mean_gradient
+                else:
+                    grad_z = tf.clip_by_norm(grad_z, 1)
                 z = z + self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
                 return z, r, tf.add(i, 1)
             

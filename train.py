@@ -89,6 +89,9 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
 
 print('Start training...')
 
+if flags.adaptive_langevin:
+    gradients = np.ones([10000, flags.z_size + 9])
+
 # train
 for epoch in range(flags.epochs):
     if epoch < flags.restore_epoch:
@@ -118,11 +121,19 @@ for epoch in range(flags.epochs):
         # transform hand_z to pca coefficients
         # obs_z = np.matmul((obs_z-pca_mean), pca_components.T) / np.sqrt(np.expand_dims(pca_var, axis=0))
 
-        # 1. initialize Z with G
-        ini_z, ini_te, ini_pe = sess.run([model.initial_z[cup_id], model.initial_touch_energy[cup_id], model.initial_prior_energy[cup_id]], feed_dict={model.cup_r: cup_r, model.random_in: random_in})
-        
-        # 2. improve Z to Z' with D
-        imp_z = sess.run(model.syn_z[cup_id], feed_dict={model.cup_r: cup_r, model.z_input: ini_z})
+        if flags.adaptive_langevin:
+            # 1. initialize Z with G
+            ini_z, ini_te, ini_pe, ini_g = sess.run([model.initial_z[cup_id], model.initial_touch_energy[cup_id], model.initial_prior_energy[cup_id], model.initial_gradient[cup_id]], \
+                feed_dict={model.cup_r: cup_r, model.random_in: random_in})
+            # update gradients
+            gradients = np.concatenate([gradients[len(idxs):], ini_g], axis=0)
+            # 2. improve Z to Z' with D
+            imp_z = sess.run(model.syn_z[cup_id], feed_dict={model.cup_r: cup_r, model.z_input: ini_z, model.mean_gradient: np.mean(gradients, axis=0)})
+        else:
+            # 1. initialize Z with G
+            ini_z, ini_te, ini_pe = sess.run([model.initial_z[cup_id], model.initial_touch_energy[cup_id], model.initial_prior_energy[cup_id]], feed_dict={model.cup_r: cup_r, model.random_in: random_in})
+            # 2. improve Z to Z' with D
+            imp_z = sess.run(model.syn_z[cup_id], feed_dict={model.cup_r: cup_r, model.z_input: ini_z})
 
         # 3. train D with Z' and GT
         syn_te, syn_pe, obs_te, obs_pe, des_l, des_wn, _ = sess.run([

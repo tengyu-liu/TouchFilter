@@ -12,9 +12,11 @@ sys.path.append(os.path.dirname(__file__))
 import mat_trans as mt
 from forward_kinematics import ForwardKinematic
 
-pca_components = np.load('data/pca_components.npy')
-pca_mean = np.load('data/pca_mean.npy')
-pca_var = np.load('data/pca_variance.npy')
+pca = pickle.load(open('hand_prior/pca_%d.pkl'%22, 'rb'))
+pca_components = pca.components_
+pca_mean = pca.mean_
+pca_var = pca.explained_variance_
+print('PCA loaded.')
 
 parts = ['palm', 
             'thumb0', 'thumb1', 'thumb2', 'thumb3',
@@ -42,7 +44,8 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
     else:
         mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 0, 1))
 
-    z_ = np.matmul(hand_z, np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean
+    z_ = hand_z
+    z_ = np.concatenate([np.matmul(hand_z[...,:-9], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-9:]], axis=-1)
     jrot = np.reshape(z_[:44], [22, 2])
     grot = np.reshape(z_[44:50], [3, 2])
     gpos = z_[50:]
@@ -84,7 +87,7 @@ if __name__ == '__main__':
         print(np.linalg.norm(ini_z[i] - syn_z[i]))
         mlab.show()
 
-        plt.plot(np.arange(36), obs_z[i], c='green')
-        plt.plot(np.arange(36), ini_z[i], c='red')
-        plt.plot(np.arange(36), syn_z[i], c='blue')
+        plt.plot(np.arange(obs_z[i].shape[0]), obs_z[i], c='green')
+        plt.plot(np.arange(ini_z[i].shape[0]), ini_z[i], c='red')
+        plt.plot(np.arange(syn_z[i].shape[0]), syn_z[i], c='blue')
         plt.show()
