@@ -62,10 +62,12 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
 
     for pid in range(4, 25):
         p = stl_dict[parts[pid - 4]]
-        p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
-        p.apply_translation(xpos[pid,:])
-        mlab.triangular_mesh(p.vertices[:,0] + offset, p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
-
+        try:
+            p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
+            p.apply_translation(xpos[pid,:])
+            mlab.triangular_mesh(p.vertices[:,0] + offset, p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
+        except:
+            continue
 
 if __name__ == '__main__':
     name = sys.argv[1]

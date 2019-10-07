@@ -61,7 +61,7 @@ class Model:
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
         self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + 9], 'gt_z')
         self.z_input = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + 9], 'z_input')
-        self.mean_gradient = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + 9], 'mean_gradient')
+        self.mean_gradient = tf.placeholder(tf.float32, [1, self.hand_z_size + 9], 'mean_gradient')
 
         self.obs_touch_energy_summ_in = tf.placeholder(tf.float32, [], 'obs_touch_energy_summ_in')
         self.obs_prior_energy_summ_in = tf.placeholder(tf.float32, [], 'obs_prior_energy_summ_in')
@@ -109,7 +109,7 @@ class Model:
             self.initial_gradient = {i : tf.gradients(self.initial_touch_energy[i] + self.initial_prior_energy[i], self.initial_z[i])[0] for i in range(1,11)}
 
         # 1. Synthesize Z' with D
-        self.syn_z, self.syn_g = { i : self.langevin_dynamics[i](self.z_input, self.cup_r) for i in range(1,11) }
+        self.syn_z = { i : self.langevin_dynamics[i](self.z_input, self.cup_r) for i in range(1,11) }
         self.syn_touch_energy = { i : tf.reduce_mean(self.touch_descriptor(self.z_input, self.cup_r, self.cup_models[i], reuse=True)) for i in range(1,11) }
         self.syn_prior_energy = { i : tf.reduce_mean(self.prior_descriptor(self.z_input, reuse=True)) for i in range(1,11) }
 
