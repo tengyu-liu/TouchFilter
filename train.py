@@ -128,7 +128,7 @@ for epoch in range(flags.epochs):
             # update gradients
             gradients = np.concatenate([gradients[len(idxs):], ini_g], axis=0)
             # 2. improve Z to Z' with D
-            imp_z = sess.run(model.syn_z[cup_id], feed_dict={model.cup_r: cup_r, model.z_input: ini_z, model.mean_gradient: np.mean(gradients, axis=0)})
+            imp_z = sess.run(model.syn_z[cup_id], feed_dict={model.cup_r: cup_r, model.z_input: ini_z, model.mean_gradient: np.mean(gradients, axis=0, keepdims=True)})
         else:
             # 1. initialize Z with G
             ini_z, ini_te, ini_pe = sess.run([model.initial_z[cup_id], model.initial_touch_energy[cup_id], model.initial_prior_energy[cup_id]], feed_dict={model.cup_r: cup_r, model.random_in: random_in})
