@@ -9,4 +9,4 @@
 * If W is invariant to situation:
     * W is learned
 * Pipeline
-    * For each positive example, 
+    * 
