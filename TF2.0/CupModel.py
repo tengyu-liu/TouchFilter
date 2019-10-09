@@ -34,10 +34,10 @@ class CupModel:
                 if i < self.num_layers - 1:
                     h = tf.nn.relu(h)
             
-            g = tf.gradients(h, x)[0]
-            g = g / tf.norm(g, axis=-1, keepdims=True)
-            out = tf.concat([h, g], axis=-1)
-            return out
+            # g = tf.gradients(h, x)[0]
+            # g = g / tf.norm(g, axis=-1, keepdims=True)
+            # out = tf.concat([h, g], axis=-1)
+            return h
 
     def build_model(self):
         self.pred = self.predict(self.x)

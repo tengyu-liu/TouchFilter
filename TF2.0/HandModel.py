@@ -16,7 +16,6 @@ from tf_hand_kinematics import kinematics
 class HandModel:
     def __init__(self, batch_size):
         # Hand shape
-        mesh_base_dir = '/home/tengyu/Documents/DeepSDF/MujocoSDF/datagen/mesh/'
         self.parts = ['palm',
                     'thumb0', 'thumb1', 'thumb2', 'thumb3',
                     'index0', 'index1', 'index2', 'index3',
@@ -24,13 +23,7 @@ class HandModel:
                     'ring0', 'ring1', 'ring2', 'ring3',
                     'pinky0', 'pinky1', 'pinky2', 'pinky3']
 
-        self.key_pts = {p: np.mean(np.load(os.path.join(os.path.dirname(__file__), 'data', p + '.faces.npy')), axis=1) for p in self.parts if '0' not in p}
-        self.normals = {p: np.load(os.path.join(os.path.dirname(__file__), 'data', p + '.face_normals.npy')) for p in self.parts if '0' not in p}
-
-        self.tf_key_pts = {n: tf.constant(p, dtype=tf.float32) for (n,p) in self.key_pts.items()}
-        self.tf_normals = {n: tf.constant(p, dtype=tf.float32) for (n,p) in self.normals.items()}
-
-        self.surface_pts = {p: tf.constant(tm.load_mesh(os.path.join(os.path.dirname(__file__), 'data', 'hand', p + '.STL')).vertices, dtype=tf.float32) for p in self.parts}
+        self.surface_pts = {p: tf.constant(tm.load(os.path.join(os.path.dirname(__file__), '../data', 'hand', p + '.STL')).vertices, dtype=tf.float32) for p in self.parts}
         self.n_surf_pts = sum(x.shape[0] for x in self.surface_pts.values())
 
         # Input placeholder
@@ -43,16 +36,12 @@ class HandModel:
 
     def arrange(self, pos, rot):
         for n in self.key_pts:
-            self.out_key_pts[n] = np.matmul(Q(rot[n]).rotation_matrix, self.key_pts[n].T).T + pos[n]
-            self.out_normals[n] = np.matmul(Q(rot[n]).rotation_matrix, self.normals[n].T).T
             self.out_surface_key_pts[n] = np.matmul(Q(rot[n]).rotation_matrix, self.surface_pts[n].T).T + pos[n]
 
     def tf_forward_kinematics(self, gpos, grot, jrot):
         xpos, xquat = kinematics(gpos, grot, jrot)
-        out_key_pts = {n:tf.transpose(tf.matmul(xquat[n], tf.transpose(tf.pad(tf.tile(tf.expand_dims(self.tf_key_pts[n], axis=0), [gpos.shape[0], 1, 1]), paddings=[[0,0],[0,0],[0,1]], constant_values=1), perm=[0,2,1])), perm=[0,2,1])[...,:3] + tf.expand_dims(xpos[n], axis=1) for n in self.tf_key_pts}
-        out_normals = {n:tf.transpose(tf.matmul(xquat[n], tf.transpose(tf.pad(tf.tile(tf.expand_dims(self.tf_normals[n], axis=0), [gpos.shape[0], 1, 1]), paddings=[[0,0],[0,0],[0,1]], constant_values=1), perm=[0,2,1])), perm=[0,2,1])[...,:3] for n in self.tf_normals}
         out_surface_key_pts = {n:tf.transpose(tf.matmul(xquat[n], tf.transpose(tf.pad(tf.tile(tf.expand_dims(self.surface_pts[n], axis=0), [gpos.shape[0], 1, 1]), paddings=[[0,0],[0,0],[0,1]], constant_values=1), perm=[0,2,1])), perm=[0,2,1])[...,:3] + tf.expand_dims(xpos[n], axis=1) for n in self.surface_pts}
-        return out_key_pts, out_normals, out_surface_key_pts
+        return out_surface_key_pts
 
 # # Create a new plot
 # figure = pyplot.figure()

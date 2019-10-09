@@ -35,10 +35,10 @@ def rotation_matrix(rot):
 
 def visualize(hand_z, offset=0):
     z_ = pca.inverse_transform(hand_z)
-    jrot = np.reshape(z_, [22, 2])
-    grot = np.zeros([3,2])
-    grot[0,0] = 1
-    grot[1,1] = -1
+    jrot = np.reshape(z_[:44], [22, 2])
+    grot = np.reshape(z_[44:], [3,2])
+#     grot[0,0] = 1
+#     grot[1,1] = -1
     gpos = np.zeros([3])
     jrot = np.arcsin((jrot / np.linalg.norm(jrot, axis=-1, keepdims=True))[:,0])
     grot = mt.quaternion_from_matrix(rotation_matrix(grot))
@@ -53,17 +53,17 @@ def visualize(hand_z, offset=0):
         mlab.triangular_mesh(p.vertices[:,0] + offset, p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
 
 
-N = 22
+N = 28
 
-pca = pickle.load(open('pkl/pca_%d.pkl'%N, 'rb'))
+pca = pickle.load(open('pkl50/pca_%d.pkl'%N, 'rb'))
 
 for i in range(N):
     z = np.zeros([N])
-    os.makedirs('figs/%d'%i, exist_ok=True)
+    os.makedirs('figs50/%d'%i, exist_ok=True)
     for v in range(20):
         print(i, v)
         mlab.clf()
         z[i] = v * 0.1 - 1
         visualize(z)
-        mlab.savefig('figs/%d/%d.png'%(i, v))
-    os.system('ffmpeg -y -i figs/%d/%%d.png figs/%d.gif'%(i, i))
+        mlab.savefig('figs50/%d/%d.png'%(i, v))
+    os.system('ffmpeg -y -i figs50/%d/%%d.png figs50/%d.gif'%(i, i))

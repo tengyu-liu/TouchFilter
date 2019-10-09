@@ -86,15 +86,15 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 
 errs = []
-for i in range(1, 44):
+for i in range(1, 50):
     pca = PCA(n_components=i, whiten=True)
-    pca.fit(obs_zs[:,:44])
-    pickle.dump(pca, open(os.path.join(os.path.dirname(__file__), 'pkl/pca_%d.pkl'%(i)), 'wb'))
-    err = np.mean(np.linalg.norm(pca.inverse_transform(pca.transform(obs_zs[:,:44])) - obs_zs[:,:44], axis=-1) / np.linalg.norm(obs_zs[:,:44], axis=-1))
+    pca.fit(obs_zs[:,:50])
+    pickle.dump(pca, open(os.path.join(os.path.dirname(__file__), 'pkl50/pca_%d.pkl'%(i)), 'wb'))
+    err = np.mean(np.linalg.norm(pca.inverse_transform(pca.transform(obs_zs[:,:50])) - obs_zs[:,:50], axis=-1) / np.linalg.norm(obs_zs[:,:50], axis=-1))
     print(i, err)
     errs.append(err)
 
-plt.plot(np.arange(1,44), errs)
+plt.plot(np.arange(1,50), errs)
 plt.show()
 
 

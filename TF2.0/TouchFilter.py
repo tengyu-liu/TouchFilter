@@ -19,8 +19,7 @@ class TouchFilter:
         filter_pts = tf.transpose(tf.matmul(
                 tf.transpose(cup_r, perm=[0,2,1]), 
                 tf.transpose(filter_pts, perm=[0,2,1])), perm=[0, 2, 1]) * 4
-        cup_dists = tf.reshape(cup_model.predict(tf.reshape(filter_pts, [-1,3])), [filter_pts.shape[0], -1, 4])  # B x N x 4
-        dists = cup_dists[...,0]
+        dists = tf.reshape(cup_model.predict(tf.reshape(filter_pts, [-1,3])), [filter_pts.shape[0], -1, 4])  # B x N x 1
 
         f0 = tf.math.square(dists)
         f1 = tf.math.square(tf.nn.relu(dists))
@@ -34,7 +33,7 @@ class TouchFilter:
         
         weight = tf.nn.softmax(weight)
         energies = weight * features # B x N x 2 
-        return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2]) + tf.reduce_sum(weight[...,1], axis=-1) * self.penalty_strength)   # B x 1
+        return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2]) + tf.reduce_sum(weight[...,1], axis=-1) * self.penalty_strength)
 
     def debug(self, pts, vectors, cup_model, cup_r):
         pts = tf.concat(list(pts.values()), axis=1)
