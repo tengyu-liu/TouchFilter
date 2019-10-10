@@ -15,11 +15,10 @@ class TouchFilter:
         
     def __call__(self, pts, cup_model, cup_r, hand_z=None):
         # pts: B x N x 3
-        pts = tf.concat(list(pts.values()), axis=1)
-        filter_pts = tf.transpose(tf.matmul(
+        pts = tf.transpose(tf.matmul(
                 tf.transpose(cup_r, perm=[0,2,1]), 
-                tf.transpose(filter_pts, perm=[0,2,1])), perm=[0, 2, 1]) * 4
-        dists = tf.reshape(cup_model.predict(tf.reshape(filter_pts, [-1,3])), [filter_pts.shape[0], -1, 4])  # B x N x 1
+                tf.transpose(pts, perm=[0,2,1])), perm=[0, 2, 1]) * 4
+        dists = tf.reshape(cup_model.predict(tf.reshape(pts, [-1,3])), [pts.shape[0], -1])  # B x N x 1
 
         f0 = tf.math.square(dists)
         f1 = tf.math.square(tf.nn.relu(dists))
@@ -29,7 +28,7 @@ class TouchFilter:
             weight = self.weight
         else:
             situation = tf.concat([f0, hand_z], axis=-1)
-            weight = tf.reshape(self.dense_2(self.dense_1(situation)), [1, -1, 2])
+            weight = tf.reshape(self.dense_2(self.dense_1(situation)), [-1, self.n_pts, 2])
         
         weight = tf.nn.softmax(weight)
         energies = weight * features # B x N x 2 

@@ -1,3 +1,5 @@
 *ckpt*
 *.pyc
 figs*
+logs
+models

@@ -1,3 +1,4 @@
+import numpy as np
 from TouchFilter import TouchFilter
 from sklearn.decomposition import PCA
 import tensorflow as tf
@@ -11,6 +12,7 @@ class Model:
         self.build_config(config)
         self.build_input()
         self.build_model()
+        self.build_train()
         self.build_summary()
     
     def build_config(self, config):
@@ -22,23 +24,27 @@ class Model:
         self.hand_z_size = config.z_size
         self.pca_size = config.pca_size
         self.batch_size = config.batch_size
-        
+        self.langevin_steps = config.langevin_steps
+        self.step_size = config.step_size
+        self.d_lr = config.d_lr
+        self.beta1 = config.beta1
+        self.beta2 = config.beta2
+
         self.use_pca = config.use_pca
         if self.use_pca:
             pca = pickle.load(open(os.path.join(os.path.dirname(__file__), 'pca/pkl%d/pca_%d.pkl'%(self.pca_size, self.hand_z_size)), 'rb'))
             assert isinstance(pca, PCA)
-            self.pca_var = pca.explained_variance_
-            self.pca_mean = pca.mean_
-            self.pca_components = pca.components_
+            self.pca_components = tf.constant(pca.components_, dtype=tf.float32)
+            self.pca_mean = tf.constant(pca.mean_, dtype=tf.float32)
+            self.pca_var = tf.constant(np.sqrt(np.expand_dims(pca.explained_variance_ , axis=-1)), dtype=tf.float32)
 
         self.cup_model_path = os.path.join(os.path.dirname(__file__), '../data/cups/models')
         self.cup_restore = 999
     
     def build_input(self):
-        self.ini_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size], 'input_hand_z')
+        self.ini_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'input_hand_z')
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
-        self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size], 'obs_z')
-
+        self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'obs_z')
         pass
 
     def build_model(self):
@@ -63,7 +69,7 @@ class Model:
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,11)}
         self.ini_e = {i: self.descriptor(self.ini_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
         self.syn_z = {i: self.langevin_dynamics[i](self.ini_z, self.cup_r) for i in range(1,11)}
-        self.syn_e = {i: self.descriptor(self.syn_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
+        self.syn_e = {i: self.descriptor(self.syn_z[i], self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
 
         self.descriptor_loss = {i : self.syn_e[i] - self.obs_e[i] for i in range(1,11)}
 
@@ -84,7 +90,10 @@ class Model:
             surf_pts = tf.concat(list(surf_pts.values()), axis=1)
 
             # touch response
-            energy = self.touch_filter(pts, m, r)
+            if self.situation_invariant:
+                energy = self.touch_filter(surf_pts, cup_model, cup_r)
+            else:
+                energy = self.touch_filter(surf_pts, cup_model, cup_r, hand_z)
             return energy
 
     def langevin_dynamics_fn(self, cup_id):
