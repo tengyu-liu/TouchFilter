@@ -128,6 +128,7 @@ for epoch in range(flags.epochs):
 
         for langevin_step in range(flags.langevin_steps):
             syn_z, syn_e = sess.run(model.syn_ze[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
+            print(syn_z.shape, syn_e.shape)
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
 
