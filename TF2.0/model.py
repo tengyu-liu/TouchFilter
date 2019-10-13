@@ -75,7 +75,7 @@ class Model:
         self.inp_ew = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
         self.syn_zew = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
 
-        self.descriptor_loss = {i : self.obs_e[i] - self.inp_e[i] for i in range(1,self.cup_num + 1)}
+        self.descriptor_loss = {i : self.obs_ew[i][0] - self.inp_ew[i][0] for i in range(1,self.cup_num + 1)}
         pass
     
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
