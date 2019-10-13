@@ -75,7 +75,7 @@ class Model:
         self.inp_e = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
         self.syn_ze = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
 
-        self.descriptor_loss = {i : self.inp_e[i] - self.obs_e[i] for i in range(1,self.cup_num + 1)}
+        self.descriptor_loss = {i : self.obs_e[i] - self.inp_e[i] for i in range(1,self.cup_num + 1)}
         pass
     
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
@@ -99,13 +99,13 @@ class Model:
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) + tf.reduce_mean(z * z)
+            energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) + tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
             if self.adaptive_langevin:
                 grad_z = grad_z / self.mean_gradient
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1)
-            z = z + self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
+            z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
             return [z, energy]
             
         return langevin_dynamics
