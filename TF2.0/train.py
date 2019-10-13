@@ -120,6 +120,7 @@ for epoch in range(flags.epochs):
         cup_r = cup_rs[cup_id][idxs]
         obs_z = obs_zs[cup_id][idxs]
         syn_z = np.random.normal(size=obs_z.shape)
+        syn_z[:,-3:] = [-0.2, -0.2, 0.2]
 
         syn_z_seq = [syn_z]
         syn_e_seq = []
