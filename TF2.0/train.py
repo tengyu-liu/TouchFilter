@@ -9,7 +9,7 @@ import scipy.io as sio
 import tensorflow as tf
 import trimesh as tm
 from pyquaternion.quaternion import Quaternion as Q
-from mayavi import mlab
+# from mayavi import mlab
 
 from config import flags
 from model import Model

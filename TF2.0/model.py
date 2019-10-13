@@ -16,7 +16,6 @@ class Model:
         self.build_summary()
     
     def build_config(self, config):
-        self.n_pts = 20000
         self.situation_invariant = config.situation_invariant
         self.penalty_strength = config.penalty_strength
         self.adaptive_langevin = config.adaptive_langevin
