@@ -17,6 +17,8 @@ tf.flags.DEFINE_bool('situation_invariant', False, '')
 tf.flags.DEFINE_bool('adaptive_langevin', False, '')
 tf.flags.DEFINE_bool('clip_norm_langevin', False, '')
 
+tf.flags.DEFINE_bool('debug', False, '')
+
 tf.flags.DEFINE_float('d_lr', 1e-3, '')
 tf.flags.DEFINE_float('beta1', 0.99, '')
 tf.flags.DEFINE_float('beta2', 0.999, '')

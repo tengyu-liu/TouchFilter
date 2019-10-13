@@ -29,6 +29,12 @@ class Model:
         self.beta1 = config.beta1
         self.beta2 = config.beta2
 
+        self.debug = config.debug
+
+        self.cup_num = 10
+        if self.debug:
+            self.cup_num = 2
+
         self.use_pca = config.use_pca
         if self.use_pca:
             pca = pickle.load(open(os.path.join(os.path.dirname(__file__), 'pca/pkl%d/pca_%d.pkl'%(self.pca_size, self.hand_z_size)), 'rb'))
@@ -64,12 +70,12 @@ class Model:
         self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant, penalty_strength=self.penalty_strength)
         print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
 
-        self.obs_e = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,11)}
-        self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,11)}
-        self.inp_e = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
-        self.syn_ze = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,11)}
+        self.obs_e = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,self.cup_num + 1)}
+        self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,self.cup_num + 1)}
+        self.inp_e = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
+        self.syn_ze = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
 
-        self.descriptor_loss = {i : self.inp_e[i] - self.obs_e[i] for i in range(1,11)}
+        self.descriptor_loss = {i : self.inp_e[i] - self.obs_e[i] for i in range(1,self.cup_num + 1)}
         pass
     
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
@@ -107,9 +113,9 @@ class Model:
     def build_train(self):
         self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('des')]
         self.des_optim = tf.train.AdamOptimizer(self.d_lr, beta1=self.beta1, beta2=self.beta2)
-        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i], var_list=self.des_vars) for i in range(1,11)}
-        des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in range(1,11)}
-        self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in range(1,11)}
+        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i], var_list=self.des_vars) for i in range(1,self.cup_num + 1)}
+        des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in range(1,self.cup_num + 1)}
+        self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in range(1,self.cup_num + 1)}
         pass
     
     def build_summary(self):
