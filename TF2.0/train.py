@@ -152,6 +152,8 @@ for epoch in range(flags.epochs):
             }
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
+        
+        if batch_id == 0:
             saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
             # # find cup vertices
