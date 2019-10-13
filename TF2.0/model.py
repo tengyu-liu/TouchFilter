@@ -105,7 +105,7 @@ class Model:
                 grad_z = grad_z / self.mean_gradient
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1)
-            z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
+            z = z - self.step_size * grad_z #+ tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
             return [z, energy]
             
         return langevin_dynamics
