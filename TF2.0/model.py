@@ -99,7 +99,7 @@ class Model:
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) + tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
+            energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
             if self.adaptive_langevin:
                 grad_z = grad_z / self.mean_gradient
