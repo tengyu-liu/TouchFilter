@@ -143,7 +143,7 @@ for epoch in range(flags.epochs):
         summ = sess.run(model.summ, feed_dict={model.summ_obs_e: obs_ew[0], model.summ_ini_e: syn_e_seq[0], model.summ_syn_e: syn_ew[0], model.summ_descriptor_loss: loss})
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
-        print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_e, syn_e_seq[0], syn_e, loss, time.time() - t0), end='')
+        print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_ew[0], syn_e_seq[0], syn_ew[0], loss, time.time() - t0), end='')
         
         if item_id % 20 == 0:
             data = {
