@@ -27,6 +27,8 @@ print('PCA loaded.')
 cup_id_list = [1,2,3,4,5,6,7,8]
 if flags.debug:
     cup_id_list = [1,2]
+    flags.langevin_steps = 2
+
 cup_models = {cup_id: tm.load_mesh(os.path.join(project_root, 'data/cups/onepiece/%d.obj'%cup_id)) for cup_id in cup_id_list}
 print('Cup models loaded.')
 
