@@ -115,28 +115,39 @@ for epoch in range(flags.epochs):
 
         cup_r = cup_rs[cup_id][idxs]
         obs_z = obs_zs[cup_id][idxs]
-        ini_z = np.random.normal(size=obs_z.shape)
+        syn_z = np.random.normal(size=obs_z.shape)
 
-        obs_e, ini_e, syn_z, syn_e, loss, _ = sess.run([model.obs_e[cup_id], model.ini_e[cup_id], model.syn_z[cup_id], model.syn_e[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], 
-            feed_dict={model.cup_r: cup_r, model.obs_z: obs_z, model.ini_z: ini_z}
-        )
+        syn_z_seq = [syn_z]
+        syn_e_seq = []
 
-        summ = sess.run(model.summ, feed_dict={model.summ_obs_e: obs_e, model.summ_ini_e: ini_e, model.summ_syn_e: syn_e, model.summ_descriptor_loss: loss})
+        # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
+
+        for langevin_step in range(flags.langevin_steps):
+            syn_z, syn_e = sess.run(model.syn_ze[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
+            syn_z_seq.append(syn_z)
+            syn_e_seq.append(syn_e)
+
+        syn_e, obs_e, loss, _ = sess.run([model.inp_e[cup_id], model.obs_e[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+            model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+        })
+        syn_e_seq.append(syn_e)
+
+        summ = sess.run(model.summ, feed_dict={model.summ_obs_e: obs_e, model.summ_ini_e: syn_e_seq[0], model.summ_syn_e: syn_e, model.summ_descriptor_loss: loss})
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
-        print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_e, ini_e, syn_e, loss, time.time() - t0), end='')
+        print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_e, syn_e_seq[0], syn_e, loss, time.time() - t0), end='')
         
         if item_id % 20 == 0:
             data = {
                 'cup_id': cup_id, 
                 'cup_r' : cup_r, 
                 'obs_z' : obs_z, 
-                'ini_z' : ini_z, 
-                'syn_z' : syn_z
+                'syn_e' : syn_e_seq, 
+                'syn_z' : syn_z_seq
             }
 
-            pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(flags.name, epoch, batch_id)), 'wb'))
-            saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(flags.name, epoch, batch_id)))
+            pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
+            saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
             # # find cup vertices
             # cvert = copy.deepcopy(cup_models[cup_id].vertices)

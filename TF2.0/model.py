@@ -41,7 +41,7 @@ class Model:
         self.cup_restore = 999
     
     def build_input(self):
-        self.ini_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'input_hand_z')
+        self.inp_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'input_hand_z')
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
         self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'obs_z')
         pass
@@ -66,14 +66,10 @@ class Model:
 
         self.obs_e = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,11)}
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,11)}
-        self.ini_e = {i: self.descriptor(self.ini_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
-        self.syn_z = {i: self.langevin_dynamics[i](self.ini_z, self.cup_r) for i in range(1,11)}
-        self.syn_e = {i: self.descriptor(self.syn_z[i], self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
+        self.inp_e = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,11)}
+        self.syn_ze = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,11)}
 
-        self.descriptor_loss = {i : self.syn_e[i] - self.obs_e[i] for i in range(1,11)}
-
-        self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('des')]
-        self.des_optim = tf.train.AdamOptimizer(self.d_lr, beta1=self.beta1, beta2=self.beta2)
+        self.descriptor_loss = {i : self.inp_e[i] - self.obs_e[i] for i in range(1,11)}
         pass
     
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
@@ -97,23 +93,15 @@ class Model:
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            def _cond(z,r,i):
-                return tf.less(i, self.langevin_steps)
-
-            def _body(z,r,i):
-                energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) + z * z
-                grad_z = tf.gradients(energy, z)[0]
-                if self.adaptive_langevin:
-                    grad_z = grad_z / self.mean_gradient
-                if self.clip_norm_langevin:
-                    grad_z = tf.clip_by_norm(grad_z, 1)
-                z = z + self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
-                return z, r, tf.add(i, 1)
+            energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) + z * z
+            grad_z = tf.gradients(energy, z)[0]
+            if self.adaptive_langevin:
+                grad_z = grad_z / self.mean_gradient
+            if self.clip_norm_langevin:
+                grad_z = tf.clip_by_norm(grad_z, 1)
+            z = z + self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
+            return [z, energy]
             
-            with tf.name_scope('langevin_dynamics'):
-                i = tf.constant(0)
-                z, r, i = tf.while_loop(_cond, _body, [z, r, i])
-                return z
         return langevin_dynamics
 
     def build_train(self):
