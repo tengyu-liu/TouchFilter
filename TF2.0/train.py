@@ -132,7 +132,7 @@ for epoch in range(flags.epochs):
                 'cup_r' : cup_r, 
                 'obs_z' : obs_z, 
                 'ini_z' : ini_z, 
-                'syn_z' : imp_z
+                'syn_z' : syn_z
             }
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(flags.name, epoch, batch_id)), 'wb'))
