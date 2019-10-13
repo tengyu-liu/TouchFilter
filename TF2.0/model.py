@@ -70,10 +70,10 @@ class Model:
         self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant, penalty_strength=self.penalty_strength)
         print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
 
-        self.obs_e = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,self.cup_num + 1)}
+        self.obs_ew = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,self.cup_num + 1)}
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,self.cup_num + 1)}
-        self.inp_e = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
-        self.syn_ze = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
+        self.inp_ew = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
+        self.syn_zew = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
 
         self.descriptor_loss = {i : self.obs_e[i] - self.inp_e[i] for i in range(1,self.cup_num + 1)}
         pass
@@ -92,21 +92,21 @@ class Model:
 
             # touch response
             if self.situation_invariant:
-                energy = self.touch_filter(surf_pts, cup_model, cup_r)
+                energy, weight = self.touch_filter(surf_pts, cup_model, cup_r)
             else:
-                energy = self.touch_filter(surf_pts, cup_model, cup_r, hand_z)
-            return energy
+                energy, weight = self.touch_filter(surf_pts, cup_model, cup_r, hand_z)
+            return energy, weight
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            energy = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
+            energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
             if self.adaptive_langevin:
                 grad_z = grad_z / self.mean_gradient
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1)
             z = z - self.step_size * grad_z #+ tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
-            return [z, energy]
+            return [z, energy, weight]
             
         return langevin_dynamics
 

@@ -124,20 +124,23 @@ for epoch in range(flags.epochs):
 
         syn_z_seq = [syn_z]
         syn_e_seq = []
+        syn_w_seq = []
 
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e = sess.run(model.syn_ze[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
+            syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
+            syn_w_seq.append(syn_w)
 
-        syn_e, obs_e, loss, _ = sess.run([model.inp_e[cup_id], model.obs_e[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+        syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
         })
-        syn_e_seq.append(syn_e)
+        syn_e_seq.append(syn_ew[0])
+        syn_w_seq.append(syn_ew[1])
 
-        summ = sess.run(model.summ, feed_dict={model.summ_obs_e: obs_e, model.summ_ini_e: syn_e_seq[0], model.summ_syn_e: syn_e, model.summ_descriptor_loss: loss})
+        summ = sess.run(model.summ, feed_dict={model.summ_obs_e: obs_ew[0], model.summ_ini_e: syn_e_seq[0], model.summ_syn_e: syn_ew[0], model.summ_descriptor_loss: loss})
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
         print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_e, syn_e_seq[0], syn_e, loss, time.time() - t0), end='')
@@ -147,8 +150,11 @@ for epoch in range(flags.epochs):
                 'cup_id': cup_id, 
                 'cup_r' : cup_r, 
                 'obs_z' : obs_z, 
+                'obs_e' : obs_ew[0], 
+                'obs_w' : obs_ew[1], 
                 'syn_e' : syn_e_seq, 
-                'syn_z' : syn_z_seq
+                'syn_z' : syn_z_seq, 
+                'syn_w' : syn_w_seq
             }
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))

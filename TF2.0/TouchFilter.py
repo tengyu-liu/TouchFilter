@@ -32,7 +32,7 @@ class TouchFilter:
         
         weight = tf.nn.softmax(weight)
         energies = weight * features # B x N x 2 
-        return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2]) + tf.reduce_sum(weight[...,1], axis=-1) * self.penalty_strength)
+        return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2]) + tf.reduce_sum(weight[...,1], axis=-1) * self.penalty_strength), weight
 
     def debug(self, pts, vectors, cup_model, cup_r):
         pts = tf.concat(list(pts.values()), axis=1)
