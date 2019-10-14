@@ -102,8 +102,9 @@ class Model:
         def langevin_dynamics(z, r):
             energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
+            self.EMA.apply([grad_z])
             if self.adaptive_langevin:
-                grad_z = grad_z / self.mean_gradient
+                grad_z = grad_z / self.EMA.average(grad_z)
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1)
             z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
