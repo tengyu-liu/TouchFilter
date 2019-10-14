@@ -148,7 +148,7 @@ for epoch in range(flags.epochs):
 
         print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_ew[0], syn_e_seq[0], syn_ew[0], loss, time.time() - t0), end='')
         
-        if item_id % 20 == 0:
+        if item_id == 0:
             data = {
                 'cup_id': cup_id, 
                 'cup_r' : cup_r, 
