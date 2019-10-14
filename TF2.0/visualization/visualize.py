@@ -85,16 +85,16 @@ obs_z = data['obs_z']
 syn_e_seq = data['syn_e']
 syn_z_seq = data['syn_z']
 
-syn_z = np.random.normal(size=(obs_z[0].shape))
-syn_z[-3:] = [-0.2, -0.2, 0.2]
-visualize(cup_id, cup_r[0], syn_z)
-mlab.show()
+# syn_z = np.random.normal(size=(obs_z[0].shape))
+# syn_z[-3:] = [-0.2, -0.2, 0.2]
+# visualize(cup_id, cup_r[0], syn_z)
+# mlab.show()
 
-# for i_batch in range(len(cup_r)):
-#     for i_seq in range(len(syn_z_seq)):
-#         mlab.clf()
-#         visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
-#         mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
-#     os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-#     for i_seq in range(len(syn_z_seq)):
-#         os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+for i_batch in range(len(cup_r)):
+    for i_seq in range(len(syn_z_seq)):
+        mlab.clf()
+        visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
+        mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+    for i_seq in range(len(syn_z_seq)):
+        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))

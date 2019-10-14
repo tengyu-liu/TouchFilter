@@ -129,7 +129,10 @@ for epoch in range(flags.epochs):
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
+            stddev = 0
+            if langevin_step < 30: 
+                stddev = (30 - langevin_step) / 300
+            syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.stddev: stddev})
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)

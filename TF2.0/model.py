@@ -50,6 +50,7 @@ class Model:
         self.inp_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'input_hand_z')
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
         self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'obs_z')
+        self.stddev = tf.placeholder(tf.float32, [], 'stddev')
         pass
 
     def build_model(self):
@@ -105,7 +106,7 @@ class Model:
                 grad_z = grad_z / self.mean_gradient
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1)
-            z = z - self.step_size * grad_z #+ tf.random.normal(z.shape, mean=0.0, stddev=1e-3)
+            z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
             return [z, energy, weight]
             
         return langevin_dynamics
