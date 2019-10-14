@@ -12,11 +12,11 @@ from forward_kinematics import ForwardKinematic
 
 import matplotlib.pyplot as plt
 
-name = sys.argv[1]
-epoch = int(sys.argv[2])
-batch = int(sys.argv[3])
+# name = sys.argv[1]
+# epoch = int(sys.argv[2])
+# batch = int(sys.argv[3])
 
-pca = pickle.load(open('../pca/pkl50/pca_21.pkl', 'rb'))
+pca = pickle.load(open('../pca/pkl44/pca_2.pkl', 'rb'))
 pca_components = pca.components_
 pca_mean = pca.mean_
 pca_var = pca.explained_variance_
@@ -52,7 +52,7 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
         mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 0, 1))
 
     z_ = hand_z
-    z_ = np.concatenate([np.matmul(hand_z[...,:-3], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-3:]], axis=-1)
+    z_ = np.concatenate([np.matmul(hand_z[...,:-9], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-9:]], axis=-1)
     jrot = np.reshape(z_[:44], [22, 2])
     grot = np.reshape(z_[44:50], [3, 2])
     gpos = z_[50:]
@@ -77,24 +77,29 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
             continue
 
 
-data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
+# data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
 
-cup_id = data['cup_id']
-cup_r = data['cup_r']
-obs_z = data['obs_z']
-syn_e_seq = data['syn_e']
-syn_z_seq = data['syn_z']
+# cup_id = data['cup_id']
+# cup_r = data['cup_r']
+# obs_z = data['obs_z']
+# syn_e_seq = data['syn_e']
+# syn_z_seq = data['syn_z']
 
-# syn_z = np.random.normal(size=(obs_z[0].shape))
-# syn_z[-3:] = [-0.2, -0.2, 0.2]
-# visualize(cup_id, cup_r[0], syn_z)
-# mlab.show()
+cup_id = 1
+cup_r = [[[1,0,0],[0,1,0],[0,0,1]]]
+syn_z = np.random.normal(size=([11]))
+syn_z[-3:] = [0, 0.2, 0.2]
+syn_z[-9:-3] = 0
+syn_z[-9] = 1
+syn_z[-6] = 1
+visualize(cup_id, cup_r[0], syn_z)
+mlab.show()
 
-for i_batch in range(len(cup_r)):
-    for i_seq in range(len(syn_z_seq)):
-        mlab.clf()
-        visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
-        mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-    for i_seq in range(len(syn_z_seq)):
-        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+# for i_batch in range(len(cup_r)):
+#     for i_seq in range(len(syn_z_seq)):
+#         mlab.clf()
+#         visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
+#         mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+#     os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+#     for i_seq in range(len(syn_z_seq)):
+#         os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
