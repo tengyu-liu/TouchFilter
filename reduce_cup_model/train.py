@@ -8,7 +8,7 @@ from CupModel import CupModel as OldModel
 from model import CupModel as NewModel
 
 cup_id = int(sys.argv[1])
-total_steps = 100000
+total_steps = 10000
 batch_size = 102400
 
 new_model = NewModel(cup_id)
