@@ -4,9 +4,9 @@ class CupModel:
     def __init__(self, cup_id):
         with tf.variable_scope('cup_%d'%cup_id):
             self.x = tf.placeholder(tf.float32, [None, 3], 'input')
-            h1 = tf.layers.dense(self.x, 128, activation=tf.nn.relu)
-            h2 = tf.layers.dense(h1, 128, activation=tf.nn.relu)
-            h3 = tf.layers.dense(h2, 128, activation=tf.nn.relu)
+            h1 = tf.layers.dense(self.x, 1024, activation=tf.nn.relu)
+            h2 = tf.layers.dense(h1, 1024, activation=tf.nn.relu)
+            h3 = tf.layers.dense(h2, 1024, activation=tf.nn.relu)
             self.out = tf.layers.dense(h3, 1)
             self.gt = tf.placeholder(tf.float32, [None, 1], 'gt')
             self.loss = tf.reduce_mean(tf.math.square(self.out - self.gt))

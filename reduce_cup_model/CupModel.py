@@ -46,20 +46,20 @@ class CupModel:
 if __name__ == "__main__":
     import numpy as np
     cm = CupModel(1, 999, 'data/cups/models')
-    axis = np.linspace(-0.3, 0.3, 64) * 5
+    axis = np.linspace(-0.3, 0.3, 100) * 5
     pts = np.transpose(np.stack(np.meshgrid(axis, axis, axis), axis=-1), [1,0,2,3]).reshape([-1,3])
     tf_pts = tf.constant(pts, dtype=tf.float32)
     tf_out = cm.predict(tf_pts)
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
-    grad = sess.run(tf_out)
-    dist = grad[:,0]
-    grad = grad[:,1:]
+    dist = sess.run(tf_out)[:,0]
+    # dist = grad[:,0]
+    # grad = grad[:,1:]
 
     import mayavi.mlab as mlab
 
     mlab.points3d(pts[dist >= 0,0], pts[dist >= 0,1], pts[dist >= 0,2], scale_factor=0.05)
-    mlab.quiver3d(pts[::10,0], pts[::10,1], pts[::10,2], grad[::10,0], grad[::10,1], grad[::10,2])
+    # mlab.quiver3d(pts[::10,0], pts[::10,1], pts[::10,2], grad[::10,0], grad[::10,1], grad[::10,2])
 
     mlab.show()
 
