@@ -27,38 +27,30 @@ os.makedirs('models/cup_%d'%(cup_id), exist_ok=True)
 train_writer = tf.summary.FileWriter('logs/cup_%d'%cup_id, sess.graph)
 saver = tf.train.Saver(max_to_keep=0)
 
-for global_step in range(total_steps):
+plateu = 20
+
+lr = 1e-3
+global_step = 0
+
+global_minimum = float('inf')
+global_minimum_step = -1
+
+while lr > 1e-9:
 	pts = np.random.normal(size=[batch_size, 3])
 
 	old_pred = sess.run(old_model.pred, feed_dict={old_model.x: pts})
 	_, loss, summ = sess.run([new_model.train, new_model.loss, new_model.summ], feed_dict={new_model.x: pts, new_model.gt: old_pred, new_model.d_lr: 1e-3})
 
-	print('\r[%d]: %f, %f'%(global_step, loss, loss / np.mean(np.square(old_pred))), end='')
-	if global_step % 10 == 0:
-		train_writer.add_summary(summ, global_step=global_step)
+	print('\r[%d]: LR: %f, Err: %f, Rel. Err.: %f'%(global_step, loss, loss / np.mean(np.square(old_pred))), end='')
 
-saver.save(sess, 'models/cup_%d/%d.ckpt'%(cup_id, global_step))
+	if loss < global_minimum: 
+		global_minimum = loss
+		global_minimum_step = global_step
+	else:
+		if global_step > global_minimum_step + plateu:
+			lr *= 0.1
+			global_minimum_step = global_step
 
-for global_step in range(total_steps * 2):
-	pts = np.random.normal(size=[batch_size, 3])
-
-	old_pred = sess.run(old_model.pred, feed_dict={old_model.x: pts})
-	_, loss, summ = sess.run([new_model.train, new_model.loss, new_model.summ], feed_dict={new_model.x: pts, new_model.gt: old_pred, new_model.d_lr: 1e-4})
-
-	print('\r[%d]: %f, %f'%(global_step, loss, loss / np.mean(np.square(old_pred))), end='')
-	if global_step % 10 == 0:
-		train_writer.add_summary(summ, global_step=global_step + total_steps)
-
-saver.save(sess, 'models/cup_%d/%d.ckpt'%(cup_id, global_step + total_steps))
-
-for global_step in range(total_steps * 4):
-	pts = np.random.normal(size=[batch_size, 3])
-
-	old_pred = sess.run(old_model.pred, feed_dict={old_model.x: pts})
-	_, loss, summ = sess.run([new_model.train, new_model.loss, new_model.summ], feed_dict={new_model.x: pts, new_model.gt: old_pred, new_model.d_lr: 1e-5})
-
-	print('\r[%d]: %f, %f'%(global_step, loss, loss / np.mean(np.square(old_pred))), end='')
-	if global_step % 10 == 0:
-		train_writer.add_summary(summ, global_step=global_step + total_steps * 3)
-
-saver.save(sess, 'models/cup_%d/%d.ckpt'%(cup_id, global_step + total_steps * 3))
+	global_step += 1
+	
+saver.save(sess, 'models/cup_%d.ckpt'%(cup_id, global_step + total_steps * 3))
