@@ -41,7 +41,7 @@ while lr > 1e-9:
 	old_pred = sess.run(old_model.pred, feed_dict={old_model.x: pts})
 	_, loss, summ = sess.run([new_model.train, new_model.loss, new_model.summ], feed_dict={new_model.x: pts, new_model.gt: old_pred, new_model.d_lr: 1e-3})
 
-	print('\r[%d]: LR: %f, Err: %f, Rel. Err.: %f'%(global_step, loss, loss / np.mean(np.square(old_pred))), end='')
+	print('\r[%d]: LR: %f, Err: %f, Rel. Err.: %f'%(global_step, lr, loss, loss / np.mean(np.square(old_pred))), end='')
 
 	if loss < global_minimum: 
 		global_minimum = loss
