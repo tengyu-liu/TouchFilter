@@ -12,9 +12,9 @@ from forward_kinematics import ForwardKinematic
 
 import matplotlib.pyplot as plt
 
-# name = sys.argv[1]
-# epoch = int(sys.argv[2])
-# batch = int(sys.argv[3])
+name = sys.argv[1]
+epoch = int(sys.argv[2])
+batch = int(sys.argv[3])
 
 pca = pickle.load(open('../pca/pkl44/pca_2.pkl', 'rb'))
 pca_components = pca.components_
@@ -77,29 +77,29 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
             continue
 
 
-# data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
+data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
 
-# cup_id = data['cup_id']
-# cup_r = data['cup_r']
-# obs_z = data['obs_z']
-# syn_e_seq = data['syn_e']
-# syn_z_seq = data['syn_z']
+cup_id = data['cup_id']
+cup_r = data['cup_r']
+obs_z = data['obs_z']
+syn_e_seq = data['syn_e']
+syn_z_seq = data['syn_z']
 
-cup_id = 1
-cup_r = [[[1,0,0],[0,1,0],[0,0,1]]]
-syn_z = np.random.normal(size=([11]))
-syn_z[-3:] = [0, 0.2, 0.2]
-syn_z[-9:-3] = 0
-syn_z[-9] = 1
-syn_z[-6] = 1
-visualize(cup_id, cup_r[0], syn_z)
-mlab.show()
+# cup_id = 1
+# cup_r = [[[1,0,0],[0,1,0],[0,0,1]]]
+# syn_z = np.random.normal(size=([11]))
+# syn_z[-3:] = [0, 0.2, 0.2]
+# syn_z[-9:-3] = 0
+# syn_z[-9] = 1
+# syn_z[-6] = 1
+# visualize(cup_id, cup_r[0], syn_z)
+# mlab.show()
 
-# for i_batch in range(len(cup_r)):
-#     for i_seq in range(len(syn_z_seq)):
-#         mlab.clf()
-#         visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
-#         mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
-#     os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-#     for i_seq in range(len(syn_z_seq)):
-#         os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+for i_batch in range(len(cup_r)):
+    for i_seq in range(len(syn_z_seq)):
+        mlab.clf()
+        visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
+        mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+    for i_seq in range(len(syn_z_seq)):
+        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
