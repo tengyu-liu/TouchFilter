@@ -128,6 +128,7 @@ class Model:
         _ = tf.summary.scalar('energy/obs', self.summ_obs_e)
         _ = tf.summary.scalar('energy/ini', self.summ_ini_e)
         _ = tf.summary.scalar('energy/syn', self.summ_syn_e)
-        _ = tf.summary.scalar('energy/imp', self.summ_descriptor_loss)
+        _ = tf.summary.scalar('energy/imp', self.summ_ini_e - self.summ_syn_e)
+        _ = tf.summary.scalar('loss', self.summ_descriptor_loss)
         self.summ = tf.summary.merge_all()
         pass
