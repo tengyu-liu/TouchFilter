@@ -102,22 +102,16 @@ class Model:
         def langevin_dynamics(z, r):
             energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
-            self.EMA.apply([grad_z])
+            gz_abs = tf.abs(grad_z)
+            self.EMA.apply([gz_abs])
 
             print_ops = []
-            print_ops.append(tf.print('Langevin Dynamics %d BEGIN'%cup_id))
-            print_ops.append(tf.print('langevin dynamics energy', tf.reduce_any(tf.is_nan(energy)), tf.reduce_any(tf.is_inf(energy))))
-            print_ops.append(tf.print('langevin dynamics weight', tf.reduce_any(tf.is_nan(weight)), tf.reduce_any(tf.is_inf(weight))))
-            print_ops.append(tf.print('langevin dynamics z', tf.reduce_any(tf.is_nan(z)), tf.reduce_any(tf.is_inf(z))))
-            print_ops.append(tf.print('langevin dynamics r', tf.reduce_any(tf.is_nan(r)), tf.reduce_any(tf.is_inf(r))))
-            print_ops.append(tf.print('langevin dynamics grad', tf.reduce_any(tf.is_nan(grad_z)), tf.reduce_any(tf.is_inf(grad_z))))
-            print_ops.append(tf.print('langevin dynamics grad', grad_z))
-            print_ops.append(tf.print('langevin dynamics grad mean', tf.reduce_any(tf.is_nan(self.EMA.average(grad_z))), tf.reduce_any(tf.is_inf(self.EMA.average(grad_z))), tf.reduce_any(tf.equal(self.EMA.average(grad_z), 0))))
-            print_ops.append(tf.print('Langevin Dynamics %d END'%cup_id))
+            print_ops.append(tf.print('langevin dynamics grad', grad_z, summarize=-1))
 
             with tf.control_dependencies(print_ops):
                 if self.adaptive_langevin:
-                    grad_z = grad_z / self.EMA.average(grad_z)
+                    g_avg = self.EMA.average(gz_abs) + 1e-6
+                    grad_z = grad_z / g_avg
                 if self.clip_norm_langevin:
                     grad_z = tf.clip_by_norm(grad_z, 1)
                 z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
