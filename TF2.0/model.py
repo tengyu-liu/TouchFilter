@@ -111,7 +111,7 @@ class Model:
             print_ops.append(tf.print('langevin dynamics z', tf.reduce_any(tf.is_nan(z)), tf.reduce_any(tf.is_inf(z))))
             print_ops.append(tf.print('langevin dynamics r', tf.reduce_any(tf.is_nan(r)), tf.reduce_any(tf.is_inf(r))))
             print_ops.append(tf.print('langevin dynamics grad', tf.reduce_any(tf.is_nan(grad_z)), tf.reduce_any(tf.is_inf(grad_z))))
-            print_ops.append(tf.print('langevin dynamics grad mean', tf.reduce_any(tf.is_nan(self.EMA.average(grad_z))), tf.reduce_any(tf.is_inf(self.EMA.average(grad_z)))))
+            print_ops.append(tf.print('langevin dynamics grad mean', tf.reduce_any(tf.is_nan(self.EMA.average(grad_z))), tf.reduce_any(tf.is_inf(self.EMA.average(grad_z))), tf.reduce_any(tf.equal(self.EMA.average(grad_z), 0))))
             print_ops.append(tf.print('Langevin Dynamics %d END'%cup_id))
 
             with tf.control_dependencies(print_ops):
