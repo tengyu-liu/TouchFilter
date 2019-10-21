@@ -105,17 +105,13 @@ class Model:
             gz_abs = tf.abs(grad_z)
             self.EMA.apply([gz_abs])
 
-            print_ops = []
-            print_ops.append(tf.print('langevin dynamics grad', grad_z, summarize=-1))
-
-            with tf.control_dependencies(print_ops):
-                if self.adaptive_langevin:
-                    g_avg = self.EMA.average(gz_abs) + 1e-6
-                    grad_z = grad_z / g_avg
-                if self.clip_norm_langevin:
-                    grad_z = tf.clip_by_norm(grad_z, 1)
-                z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
-                return [z, energy, weight]
+            if self.adaptive_langevin:
+                g_avg = self.EMA.average(gz_abs) + 1e-6
+                grad_z = grad_z / g_avg
+            if self.clip_norm_langevin:
+                grad_z = tf.clip_by_norm(grad_z, 1)
+            z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
+            return [z, energy, weight]
             
         return langevin_dynamics
 
