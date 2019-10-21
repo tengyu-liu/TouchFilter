@@ -25,11 +25,11 @@ class CupModel:
             hand_reader = tf.train.NewCheckpointReader(restore_filename)
             for i in range(self.num_layers):
                 if i == 0:
-                    w = tf.Variable(hand_reader.get_tensor('dense/kernel'%self.cup_id), trainable=False)
-                    b = tf.Variable(hand_reader.get_tensor('dense/bias'%self.cup_id), trainable=False)
+                    w = tf.Variable(hand_reader.get_tensor('dense/kernel'), trainable=False)
+                    b = tf.Variable(hand_reader.get_tensor('dense/bias'), trainable=False)
                 else:
-                    w = tf.Variable(hand_reader.get_tensor('dense_%d/kernel'%(self.cup_id, i)), trainable=False)
-                    b = tf.Variable(hand_reader.get_tensor('dense_%d/bias'%(self.cup_id, i)), trainable=False)
+                    w = tf.Variable(hand_reader.get_tensor('dense_%d/kernel'%i), trainable=False)
+                    b = tf.Variable(hand_reader.get_tensor('dense_%d/bias'%i), trainable=False)
                 h = tf.matmul(h, w) + b
                 if i < self.num_layers - 1:
                     h = tf.nn.relu(h)
