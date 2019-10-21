@@ -165,39 +165,4 @@ for epoch in range(flags.epochs):
         if batch_id == 0:
             saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
-            # # find cup vertices
-            # cvert = copy.deepcopy(cup_models[cup_id].vertices)
-            # cvert = np.matmul(cup_r[0], cvert.T).T
-            
-            # plot gt
-            # mlab.clf()
-            # mlab.points3d([-0.24,-0.24,-0.24,-0.24,0.24,0.24,0.24,0.24], [-0.24,-0.24,0.24,0.24,-0.24,-0.24,0.24,0.24], [-0.24,0.24,-0.24,0.24,-0.24,0.24,-0.24,0.24], mode='point', opacity=0.0)
-            # mlab.triangular_mesh(cvert[:,0] / 0.8, cvert[:,1] / 0.8, cvert[:,2] / 0.8, cup_models[cup_id].faces, color=(0, 0, 1))
-
-            # hand_pts = sess.run(model.obs_pts, feed_dict={model.obs_z: obs_z})
-            # hand_pts = np.vstack([x[0] for x in hand_pts.values()])
-            # mlab.points3d(hand_pts[:,0], hand_pts[:,1], hand_pts[:,2])
-            # mlab.savefig('figs/%s/%d-%d-gt.jpg'%(flags.name, epoch, batch_id))
-            # mlab.show()
-
-            # # plot initialization
-            # mlab.clf()
-            # mlab.points3d([-0.24,-0.24,-0.24,-0.24,0.24,0.24,0.24,0.24], [-0.24,-0.24,0.24,0.24,-0.24,-0.24,0.24,0.24], [-0.24,0.24,-0.24,0.24,-0.24,0.24,-0.24,0.24], mode='point', opacity=0.0)
-            # mlab.triangular_mesh(cvert[:,0] / 0.8, cvert[:,1] / 0.8, cvert[:,2] / 0.8, cup_models[cup_id].faces, color=(0, 0, 1))
-
-            # hand_pts = sess.run(model.obs_pts, feed_dict={model.obs_z: obs_z})
-            # hand_pts = np.vstack([x[0] for x in hand_pts.values()])
-            # mlab.points3d(hand_pts[:,0], hand_pts[:,1], hand_pts[:,2])
-            # mlab.savefig('figs/%s/%d-%d-init.jpg'%(flags.name, epoch, batch_id))
-
-            # # plot synthesis
-            # mlab.clf()
-            # mlab.points3d([-0.24,-0.24,-0.24,-0.24,0.24,0.24,0.24,0.24], [-0.24,-0.24,0.24,0.24,-0.24,-0.24,0.24,0.24], [-0.24,0.24,-0.24,0.24,-0.24,0.24,-0.24,0.24], mode='point', opacity=0.0)
-            # mlab.triangular_mesh(cvert[:,0] / 0.8, cvert[:,1] / 0.8, cvert[:,2] / 0.8, cup_models[cup_id].faces, color=(0, 0, 1))
-
-            # hand_pts = sess.run(model.obs_pts, feed_dict={model.obs_z: obs_z})
-            # hand_pts = np.vstack([x[0] for x in hand_pts.values()])
-            # mlab.points3d(hand_pts[:,0], hand_pts[:,1], hand_pts[:,2])
-            # mlab.savefig('figs/%s/%d-%d-syn.jpg'%(flags.name, epoch, batch_id))
-
     print()

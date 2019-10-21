@@ -52,5 +52,5 @@ while lr > 1e-9:
 			global_minimum_step = global_step
 
 	global_step += 1
-	
+
 saver.save(sess, 'models/cup_%d.ckpt'%(cup_id, global_step + total_steps * 3))
