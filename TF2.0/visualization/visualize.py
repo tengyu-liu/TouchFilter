@@ -6,6 +6,8 @@ import pickle
 import numpy as np
 import trimesh as tm
 import mayavi.mlab as mlab
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 import mat_trans as mt
 from forward_kinematics import ForwardKinematic
@@ -76,14 +78,59 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
         except:
             continue
 
+def visualize_hand(weights, rows, i):
+    xpos, xquat = ForwardKinematic(np.zeros([53]))
+
+    obj_base = '../../data/hand'
+    stl_dict = {obj: tm.load_mesh(os.path.join(obj_base, '%s.STL'%obj)) for obj in parts}
+
+    start = 0
+    end = 0
+    for pid in range(4, 25):
+        p = copy.deepcopy(stl_dict[parts[pid - 4]])
+        try:
+            end += len(p.vertices)
+
+            p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
+            p.apply_translation(xpos[pid,:])
+
+            ax = plt.subplot(rows, 2, i * 2 - 1)
+            pts = p.vertices[:,2] > 0.001
+            ax.scatter(p.vertices[pts,0], p.vertices[pts,1], c=weights[start:end, 0][pts])
+            ax.axis('off')
+
+            ax = plt.subplot(rows, 2, i * 2)
+            pts = p.vertices[:,2] <= 0.001
+            ax.scatter(p.vertices[pts,0], p.vertices[pts,1], c=weights[start:end, 0][pts])
+            ax.axis('off')
+
+            start += len(p.vertices)
+        except:
+            continue
 
 data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
 
-cup_id = data['cup_id']
-cup_r = data['cup_r']
-obs_z = data['obs_z']
-syn_e_seq = data['syn_e']
-syn_z_seq = data['syn_z']
+cup_id = np.array(data['cup_id'])
+cup_r = np.array(data['cup_r'])
+obs_z = np.array(data['obs_z'])
+obs_e = np.array(data['obs_e'])
+obs_w = np.array(data['obs_w'])
+syn_e = np.array(data['syn_e'])
+syn_z = np.array(data['syn_z'])
+syn_w = np.array(data['syn_w'])
+
+for i in range(11):
+    print(syn_z[:,0,i])
+    plt.plot(syn_z[:,0,i])
+plt.show()
+
+# plt.ion()
+# for i in range(91):
+#     print(i)
+#     plt.clf()
+#     visualize_hand(obs_w[0], 2, 1)
+#     visualize_hand(syn_w[i, 0], 2, 2)
+#     plt.pause(1e-5)
 
 # cup_id = 1
 # cup_r = [[[1,0,0],[0,1,0],[0,0,1]]]
@@ -95,11 +142,11 @@ syn_z_seq = data['syn_z']
 # visualize(cup_id, cup_r[0], syn_z)
 # mlab.show()
 
-for i_batch in range(len(cup_r)):
-    for i_seq in range(len(syn_z_seq)):
-        mlab.clf()
-        visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
-        mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-    for i_seq in range(len(syn_z_seq)):
-        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+# for i_batch in range(len(cup_r)):
+#     for i_seq in range(len(syn_z_seq)):
+#         mlab.clf()
+#         visualize(cup_id, cup_r[i_batch], syn_z_seq[i_seq][i_batch])
+#         mlab.savefig('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+#     os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+#     for i_seq in range(len(syn_z_seq)):
+#         os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
