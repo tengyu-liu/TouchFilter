@@ -10,7 +10,7 @@ class CupModel:
     def build_config(self, cup_id, restore, weight_path):
         self.float = tf.float32
         self.cup_id = cup_id
-        self.num_layers = 4
+        self.num_layers = 8
         self.restore = restore
         self.weight_path = weight_path
 
@@ -21,15 +21,15 @@ class CupModel:
     def predict(self, x):
         with tf.variable_scope('cup%d'%self.cup_id):
             h = x
-            restore_filename = os.path.join(self.weight_path, 'cup_%d/%d.ckpt'%(self.cup_id, self.restore))
+            restore_filename = os.path.join(self.weight_path, 'cup_exp(%d)_%d.ckpt'%(self.cup_id, self.restore))
             hand_reader = tf.train.NewCheckpointReader(restore_filename)
             for i in range(self.num_layers):
                 if i == 0:
-                    w = tf.Variable(hand_reader.get_tensor('cup_%d/dense/kernel'%self.cup_id), trainable=False)
-                    b = tf.Variable(hand_reader.get_tensor('cup_%d/dense/bias'%self.cup_id), trainable=False)
+                    w = tf.Variable(hand_reader.get_tensor('dense/kernel'%self.cup_id), trainable=False)
+                    b = tf.Variable(hand_reader.get_tensor('dense/bias'%self.cup_id), trainable=False)
                 else:
-                    w = tf.Variable(hand_reader.get_tensor('cup_%d/dense_%d/kernel'%(self.cup_id, i)), trainable=False)
-                    b = tf.Variable(hand_reader.get_tensor('cup_%d/dense_%d/bias'%(self.cup_id, i)), trainable=False)
+                    w = tf.Variable(hand_reader.get_tensor('dense_%d/kernel'%(self.cup_id, i)), trainable=False)
+                    b = tf.Variable(hand_reader.get_tensor('dense_%d/bias'%(self.cup_id, i)), trainable=False)
                 h = tf.matmul(h, w) + b
                 if i < self.num_layers - 1:
                     h = tf.nn.relu(h)
