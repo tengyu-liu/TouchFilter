@@ -148,7 +148,7 @@ for epoch in range(flags.epochs):
 
         print('\rE%dB%d/%d(C%d): Obs: %f, Ini: %f Syn: %f, Loss: %f, Time: %f'%(epoch, batch_id, batch_num, cup_id, obs_ew[0], syn_e_seq[0], syn_ew[0], loss, time.time() - t0), end='')
         
-        if item_id == 0:
+        if item_id % 10 == 0:
             data = {
                 'cup_id': cup_id, 
                 'cup_r' : cup_r, 
@@ -162,7 +162,7 @@ for epoch in range(flags.epochs):
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
         
-        if batch_id == 0:
+        if batch_id % 10 == 0:
             saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
     print()
