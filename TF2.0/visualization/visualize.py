@@ -138,8 +138,12 @@ for i_batch in range(len(cup_r)):
         mlab.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 1))
         # Draw feature selection map
         fig.clf()
-        visualize_hand(fig, obs_w[i_batch], 2, 1)
-        visualize_hand(fig, syn_w[i_seq, i_batch], 2, 2)
+        if len(obs_w) == 1:
+            visualize_hand(fig, obs_w[0], 2, 1)
+            visualize_hand(fig, syn_w[i_seq, 0], 2, 2)
+        else:
+            visualize_hand(fig, obs_w[i_batch], 2, 1)
+            visualize_hand(fig, syn_w[i_seq, i_batch], 2, 2)
         ax = fig.add_subplot(221)
         ax.set_title('obs back')
         ax = fig.add_subplot(222)
