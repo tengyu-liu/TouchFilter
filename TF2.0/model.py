@@ -104,14 +104,14 @@ class Model:
             energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             energy = energy + tf.reduce_mean(tf.norm(z / z_weight, axis=-1)) * 3
             grad_z = tf.gradients(energy, z)[0]
-            gz_abs = tf.abs(grad_z)
+            gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
                 apply_op = self.EMA.apply([gz_abs])
                 with tf.control_dependencies([apply_op]):
-                    g_avg = self.EMA.average(gz_abs) + 1e-6
+                    g_avg = self.EMA.average(gz_abs)
                     grad_z = grad_z / g_avg
             if self.clip_norm_langevin:
-                grad_z = tf.clip_by_norm(grad_z, 1)
+                grad_z = tf.clip_by_norm(grad_z, 1, axes=-1)
 
             grad_z = grad_z * z_weight
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
