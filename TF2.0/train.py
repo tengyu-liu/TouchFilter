@@ -27,7 +27,6 @@ print('PCA loaded.')
 cup_id_list = [1,2,3,4,5,6,7,8]
 if flags.debug:
     cup_id_list = [1,2]
-    flags.langevin_steps = 2
 
 cup_models = {cup_id: tm.load_mesh(os.path.join(project_root, 'data/cups/onepiece/%d.obj'%cup_id)) for cup_id in cup_id_list}
 print('Cup models loaded.')
@@ -46,6 +45,8 @@ for i in cup_id_list:
         for start_end in annotation:
             start, end = [int(x) for x in start_end.split(':')]
             for frame in range(start, end):
+                if flags.debug and len(cup_rs[i]) > 1:
+                    break
                 cup_id = i
                 cup_rotation = Q(mat_data[frame, 1 + 28 * 3 + 27 * 4: 1 + 28 * 3 + 28 * 4]).rotation_matrix
                 cup_translation = mat_data[frame, 1 + 27 * 3 : 1 + 28 * 3]
@@ -96,9 +97,6 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
 
 print('Start training...')
 
-if flags.adaptive_langevin:
-    gradients = np.ones([10000, flags.z_size + 9])
-
 # train
 for epoch in range(flags.epochs):
     if epoch < flags.restore_epoch:
@@ -133,6 +131,7 @@ for epoch in range(flags.epochs):
             if langevin_step < 30: 
                 stddev = (30 - langevin_step) / 300
             syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.stddev: stddev})
+            # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)
@@ -167,3 +166,5 @@ for epoch in range(flags.epochs):
             saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
     print()
+
+# python train.py --pca_size 44 --z_size 2 --use_pca --debug --batch_size 1 --step_size 0.01 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin

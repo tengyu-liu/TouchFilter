@@ -23,8 +23,9 @@ class HandModel:
                     'ring0', 'ring1', 'ring2', 'ring3',
                     'pinky0', 'pinky1', 'pinky2', 'pinky3']
 
-        self.surface_pts = {p: tf.constant(tm.load(os.path.join(os.path.dirname(__file__), '../data', 'hand', p + '.STL')).vertices, dtype=tf.float32) for p in self.parts}
+        # self.surface_pts = {p: tf.constant(tm.load(os.path.join(os.path.dirname(__file__), '../data', 'hand', p + '.STL')).vertices, dtype=tf.float32) for p in self.parts}
         # self.surface_pts = {p: tf.constant(np.mean(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.faces.npy')), axis=1), dtype=tf.float32) for p in self.parts if '0' not in p}
+        self.surface_pts = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.surface_sample.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
         self.n_surf_pts = sum(x.shape[0] for x in self.surface_pts.values())
 
         # Input placeholder

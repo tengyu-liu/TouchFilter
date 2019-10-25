@@ -13,6 +13,7 @@ import mat_trans as mt
 from forward_kinematics import ForwardKinematic
 
 import matplotlib.pyplot as plt
+from pyquaternion.quaternion import Quaternion as Q
 
 name = sys.argv[1]
 epoch = int(sys.argv[2])
@@ -81,32 +82,35 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
 def visualize_hand(fig, weights, rows, i):
     xpos, xquat = ForwardKinematic(np.zeros([53]))
 
-    obj_base = '../../data/hand'
-    stl_dict = {obj: tm.load_mesh(os.path.join(obj_base, '%s.STL'%obj)) for obj in parts}
+    obj_base = '../../data'
+    stl_dict = {obj: np.load(os.path.join(obj_base, '%s.surface_sample.npy'%obj)) for obj in parts}
 
     start = 0
     end = 0
 
     for pid in range(4, 25):
+        if '0' in parts[pid - 4]:
+            continue
         p = copy.deepcopy(stl_dict[parts[pid - 4]])
         try:
-            end += len(p.vertices)
+            end += len(p)
 
-            p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
-            p.apply_translation(xpos[pid,:])
+            p = np.matmul(Q().rotation_matrix, p.T).T
+            p += xpos[[pid], :]
 
             ax = fig.add_subplot(rows, 2, i * 2 - 1)
-            pts = p.vertices[:,2] > 0.001
-            ax.scatter(p.vertices[pts,0], p.vertices[pts,1], c=weights[start:end, 0][pts])
+            pts = p[:,2] > 0.001
+            ax.scatter(p[pts,0], p[pts,1], c=weights[start:end, 0][pts])
             ax.axis('off')
 
             ax = fig.add_subplot(rows, 2, i * 2)
-            pts = p.vertices[:,2] <= 0.001
-            ax.scatter(p.vertices[pts,0], p.vertices[pts,1], c=weights[start:end, 0][pts])
+            pts = p[:,2] <= 0.001
+            ax.scatter(p[pts,0], p[pts,1], c=weights[start:end, 0][pts])
             ax.axis('off')
 
-            start += len(p.vertices)
+            start += len(p)
         except:
+            raise
             continue
 
 data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
@@ -128,9 +132,13 @@ print('syn_z', syn_z.shape)
 print('syn_w', syn_w.shape)
 
 fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
-mlab.figure(size=(640,530))
+mlab.figure(size=(640,523))
 
 for i_batch in range(len(cup_r)):
+    mlab.clf()
+    visualize(cup_id, cup_r[i_batch], obs_z[i_batch])
+    mlab.savefig('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
+
     for i_seq in range(len(syn_z)):
         # Draw 3D grasping
         mlab.clf()
@@ -156,14 +164,27 @@ for i_batch in range(len(cup_r)):
         fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 2))
         # Merge two
         os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
-            name, epoch, batch, i_batch, i_seq, 1, name, epoch, batch, i_batch, i_seq, 2, name, epoch, batch, i_batch, i_seq
+            name, epoch, batch, i_batch, i_seq, 1, 
+            name, epoch, batch, i_batch, i_seq, 2, 
+            name, epoch, batch, i_batch, i_seq
         ))
+
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
+            name, epoch, batch, i_batch, 
+            name, epoch, batch, i_batch, i_seq,
+            name, epoch, batch, i_batch, i_seq
+        ))
+
+        exit()
+
         os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
         os.remove('../figs/%s-%04d-%d-%d-%d-2.png'%(name, epoch, batch, i_batch, i_seq))
 
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
+    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
     os.remove('palette.png')
-    
+
+    # os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+
     for i_seq in range(len(syn_z)):
-        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+        os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))

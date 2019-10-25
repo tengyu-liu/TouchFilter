@@ -54,7 +54,7 @@ class Model:
         pass
 
     def build_model(self):
-        self.EMA = tf.train.ExponentialMovingAverage(decay=0.9999)
+        self.EMA = tf.train.ExponentialMovingAverage(decay=0.99999)
         self.cup_models = { 
                             1: CupModel(1, self.cup_restore, self.cup_model_path), 
                             2: CupModel(2, self.cup_restore, self.cup_model_path), 
@@ -70,7 +70,7 @@ class Model:
         self.hand_model = HandModel(self.batch_size)
         self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant, penalty_strength=self.penalty_strength)
         print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
-
+        
         self.obs_ew = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,self.cup_num + 1)}
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,self.cup_num + 1)}
         self.inp_ew = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
@@ -100,17 +100,23 @@ class Model:
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
+            z_weight = tf.constant([10, 10, 2, 2, 2, 2, 2, 2, 1, 1, 1], dtype=tf.float32)
             energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
+            energy = energy + tf.reduce_mean(tf.norm(z / z_weight, axis=-1)) * 3
             grad_z = tf.gradients(energy, z)[0]
             gz_abs = tf.abs(grad_z)
-            self.EMA.apply([gz_abs])
-
             if self.adaptive_langevin:
-                g_avg = self.EMA.average(gz_abs) + 1e-6
-                grad_z = grad_z / g_avg
+                apply_op = self.EMA.apply([gz_abs])
+                with tf.control_dependencies([apply_op]):
+                    g_avg = self.EMA.average(gz_abs) + 1e-6
+                    grad_z = grad_z / g_avg
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1)
-            z = z - self.step_size * grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
+
+            grad_z = grad_z * z_weight
+            # p = tf.print('GRAD: ', grad_z, summarize=-1)
+            with tf.control_dependencies([p]):
+                z = z - self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
             return [z, energy, weight]
             
         return langevin_dynamics
