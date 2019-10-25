@@ -115,8 +115,8 @@ class Model:
 
             grad_z = grad_z * z_weight
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
-            with tf.control_dependencies([p]):
-                z = z - self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
+            # with tf.control_dependencies([p]):
+            z = z - self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
             return [z, energy, weight]
             
         return langevin_dynamics

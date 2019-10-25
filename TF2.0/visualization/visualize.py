@@ -132,7 +132,7 @@ print('syn_z', syn_z.shape)
 print('syn_w', syn_w.shape)
 
 fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
-mlab.figure(size=(640,523))
+mlab.figure(size=(640,530))
 
 for i_batch in range(len(cup_r)):
     mlab.clf()
@@ -174,8 +174,6 @@ for i_batch in range(len(cup_r)):
             name, epoch, batch, i_batch, i_seq,
             name, epoch, batch, i_batch, i_seq
         ))
-
-        exit()
 
         os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
         os.remove('../figs/%s-%04d-%d-%d-%d-2.png'%(name, epoch, batch, i_batch, i_seq))
