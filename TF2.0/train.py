@@ -63,13 +63,16 @@ for i in cup_id_list:
 cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
 obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
 
+zs = np.vstack(obs_zs.values())
+stddev = np.std(zs, axis=0)
+
 minimum_data_length = min(len(cup_rs[cup_id]) for cup_id in cup_id_list)
 data_idxs = {cup_id: np.arange(len(cup_rs[cup_id])) for cup_id in cup_id_list}
 batch_num = minimum_data_length // flags.batch_size * len(cup_id_list)
 print('Training data loaded.')
 
 # load model
-model = Model(flags)
+model = Model(flags, stddev)
 print('Model loaded')
 
 # create session
@@ -117,7 +120,8 @@ for epoch in range(flags.epochs):
 
         cup_r = cup_rs[cup_id][idxs]
         obs_z = obs_zs[cup_id][idxs]
-        syn_z = np.random.normal(size=obs_z.shape)
+        syn_z = np.zeros(obs_z.shape)
+        syn_z[:,1::2] = 1
         syn_z[:,-9:] = [1, 0, 0, 1, 0, 0, 0, 0.3, 0.3]
 
         syn_z_seq = [syn_z]
@@ -127,18 +131,19 @@ for epoch in range(flags.epochs):
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         for langevin_step in range(flags.langevin_steps):
-            stddev = 0
-            if langevin_step < 30: 
-                stddev = (30 - langevin_step) / 300
-            syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.stddev: stddev})
+            syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)
+            if langevin_step % 100 == 99:
+                syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+                    model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+                })
 
-        syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
-            model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
-        })
+        # syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+        #     model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+        # })
         syn_e_seq.append(syn_ew[0])
         syn_w_seq.append(syn_ew[1])
 
