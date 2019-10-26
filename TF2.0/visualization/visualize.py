@@ -19,6 +19,8 @@ name = sys.argv[1]
 epoch = int(sys.argv[2])
 batch = int(sys.argv[3])
 
+mlab.options.offscreen = True
+
 pca = pickle.load(open('../pca/pkl44/pca_2.pkl', 'rb'))
 pca_components = pca.components_
 pca_mean = pca.mean_
@@ -132,7 +134,7 @@ print('syn_z', syn_z.shape)
 print('syn_w', syn_w.shape)
 
 fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
-mlab.figure(size=(640,530))
+mlab.figure(size=(640,480))
 
 for i_batch in range(len(cup_r)):
     mlab.clf()
@@ -163,20 +165,21 @@ for i_batch in range(len(cup_r)):
 
         fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 2))
         # Merge two
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
             name, epoch, batch, i_batch, i_seq, 1, 
             name, epoch, batch, i_batch, i_seq, 2, 
-            name, epoch, batch, i_batch, i_seq
+            name, epoch, batch, i_batch, i_seq, 3
         ))
 
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
             name, epoch, batch, i_batch, 
-            name, epoch, batch, i_batch, i_seq,
+            name, epoch, batch, i_batch, i_seq, 3,
             name, epoch, batch, i_batch, i_seq
         ))
 
         os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
         os.remove('../figs/%s-%04d-%d-%d-%d-2.png'%(name, epoch, batch, i_batch, i_seq))
+        os.remove('../figs/%s-%04d-%d-%d-%d-3.png'%(name, epoch, batch, i_batch, i_seq))
 
     os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
     os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
