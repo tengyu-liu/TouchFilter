@@ -8,14 +8,14 @@ from HandModel import HandModel
 from CupModel import CupModel
 
 class Model:
-    def __init__(self, config):
-        self.build_config(config)
+    def __init__(self, config, stddev):
+        self.build_config(config, stddev)
         self.build_input()
         self.build_model()
         self.build_train()
         self.build_summary()
     
-    def build_config(self, config):
+    def build_config(self, config, stddev):
         self.situation_invariant = config.situation_invariant
         self.penalty_strength = config.penalty_strength
         self.adaptive_langevin = config.adaptive_langevin
@@ -28,6 +28,7 @@ class Model:
         self.d_lr = config.d_lr
         self.beta1 = config.beta1
         self.beta2 = config.beta2
+        self.z_weight = tf.constant(stddev, dtype=tf.float32)
 
         self.debug = config.debug
 
@@ -47,10 +48,15 @@ class Model:
         self.cup_restore = 999
     
     def build_input(self):
-        self.inp_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'input_hand_z')
+
+        if self.use_pca:
+            self.inp_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'input_hand_z')
+            self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'obs_z')
+        else:
+            self.inp_z = tf.placeholder(tf.float32, [self.batch_size, 53], 'input_hand_z')
+            self.obs_z = tf.placeholder(tf.float32, [self.batch_size, 53], 'obs_z')
+
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
-        self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.hand_z_size + (53 - self.pca_size)], 'obs_z')
-        self.stddev = tf.placeholder(tf.float32, [], 'stddev')
         pass
 
     def build_model(self):
@@ -100,9 +106,8 @@ class Model:
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            z_weight = tf.constant([10, 10, 2, 2, 2, 2, 2, 2, 1, 1, 1], dtype=tf.float32)
             energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            energy = energy + tf.reduce_mean(tf.norm(z / z_weight, axis=-1)) * 3
+            energy = energy + tf.reduce_mean(tf.norm(z / self.z_weight, axis=-1)) * 3
             grad_z = tf.gradients(energy, z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
@@ -113,17 +118,17 @@ class Model:
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1, axes=-1)
 
-            grad_z = grad_z * z_weight
+            grad_z = grad_z * self.z_weight
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
             # with tf.control_dependencies([p]):
-            z = z - self.step_size * grad_z # + tf.random.normal(z.shape, mean=0.0, stddev=self.stddev)
+            z = z - self.step_size * grad_z  + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight)
             return [z, energy, weight]
             
         return langevin_dynamics
 
     def build_train(self):
         self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('des')]
-        self.des_optim = tf.train.AdamOptimizer(self.d_lr, beta1=self.beta1, beta2=self.beta2)
+        self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
         des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i], var_list=self.des_vars) for i in range(1,self.cup_num + 1)}
         des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in range(1,self.cup_num + 1)}
         self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in range(1,self.cup_num + 1)}

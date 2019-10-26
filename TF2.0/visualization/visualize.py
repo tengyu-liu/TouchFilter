@@ -55,7 +55,6 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
         mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 0, 1))
 
     z_ = hand_z
-    z_ = np.concatenate([np.matmul(hand_z[...,:-9], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-9:]], axis=-1)
     jrot = np.reshape(z_[:44], [22, 2])
     grot = np.reshape(z_[44:50], [3, 2])
     gpos = z_[50:]
@@ -137,6 +136,7 @@ mlab.figure(size=(640,530))
 for i_batch in range(len(cup_r)):
     mlab.clf()
     visualize(cup_id, cup_r[i_batch], obs_z[i_batch])
+    print(obs_z.shape)
     mlab.savefig('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
 
     for i_seq in range(len(syn_z)):
@@ -163,26 +163,27 @@ for i_batch in range(len(cup_r)):
 
         fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 2))
         # Merge two
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
             name, epoch, batch, i_batch, i_seq, 1, 
             name, epoch, batch, i_batch, i_seq, 2, 
-            name, epoch, batch, i_batch, i_seq
+            name, epoch, batch, i_batch, i_seq, 3
         ))
 
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
             name, epoch, batch, i_batch, 
-            name, epoch, batch, i_batch, i_seq,
+            name, epoch, batch, i_batch, i_seq, 3,
             name, epoch, batch, i_batch, i_seq
         ))
 
         os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
         os.remove('../figs/%s-%04d-%d-%d-%d-2.png'%(name, epoch, batch, i_batch, i_seq))
+        os.remove('../figs/%s-%04d-%d-%d-%d-3.png'%(name, epoch, batch, i_batch, i_seq))
 
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
+    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
     os.remove('palette.png')
 
     # os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d-1.png ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
 
     for i_seq in range(len(syn_z)):
-        os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
+        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
