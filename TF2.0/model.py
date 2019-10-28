@@ -107,13 +107,12 @@ class Model:
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
             energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            energy = energy + tf.reduce_mean(tf.norm(z / self.z_weight, axis=-1)) * 3
-            grad_z = tf.gradients(energy, z)[0]
+            grad_z = tf.gradients(energy + tf.reduce_mean(tf.norm(z / self.z_weight, axis=-1)), z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
                 apply_op = self.EMA.apply([gz_abs])
                 with tf.control_dependencies([apply_op]):
-                    g_avg = self.EMA.average(gz_abs)
+                    g_avg = self.EMA.average(gz_abs) + 1e-9
                     grad_z = grad_z / g_avg
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1, axes=-1)
@@ -121,7 +120,7 @@ class Model:
             grad_z = grad_z * self.z_weight
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
             # with tf.control_dependencies([p]):
-            z = z - self.step_size * grad_z  + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight)
+            z = z - self.step_size * grad_z # + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight)
             return [z, energy, weight]
             
         return langevin_dynamics
@@ -144,5 +143,19 @@ class Model:
         _ = tf.summary.scalar('energy/syn', self.summ_syn_e)
         _ = tf.summary.scalar('energy/imp', self.summ_ini_e - self.summ_syn_e)
         _ = tf.summary.scalar('loss', self.summ_descriptor_loss)
+        self.summ_obs_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw')
+        self.summ_obs_fw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw')
+        self.summ_syn_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_bw')
+        self.summ_syn_fw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_fw')
+        _ = tf.summary.image('summ_obs_back_w', self.summ_obs_bw)
+        _ = tf.summary.image('summ_obs_front_w', self.summ_obs_fw)
+        _ = tf.summary.image('summ_syn_back_w', self.summ_syn_bw)
+        _ = tf.summary.image('summ_syn_front_w', self.summ_syn_fw)
+        self.summ_obs_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_im')
+        self.summ_syn_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_im')
+        self.summ_syn_e_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_e_im')
+        _ = tf.summary.image('summ_obs_im', self.summ_obs_im)
+        _ = tf.summary.image('summ_syn_im', self.summ_syn_im)
+        _ = tf.summary.image('summ_syn_e_im', self.summ_syn_e_im)
         self.summ = tf.summary.merge_all()
         pass

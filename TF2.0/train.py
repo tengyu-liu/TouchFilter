@@ -13,8 +13,32 @@ from pyquaternion.quaternion import Quaternion as Q
 
 from config import flags
 from model import Model
+from vis_util import VisUtil
+
+
+print('name', flags.name)
+print('restore_epoch', flags.restore_epoch)
+print('restore_batch', flags.restore_batch)
+print('epochs', flags.epochs)
+print('batch_size', flags.batch_size)
+print('use_pca', flags.use_pca)
+print('z_size', flags.z_size)
+print('pca_size', flags.pca_size)
+print('langevin_steps', flags.langevin_steps)
+print('step_size', flags.step_size)
+print('penalty_strength', flags.penalty_strength)
+print('situation_invariant', flags.situation_invariant)
+print('adaptive_langevin', flags.adaptive_langevin)
+print('clip_norm_langevin', flags.clip_norm_langevin)
+print('debug', flags.debug)
+print('d_lr', flags.d_lr)
+print('beta1', flags.beta1)
+print('beta2', flags.beta2)
 
 project_root = os.path.join(os.path.dirname(__file__), '..')
+
+# load vis_util
+vu = VisUtil()
 
 # load pca
 pca = pickle.load(open(os.path.join(os.path.dirname(__file__), 'pca/pkl%d/pca_%d.pkl'%(flags.pca_size, flags.z_size)), 'rb'))
@@ -96,7 +120,7 @@ fig_dir = os.path.join(os.path.dirname(__file__), 'figs', flags.name)
 train_writer = tf.summary.FileWriter(log_dir, sess.graph)
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(flags.name, flags.restore_epoch, flags.restore_batch)))
+    saver.restore(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 print('Start training...')
 
@@ -110,7 +134,7 @@ for epoch in range(flags.epochs):
         np.random.shuffle(shuffled_idxs[cup_id])
     
     for batch_id in range(batch_num):
-        if batch_id < flags.restore_batch:
+        if batch_id <= flags.restore_batch:
             continue
         
         t0 = time.time()
@@ -136,18 +160,38 @@ for epoch in range(flags.epochs):
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)
-            if langevin_step % 100 == 99:
-                syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
-                    model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
-                })
+            # if langevin_step % 100 == 99:
+            #     syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+            #         model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+            #     })
 
-        # syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
-        #     model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
-        # })
+        syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+            model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+        })
         syn_e_seq.append(syn_ew[0])
         syn_w_seq.append(syn_ew[1])
 
-        summ = sess.run(model.summ, feed_dict={model.summ_obs_e: obs_ew[0], model.summ_ini_e: syn_e_seq[0], model.summ_syn_e: syn_ew[0], model.summ_descriptor_loss: loss})
+        # compute obs_w img and syn_w img if weight is situation invariant
+
+        obs_im = vu.visualize(cup_id, cup_r, obs_z)
+        syn_im = vu.visualize(cup_id, cup_r, syn_z)
+        syn_e_im = vu.plot_e(syn_e_seq, obs_ew[0])
+
+        syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ew[1])
+        obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ew[1])
+        summ = sess.run(model.summ, feed_dict={
+            model.summ_obs_e: obs_ew[0], 
+            model.summ_ini_e: syn_e_seq[0], 
+            model.summ_syn_e: syn_ew[0], 
+            model.summ_descriptor_loss: loss,
+            model.summ_obs_bw: obs_bw_img, 
+            model.summ_obs_fw: obs_fw_img, 
+            model.summ_syn_bw: syn_bw_img,
+            model.summ_syn_fw: syn_fw_img,
+            model.summ_obs_im: obs_im,
+            model.summ_syn_im: syn_im, 
+            model.summ_syn_e_im: syn_e_im})
+    
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
         assert not (np.any(np.isnan(syn_z_seq)) or np.any(np.isinf(syn_z_seq)))
@@ -171,3 +215,7 @@ for epoch in range(flags.epochs):
     print()
 
 # python train.py --pca_size 44 --z_size 2 --use_pca --debug --batch_size 1 --step_size 0.01 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin
+# python train.py --pca_size 44 --z_size 2 --use_pca --batch_size 8 --step_size 0.01 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin --situation_invariant --name situation_invariant
+
+# Note: z_size=2 doesn't work. data is too distorted to show real geometrical relationship
+# python3 train.py --batch_size 8 --step_size 0.05 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin --situation_invariant --name situation_invariant --d_lr 1e-4 --penalty_strength 1e-2
