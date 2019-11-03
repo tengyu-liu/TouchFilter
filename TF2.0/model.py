@@ -91,8 +91,10 @@ class Model:
         with tf.variable_scope('des_h', reuse=reuse):
             h = tf.layers.dense(hand_z, 1024, activation=tf.nn.relu)
             h = tf.layers.dense(h, 1024, activation=tf.nn.relu)
-            pred = tf.layers.dense(h, 2, activation=tf.nn.softmax)
-            return pred
+            pred = tf.layers.dense(h, 1, activation=tf.nn.sigmoid)
+            p = tf.print('Hand Prior:', pred)
+            with tf.control_dependencies([p]):
+                return pred
 
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
         with tf.variable_scope('des_t', reuse=reuse):
@@ -112,13 +114,13 @@ class Model:
             else:
                 energy, weight = self.touch_filter(surf_pts, cup_model, cup_r, hand_z)
             
-            hand_prior = self.hand_prior(hand_z, reuse=reuse)
+            hand_prior = tf.reduce_mean(self.hand_prior(hand_z, reuse=reuse))
             return energy, weight, hand_prior
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
             energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            grad_z = tf.gradients(energy + tf.reduce_mean(tf.norm(z / self.z_weight, axis=-1)) + hand_prior, z)[0]
+            grad_z = tf.gradients(energy + hand_prior, z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
                 apply_op = self.EMA.apply([gz_abs])

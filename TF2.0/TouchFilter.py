@@ -19,35 +19,18 @@ class TouchFilter:
         pts = tf.transpose(tf.matmul(
                 tf.transpose(cup_r, perm=[0,2,1]), 
                 tf.transpose(pts, perm=[0,2,1])), perm=[0, 2, 1]) * 4
-        dists = tf.reshape(cup_model.predict(tf.reshape(pts, [-1,3])), [pts.shape[0], -1])  # B x N x 1
+        dists = tf.reshape(cup_model.predict(tf.reshape(pts, [-1,3])), [pts.shape[0], -1, 1])  # B x N x 1
 
         f0 = tf.math.square(dists)
         f1 = tf.math.square(tf.nn.relu(dists))
-        features = tf.stack([f0, f1], axis=-1)  # B x N x 2
+        features = tf.concat([f0, f1], axis=-1)  # B x N x 2
 
         if self.situation_invariant:
             weight = self.weight
         else:
             z_feat = self.dense_2(self.dense_1(hand_z))
-            weight = pointnet_model(dists, is_training, s_feat)
+            weight = pointnet_model(dists, z_feat=z_feat)[0]
         
         weight = tf.nn.softmax(weight)
         energies = weight * features # B x N x 2 
         return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2]) + tf.reduce_sum(weight[...,1], axis=-1) * self.penalty_strength), weight
-
-    def debug(self, pts, vectors, cup_model, cup_r):
-        pts = tf.concat(list(pts.values()), axis=1)
-        vectors = tf.concat(list(vectors.values()), axis=1)
-        filter_pts = tf.expand_dims(pts, axis=2) + tf.expand_dims(vectors, axis=2) * tf.reshape(self.filter_pos, [1, 1, -1, 1]) # B x N x L x 3
-        filter_pts_shape = filter_pts.shape
-        filter_pts = tf.reshape(filter_pts, [filter_pts.shape[0], -1, 3])
-        filter_pts = tf.transpose(tf.matmul(
-                tf.transpose(cup_r, perm=[0,2,1]), 
-                tf.transpose(filter_pts, perm=[0,2,1])), perm=[0, 2, 1]) * 4
-        cup_dists = tf.reshape(cup_model.predict(tf.reshape(filter_pts, [-1,3])), [filter_pts.shape[0], self.n_pts, 1, self.filter_pos.shape[0], 4])  # B x N x 1 x L x 4
-        dists = cup_dists[...,0]
-        grads = cup_dists[...,1:]
-        grads = tf.reshape(tf.transpose(tf.matmul(cup_r, tf.transpose(tf.reshape(grads, [filter_pts.shape[0], self.n_pts * self.filter_pos.shape[0], 3]), perm=[0,2,1])), perm=[0,2,1]), [filter_pts.shape[0], self.n_pts, 1, self.filter_pos.shape[0], 3])
-        grads = grads / tf.norm(grads, axis=-1, keepdims=True)
-        return dists, grads
-        
