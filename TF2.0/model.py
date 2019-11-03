@@ -57,6 +57,7 @@ class Model:
             self.obs_z = tf.placeholder(tf.float32, [self.batch_size, 53], 'obs_z')
 
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
+        self.is_training = tf.placeholder(tf.bool, [], 'is_training')
         pass
 
     def build_model(self):
