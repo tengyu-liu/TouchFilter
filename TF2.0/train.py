@@ -151,38 +151,45 @@ for epoch in range(flags.epochs):
         syn_z_seq = [syn_z]
         syn_e_seq = []
         syn_w_seq = []
+        syn_p_seq = []
 
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e, syn_w = sess.run(model.syn_zew[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
+            syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)
+            syn_p_seq.append(syn_p)
             # if langevin_step % 100 == 99:
             #     syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             #         model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
             #     })
 
-        syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+        syn_ewp, obs_ewp, loss, _ = sess.run([model.inp_ewp[cup_id], model.obs_ewp[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
         })
-        syn_e_seq.append(syn_ew[0])
-        syn_w_seq.append(syn_ew[1])
+        syn_e_seq.append(syn_ewp[0])
+        syn_w_seq.append(syn_ewp[1])
+        syn_p_seq.append(syn_ewp[2])
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
         obs_im = vu.visualize(cup_id, cup_r, obs_z)
         syn_im = vu.visualize(cup_id, cup_r, syn_z)
-        syn_e_im = vu.plot_e(syn_e_seq, obs_ew[0])
+        syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
+        syn_p_im = vu.plot_e(syn_p_seq, obs_ewp[2])
 
-        syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ew[1])
-        obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ew[1])
+        syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ewp[1])
+        obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ewp[1])
         summ = sess.run(model.summ, feed_dict={
-            model.summ_obs_e: obs_ew[0], 
+            model.summ_obs_e: obs_ewp[0], 
             model.summ_ini_e: syn_e_seq[0], 
-            model.summ_syn_e: syn_ew[0], 
+            model.summ_syn_e: syn_ewp[0], 
+            model.summ_obs_p: obs_ewp[2], 
+            model.summ_ini_p: syn_e_seq[2], 
+            model.summ_syn_p: syn_ewp[2], 
             model.summ_descriptor_loss: loss,
             model.summ_obs_bw: obs_bw_img, 
             model.summ_obs_fw: obs_fw_img, 
@@ -190,7 +197,8 @@ for epoch in range(flags.epochs):
             model.summ_syn_fw: syn_fw_img,
             model.summ_obs_im: obs_im,
             model.summ_syn_im: syn_im, 
-            model.summ_syn_e_im: syn_e_im})
+            model.summ_syn_e_im: syn_e_im,
+            model.summ_syn_p_im: syn_p_im})
     
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
@@ -202,11 +210,13 @@ for epoch in range(flags.epochs):
                 'cup_id': cup_id, 
                 'cup_r' : cup_r, 
                 'obs_z' : obs_z, 
-                'obs_e' : obs_ew[0], 
-                'obs_w' : obs_ew[1], 
+                'obs_e' : obs_ewp[0], 
+                'obs_w' : obs_ewp[1], 
+                'obs_p' : obs_ewp[2],
                 'syn_e' : syn_e_seq, 
                 'syn_z' : syn_z_seq, 
-                'syn_w' : syn_w_seq
+                'syn_w' : syn_w_seq,
+                'syn_p' : syn_p_seq
             }
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))

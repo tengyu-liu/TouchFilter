@@ -77,14 +77,21 @@ class Model:
         self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant, penalty_strength=self.penalty_strength)
         print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
         
-        self.obs_ew = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,self.cup_num + 1)}
+        self.obs_ewp = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in range(1,self.cup_num + 1)}
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in range(1,self.cup_num + 1)}
-        self.inp_ew = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
-        self.syn_zew = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
+        self.inp_ewp = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in range(1,self.cup_num + 1)}
+        self.syn_zewp = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in range(1,self.cup_num + 1)}
 
-        self.descriptor_loss = {i : self.obs_ew[i][0] - self.inp_ew[i][0] for i in range(1,self.cup_num + 1)}
+        self.descriptor_loss = {i : (self.obs_ewp[i][0] + self.obs_ewp[i][2]) - (self.inp_ewp[i][0] + self.inp_ewp[i][2]) for i in range(1,self.cup_num + 1)}
         pass
     
+    def hand_prior(self, hand_z, reuse=True):
+        with tf.variable_scope('des_h', reuse=reuse):
+            h = tf.layers.dense(hand_z, 1024, activation=tf.nn.relu)
+            h = tf.layers.dense(h, 1024, activation=tf.nn.relu)
+            pred = tf.layers.dense(h, 2, activation=tf.nn.softmax)
+            return pred
+
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
         with tf.variable_scope('des_t', reuse=reuse):
             if self.use_pca:
@@ -102,12 +109,14 @@ class Model:
                 energy, weight = self.touch_filter(surf_pts, cup_model, cup_r)
             else:
                 energy, weight = self.touch_filter(surf_pts, cup_model, cup_r, hand_z)
-            return energy, weight
+            
+            hand_prior = self.hand_prior(hand_z, reuse=reuse)
+            return energy, weight, hand_prior
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            energy, weight = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            grad_z = tf.gradients(energy + tf.reduce_mean(tf.norm(z / self.z_weight, axis=-1)), z)[0]
+            energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
+            grad_z = tf.gradients(energy + tf.reduce_mean(tf.norm(z / self.z_weight, axis=-1)) + hand_prior, z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
                 apply_op = self.EMA.apply([gz_abs])
@@ -121,7 +130,7 @@ class Model:
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
             # with tf.control_dependencies([p]):
             z = z - self.step_size * grad_z # + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight)
-            return [z, energy, weight]
+            return [z, energy, weight, hand_prior]
             
         return langevin_dynamics
 
@@ -137,11 +146,17 @@ class Model:
         self.summ_obs_e = tf.placeholder(tf.float32, [], 'summ_obs_e')
         self.summ_ini_e = tf.placeholder(tf.float32, [], 'summ_ini_e')
         self.summ_syn_e = tf.placeholder(tf.float32, [], 'summ_syn_e')
+        self.summ_obs_p = tf.placeholder(tf.float32, [], 'summ_obs_p')
+        self.summ_ini_p = tf.placeholder(tf.float32, [], 'summ_ini_p')
+        self.summ_syn_p = tf.placeholder(tf.float32, [], 'summ_syn_p')
         self.summ_descriptor_loss = tf.placeholder(tf.float32, [], 'summ_descriptor_loss')
         _ = tf.summary.scalar('energy/obs', self.summ_obs_e)
         _ = tf.summary.scalar('energy/ini', self.summ_ini_e)
         _ = tf.summary.scalar('energy/syn', self.summ_syn_e)
-        _ = tf.summary.scalar('energy/imp', self.summ_ini_e - self.summ_syn_e)
+        _ = tf.summary.scalar('energy/obs', self.summ_obs_e)
+        _ = tf.summary.scalar('prior/ini', self.summ_ini_p)
+        _ = tf.summary.scalar('prior/syn', self.summ_syn_p)
+        _ = tf.summary.scalar('prior/imp', self.summ_ini_p - self.summ_syn_p)
         _ = tf.summary.scalar('loss', self.summ_descriptor_loss)
         self.summ_obs_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw')
         self.summ_obs_fw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw')
@@ -154,8 +169,10 @@ class Model:
         self.summ_obs_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_im')
         self.summ_syn_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_im')
         self.summ_syn_e_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_e_im')
+        self.summ_syn_p_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_p_im')
         _ = tf.summary.image('summ_obs_im', self.summ_obs_im)
         _ = tf.summary.image('summ_syn_im', self.summ_syn_im)
         _ = tf.summary.image('summ_syn_e_im', self.summ_syn_e_im)
+        _ = tf.summary.image('summ_syn_p_im', self.summ_syn_p_im)
         self.summ = tf.summary.merge_all()
         pass

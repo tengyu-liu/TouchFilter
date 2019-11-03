@@ -57,7 +57,7 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
         mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 0, 1))
 
     z_ = hand_z
-    z_ = np.concatenate([np.matmul(hand_z[...,:-9], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-9:]], axis=-1)
+    # z_ = np.concatenate([np.matmul(hand_z[...,:-9], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-9:]], axis=-1)
     jrot = np.reshape(z_[:44], [22, 2])
     grot = np.reshape(z_[44:50], [3, 2])
     gpos = z_[50:]
