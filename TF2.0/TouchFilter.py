@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from pointnet_seg import get_model as pointnet_model
 
 class TouchFilter:
     def __init__(self, n_pts, situation_invariant=False, penalty_strength=1e-2):
@@ -9,8 +10,8 @@ class TouchFilter:
         if self.situation_invariant:
             self.weight = tf.get_variable('des/touch/w', [1, self.n_pts, 2], initializer=tf.random_normal_initializer(stddev=0.001), trainable=True)
         else:
-            self.dense_1 = tf.layers.Dense(1024, activation=tf.nn.relu)
-            self.dense_2 = tf.layers.Dense(self.n_pts * 2)
+            self.dense_1 = tf.layers.Dense(256, activation=tf.nn.relu)
+            self.dense_2 = tf.layers.Dense(256, activation=tf.nn.relu)
         pass
         
     def __call__(self, pts, cup_model, cup_r, hand_z=None):
@@ -27,8 +28,8 @@ class TouchFilter:
         if self.situation_invariant:
             weight = self.weight
         else:
-            situation = tf.concat([f0, hand_z], axis=-1)
-            weight = tf.reshape(self.dense_2(self.dense_1(situation)), [-1, self.n_pts, 2])
+            z_feat = self.dense_2(self.dense_1(hand_z))
+            weight = pointnet_model(dists, is_training, s_feat)
         
         weight = tf.nn.softmax(weight)
         energies = weight * features # B x N x 2 

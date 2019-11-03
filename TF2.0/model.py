@@ -73,6 +73,7 @@ class Model:
                             9: CupModel(9, self.cup_restore, self.cup_model_path), 
                             10: CupModel(10, self.cup_restore, self.cup_model_path), 
         }
+
         self.hand_model = HandModel(self.batch_size)
         self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant, penalty_strength=self.penalty_strength)
         print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
