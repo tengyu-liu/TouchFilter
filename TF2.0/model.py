@@ -92,9 +92,7 @@ class Model:
             h = tf.layers.dense(hand_z, 1024, activation=tf.nn.relu)
             h = tf.layers.dense(h, 1024, activation=tf.nn.relu)
             pred = tf.layers.dense(h, 1, activation=tf.nn.sigmoid)
-            p = tf.print('Hand Prior:', pred)
-            with tf.control_dependencies([p]):
-                return pred
+            return pred
 
     def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
         with tf.variable_scope('des_t', reuse=reuse):
