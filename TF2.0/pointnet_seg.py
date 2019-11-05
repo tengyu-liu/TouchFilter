@@ -25,11 +25,11 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
         end_points = {}
 
         with tf.variable_scope('transform_net1') as sc:
-            transform = feature_transform_net(tf.expand_dims(point_cloud, axis=2), is_training, bn_decay, K=1)
+            transform = feature_transform_net(tf.expand_dims(point_cloud, axis=2), is_training, bn_decay, K=4)
         point_cloud_transformed = tf.matmul(point_cloud, transform)
         input_image = tf.expand_dims(point_cloud_transformed, -1)
 
-        net = tf_util.conv2d(input_image, 64, [1,1],
+        net = tf_util.conv2d(input_image, 64, [1,4],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
                             scope='conv1', bn_decay=bn_decay)
@@ -58,7 +58,7 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
                             scope='conv5', bn_decay=bn_decay)
         global_feat = tf_util.max_pool2d(net, [num_point,1],
                                         padding='VALID', scope='maxpool')
-        global_feat = tf.concat([global_feat, tf.reshape(z_feat, [batch_size, 1, 1, -1])], axis=3)
+        # global_feat = tf.concat([global_feat, tf.reshape(z_feat, [batch_size, 1, 1, -1])], axis=3)
 
         global_feat_expand = tf.tile(global_feat, [1, num_point, 1, 1])
         concat_feat = tf.concat([point_feat, global_feat_expand], axis=3)

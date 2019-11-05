@@ -48,7 +48,7 @@ pca_var = pca.explained_variance_
 print('PCA loaded.')
 
 # load obj
-cup_id_list = [1,2,3,4,5,6,7,8]
+cup_id_list = [1,2,3,5,6,7,8]
 if flags.debug:
     cup_id_list = [1,2]
 
@@ -89,6 +89,7 @@ obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
 
 zs = np.vstack(obs_zs.values())
 stddev = np.std(zs, axis=0)
+mean = np.mean(zs, axis=0)
 
 minimum_data_length = min(len(cup_rs[cup_id]) for cup_id in cup_id_list)
 data_idxs = {cup_id: np.arange(len(cup_rs[cup_id])) for cup_id in cup_id_list}
@@ -96,7 +97,7 @@ batch_num = minimum_data_length // flags.batch_size * len(cup_id_list)
 print('Training data loaded.')
 
 # load model
-model = Model(flags, stddev)
+model = Model(flags, mean, stddev)
 print('Model loaded')
 
 # create session
@@ -138,7 +139,7 @@ for epoch in range(flags.epochs):
             continue
         
         t0 = time.time()
-        cup_id = batch_id % len(cup_id_list) + 1
+        cup_id = cup_id_list[batch_id % len(cup_id_list)]
         item_id = batch_id // len(cup_id_list)
         idxs = shuffled_idxs[cup_id][flags.batch_size * item_id : flags.batch_size * (item_id + 1)]
 
@@ -158,6 +159,11 @@ for epoch in range(flags.epochs):
         for langevin_step in range(flags.langevin_steps):
             syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
+            assert not np.any(np.isnan(syn_w)) 
+            assert not np.any(np.isinf(syn_w)) 
+            assert not np.any(np.isnan(syn_z)) 
+            assert not np.any(np.isinf(syn_z))
+
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)
@@ -176,30 +182,41 @@ for epoch in range(flags.epochs):
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
-        obs_im = vu.visualize(cup_id, cup_r, obs_z)
-        syn_im = vu.visualize(cup_id, cup_r, syn_z)
-        syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
-        syn_p_im = vu.plot_e(syn_p_seq, obs_ewp[2])
+        if batch_id % 20 == 0:
+            obs_im = vu.visualize(cup_id, cup_r, obs_z)
+            syn_im = vu.visualize(cup_id, cup_r, syn_z)
+            syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
+            syn_p_im = vu.plot_e(syn_p_seq, obs_ewp[2])
 
-        syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ewp[1])
-        obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ewp[1])
-        summ = sess.run(model.summ, feed_dict={
-            model.summ_obs_e: obs_ewp[0], 
-            model.summ_ini_e: syn_e_seq[0], 
-            model.summ_syn_e: syn_ewp[0], 
-            model.summ_obs_p: obs_ewp[2], 
-            model.summ_ini_p: syn_e_seq[2], 
-            model.summ_syn_p: syn_ewp[2], 
-            model.summ_descriptor_loss: loss,
-            model.summ_obs_bw: obs_bw_img, 
-            model.summ_obs_fw: obs_fw_img, 
-            model.summ_syn_bw: syn_bw_img,
-            model.summ_syn_fw: syn_fw_img,
-            model.summ_obs_im: obs_im,
-            model.summ_syn_im: syn_im, 
-            model.summ_syn_e_im: syn_e_im,
-            model.summ_syn_p_im: syn_p_im})
-    
+            syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ewp[1])
+            obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ewp[1])
+            summ = sess.run(model.all_summ, feed_dict={
+                model.summ_obs_e: obs_ewp[0], 
+                model.summ_ini_e: syn_e_seq[0], 
+                model.summ_syn_e: syn_ewp[0], 
+                model.summ_obs_p: obs_ewp[2], 
+                model.summ_ini_p: syn_e_seq[2], 
+                model.summ_syn_p: syn_ewp[2], 
+                model.summ_descriptor_loss: loss,
+                model.summ_obs_bw: obs_bw_img, 
+                model.summ_obs_fw: obs_fw_img, 
+                model.summ_syn_bw: syn_bw_img,
+                model.summ_syn_fw: syn_fw_img,
+                model.summ_obs_im: obs_im,
+                model.summ_syn_im: syn_im, 
+                model.summ_syn_e_im: syn_e_im,
+                model.summ_syn_p_im: syn_p_im})
+        else:
+            summ = sess.run(model.scalar_summ, feed_dict={
+                model.summ_obs_e: obs_ewp[0], 
+                model.summ_ini_e: syn_e_seq[0], 
+                model.summ_syn_e: syn_ewp[0], 
+                model.summ_obs_p: obs_ewp[2], 
+                model.summ_ini_p: syn_e_seq[2], 
+                model.summ_syn_p: syn_ewp[2], 
+                model.summ_descriptor_loss: loss
+            })
+
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
         assert not (np.any(np.isnan(syn_z_seq)) or np.any(np.isinf(syn_z_seq)))

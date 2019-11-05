@@ -10,8 +10,9 @@ class TouchFilter:
         if self.situation_invariant:
             self.weight = tf.get_variable('des/touch/w', [1, self.n_pts, 2], initializer=tf.random_normal_initializer(stddev=0.001), trainable=True)
         else:
-            self.dense_1 = tf.layers.Dense(256, activation=tf.nn.relu)
-            self.dense_2 = tf.layers.Dense(256, activation=tf.nn.relu)
+            # self.dense_1 = tf.layers.Dense(256, activation=tf.nn.relu)
+            # self.dense_2 = tf.layers.Dense(256, activation=tf.nn.relu)
+            pass
         pass
         
     def __call__(self, pts, cup_model, cup_r, hand_z=None):
@@ -19,7 +20,9 @@ class TouchFilter:
         pts = tf.transpose(tf.matmul(
                 tf.transpose(cup_r, perm=[0,2,1]), 
                 tf.transpose(pts, perm=[0,2,1])), perm=[0, 2, 1]) * 4
-        dists = tf.reshape(cup_model.predict(tf.reshape(pts, [-1,3])), [pts.shape[0], -1, 1])  # B x N x 1
+        dists = tf.reshape(cup_model.predict(tf.reshape(pts, [-1,3])), [pts.shape[0], -1, 1]) * 10  # B x N x 1
+
+        pts = tf.concat([pts, dists], axis=-1)
 
         f0 = tf.math.square(dists)
         f1 = tf.math.square(tf.nn.relu(dists))
@@ -28,8 +31,8 @@ class TouchFilter:
         if self.situation_invariant:
             weight = self.weight
         else:
-            z_feat = self.dense_2(self.dense_1(hand_z))
-            weight = pointnet_model(dists, z_feat=z_feat)[0]
+            # z_feat = self.dense_2(self.dense_1(hand_z))
+            weight = pointnet_model(pts)[0]
         
         weight = tf.nn.softmax(weight)
         energies = weight * features # B x N x 2 

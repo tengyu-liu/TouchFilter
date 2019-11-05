@@ -101,6 +101,7 @@ class VisUtil:
         self.fig.clf()
         ax = self.fig.gca()
         ax.plot(obs_e - syn_e)
+        ax.set_yscale('symlog')
         self.canvas.draw()
         image = np.fromstring(self.canvas.tostring_rgb(), dtype='uint8')
         image = image.reshape([self.height, self.width, 3])
@@ -136,6 +137,8 @@ class VisUtil:
                     p.apply_translation(xpos[pid,:])
                     mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
                 except:
+                    print(jrot[pid-4], xquat[pid,:], xpos[pid,:])
+                    raise
                     continue
             imgs.append(mlab.screenshot())
 

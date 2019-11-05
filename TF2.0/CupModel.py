@@ -21,7 +21,7 @@ class CupModel:
     def predict(self, x):
         with tf.variable_scope('cup%d'%self.cup_id):
             h = x
-            restore_filename = os.path.join(self.weight_path, 'cup_exp(%d)_%d.ckpt'%(self.cup_id, self.restore))
+            restore_filename = os.path.join(self.weight_path, 'exp_cup_%d__%d.ckpt'%(self.cup_id, self.restore))
             hand_reader = tf.train.NewCheckpointReader(restore_filename)
             for i in range(self.num_layers):
                 if i == 0:
