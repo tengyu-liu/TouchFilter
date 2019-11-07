@@ -34,9 +34,14 @@ for pid in range(21):
     p = stl_dict[parts[pid]]
     # p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
     # p.apply_translation(xpos[pid,:])
-    pts = p.sample(int(p.area * 100000))
+    pts, face_idx = p.sample(int(p.area * 100000), return_index=True)
+    normals = p.face_normals[face_idx]
+    # mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces)
     # mlab.points3d(pts[:,0], pts[:,1], pts[:,2], scale_factor=0.001)
+    # mlab.quiver3d(pts[:,0], pts[:,1], pts[:,2], normals[:,0], normals[:,1], normals[:,2])
+    # mlab.show()
     np.save('../data/%s.surface_sample.npy'%parts[pid], pts)
+    np.save('../data/%s.sample_normal.npy'%parts[pid], normals)
 
 # mlab.show()
 
