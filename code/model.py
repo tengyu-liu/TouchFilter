@@ -107,9 +107,9 @@ class Model:
 
             # touch response
             if self.situation_invariant:
-                energy, weight, penalty = self.touch_filter(surf_pts, surf_normals, cup_model, cup_r)
+                energy, weight, penalty = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, cup_model, cup_r)
             else:
-                energy, weight, penalty = self.touch_filter(surf_pts, surf_normals, cup_model, cup_r, hand_z)
+                energy, weight, penalty = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, cup_model, cup_r, hand_z)
             
             hand_prior = self.hand_prior(hand_z, reuse=reuse)
             return energy, weight, tf.reduce_mean(hand_prior), penalty

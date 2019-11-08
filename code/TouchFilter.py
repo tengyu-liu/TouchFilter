@@ -14,7 +14,7 @@ class TouchFilter:
             pass
         pass
         
-    def __call__(self, pts, normals, cup_model, cup_r, hand_z=None):
+    def __call__(self, pts, normals, features, cup_model, cup_r, hand_z=None):
         # pts: B x N x 3
         pts = tf.transpose(tf.matmul(
                 tf.transpose(cup_r, perm=[0,2,1]), 
@@ -27,7 +27,7 @@ class TouchFilter:
         grads /= tf.norm(grads, axis=-1)
         angles = tf.reduce_sum(normals * grads, axis=-1, keepdims=True)
 
-        pts = tf.concat([pts, dists, angles], axis=-1)
+        pts = tf.concat([pts, dists, angles, features], axis=-1)
 
         f0 = tf.math.square(dists)
         f1 = tf.math.square(tf.nn.relu(dists))

@@ -25,11 +25,12 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
         end_points = {}
 
         with tf.variable_scope('transform_net1') as sc:
-            transform = feature_transform_net(tf.expand_dims(point_cloud, axis=2), is_training, bn_decay, K=5)
+            transform = feature_transform_net(tf.expand_dims(point_cloud[...,:3], axis=2), is_training, bn_decay, K=3)
         point_cloud_transformed = tf.matmul(point_cloud, transform)
+        point_cloud_transformed = tf.concat([point_cloud, point_cloud_transformed], axis=-1)
         input_image = tf.expand_dims(point_cloud_transformed, -1)
 
-        net = tf_util.conv2d(input_image, 64, [1,5],
+        net = tf_util.conv2d(input_image, 64, [1,131],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
                             scope='conv1', bn_decay=bn_decay)
