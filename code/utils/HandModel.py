@@ -42,6 +42,7 @@ class HandModel:
         xpos, xquat = kinematics(gpos, grot, jrot)
         out_surface_key_pts = {n:tf.transpose(tf.matmul(xquat[n], tf.transpose(tf.pad(tf.tile(tf.expand_dims(self.surface_pts[n], axis=0), [gpos.shape[0], 1, 1]), paddings=[[0,0],[0,0],[0,1]], constant_values=1), perm=[0,2,1])), perm=[0,2,1])[...,:3] + tf.expand_dims(xpos[n], axis=1) for n in self.surface_pts}
         out_surface_normals = {n:tf.transpose(tf.matmul(xquat[n], tf.transpose(tf.pad(tf.tile(tf.expand_dims(self.pts_normals[n], axis=0), [gpos.shape[0], 1, 1]), paddings=[[0,0],[0,0],[0,1]], constant_values=1), perm=[0,2,1])), perm=[0,2,1])[...,:3] for n in self.pts_normals}
+
         return out_surface_key_pts, out_surface_normals
 
 # # Create a new plot

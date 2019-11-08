@@ -57,7 +57,6 @@ def tf_expand_eye(a):
 def angle_axis_rotation_matrix(angle: tf.Tensor, direction: tf.Tensor) -> tf.Tensor:
     direction = tf.tile(tf.expand_dims(direction, axis=0), [angle.shape[0], 1])
 
-    angle = angle / tf.norm(angle, axis=-1, keepdims=True)
     direction = direction / tf.norm(direction, axis=-1, keepdims=True)
     sina = tf.math.sin(angle)
     cosa = tf.math.cos(angle)
@@ -122,6 +121,7 @@ def kinematics(world_translation: tf.Tensor, world_rotation: tf.Tensor, angles: 
     xquat = {}
     Tran_world_forearm = translation_matrix(world_translation)
     Rot_world_forearm = rotation_matrix(world_rotation)
+
     xpos['forearm'] = world_translation
     xquat['forearm'] = Rot_world_forearm
 

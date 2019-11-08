@@ -13,3 +13,45 @@
 [2019-11-08 10:58:13.843343] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
 [2019-11-08 11:00:51.996900] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
 [2019-11-08 11:01:27.706309] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:15:02.699889] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:15:55.802097] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:16:07.153221] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:17:23.273032] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:18:08.123474] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:19:35.280721] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:19:46.296815] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:24:12.963977] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:24:37.405086] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:25:46.920006] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:27:35.189377] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:28:29.025889] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:30:32.605591] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:31:09.015186] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:33:26.276855] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:34:02.734485] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:35:50.373657] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:37:12.312423] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:38:05.739649] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:38:17.191850] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:38:59.932617] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:39:33.921077] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:40:09.192035] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:41:17.004401] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 12:41:25.879198] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5
+[2019-11-08 12:47:05.524579] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5
+[2019-11-08 12:49:43.717882] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5
+[2019-11-08 12:50:05.123019] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5
+[2019-11-08 12:58:37.396718] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5
+[2019-11-08 12:58:51.576424] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim 10 --d_lr 1e-5 --debug
+[2019-11-08 13:00:26.440598] python train.py --batch_size 8 --langevin_steps 30 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --two_stage_optim -1 --d_lr 1e-5 --debug
+[2019-11-08 13:05:56.170758] python train.py --batch_size 8 --langevin_steps 90 --penalty_strength 1e-3 --step_size 0.01 --adaptive_langevin --two_stage_optim -1 --d_lr 1e-5 --debug --name debug
+[2019-11-08 13:35:12.518133] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.01 --adaptive_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug
+[2019-11-08 13:35:20.645908] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.01 --adaptive_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug2
+[2019-11-08 13:42:50.970235] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.01 --adaptive_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug3
+[2019-11-08 13:45:12.686478] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.01 --adaptive_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug4
+[2019-11-08 13:50:39.490123] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug4
+[2019-11-08 13:50:44.303324] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug5
+[2019-11-08 13:58:57.574531] python train.py --batch_size 8 --langevin_steps 45 --penalty_strength 1e-3 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug6
+[2019-11-08 14:33:42.179883] python train.py --batch_size 8 --langevin_steps 45 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug7
+[2019-11-08 14:34:18.303290] python train.py --batch_size 8 --langevin_steps 45 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug7
+[2019-11-08 14:36:03.487981] python train.py --batch_size 8 --langevin_steps 45 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug7

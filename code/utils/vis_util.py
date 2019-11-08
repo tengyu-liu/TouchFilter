@@ -119,11 +119,10 @@ class VisUtil:
             mlab.triangular_mesh(cvert[:,0], cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 1, 0))
 
             z_ = hand_z[i]
-            jrot = np.reshape(z_[:44], [22, 2])
-            grot = np.reshape(z_[44:50], [3, 2])
-            gpos = z_[50:]
+            jrot = z_[:22]
+            grot = np.reshape(z_[22:28], [3, 2])
+            gpos = z_[28:]
 
-            jrot = np.arcsin((jrot / np.linalg.norm(jrot, axis=-1, keepdims=True))[:,0])
             grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
 
             qpos = np.concatenate([gpos, grot, jrot])
@@ -137,8 +136,6 @@ class VisUtil:
                     p.apply_translation(xpos[pid,:])
                     mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
                 except:
-                    print(jrot[pid-4], xquat[pid,:], xpos[pid,:])
-                    raise
                     continue
             imgs.append(mlab.screenshot())
 

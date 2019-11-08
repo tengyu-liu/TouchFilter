@@ -146,22 +146,16 @@ for epoch in range(flags.epochs):
         syn_z_seq = [syn_z]
         syn_e_seq = []
         syn_w_seq = []
-        syn_pr_seq = []
-        syn_pn_seq = []
+        syn_p_seq = []
 
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         update_mask = np.ones(syn_z.shape)
-        if flags.two_stage_optim > 0:
-            update_mask[:,:22] = 0
+        # update_mask[-9:-3] = 1.0
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e, syn_w, syn_pr, syn_pn = sess.run(model.syn_zewpp[cup_id], feed_dict={model.cup_r: inv_cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
 
-            if langevin_step == flags.two_stage_optim:
-                update_mask[:,:22] = 1
-                update_mask[:,22:] = 0
-
+            syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: inv_cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
             assert not np.any(np.isnan(syn_w)) 
@@ -172,42 +166,36 @@ for epoch in range(flags.epochs):
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)
             syn_w_seq.append(syn_w)
-            syn_pr_seq.append(syn_pr)
-            syn_pn_seq.append(syn_pn)
+            syn_p_seq.append(syn_p)
             # if langevin_step % 100 == 99:
             #     syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             #         model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
             #     })
 
-        syn_ewpp, obs_ewpp, loss, _ = sess.run([model.inp_ewpp[cup_id], model.obs_ewpp[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+        syn_ewp, obs_ewp, loss, _ = sess.run([model.inp_ewp[cup_id], model.obs_ewp[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             model.cup_r: inv_cup_r, model.obs_z: obs_z, model.inp_z: syn_z
         })
-        syn_e_seq.append(syn_ewpp[0])
-        syn_w_seq.append(syn_ewpp[1])
-        syn_pr_seq.append(syn_ewpp[2])
-        syn_pn_seq.append(syn_ewpp[3])
+        syn_e_seq.append(syn_ewp[0])
+        syn_w_seq.append(syn_ewp[1])
+        syn_p_seq.append(syn_ewp[2])
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
         if batch_id % 20 == 0:
             obs_im = vu.visualize(cup_id, cup_r, obs_z)
             syn_im = vu.visualize(cup_id, cup_r, syn_z)
-            syn_e_im = vu.plot_e(syn_e_seq, obs_ewpp[0])
-            syn_pr_im = vu.plot_e(syn_pr_seq, obs_ewpp[2])
-            syn_pn_im = vu.plot_e(syn_pn_seq, obs_ewpp[3])
+            syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
+            syn_p_im = vu.plot_e(syn_p_seq, obs_ewp[2])
 
-            syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ewpp[1])
-            obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ewpp[1])
+            syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ewp[1])
+            obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ewp[1])
             summ = sess.run(model.all_summ, feed_dict={
-                model.summ_obs_e: obs_ewpp[0], 
+                model.summ_obs_e: obs_ewp[0], 
                 model.summ_ini_e: syn_e_seq[0], 
-                model.summ_syn_e: syn_ewpp[0], 
-                model.summ_obs_pr: obs_ewpp[2], 
-                model.summ_ini_pr: syn_pr_seq[0], 
-                model.summ_syn_pr: syn_ewpp[2], 
-                model.summ_obs_pn: obs_ewpp[3], 
-                model.summ_ini_pn: syn_pn_seq[0], 
-                model.summ_syn_pn: syn_ewpp[3], 
+                model.summ_syn_e: syn_ewp[0], 
+                model.summ_obs_p: obs_ewp[2], 
+                model.summ_ini_p: syn_p_seq[0], 
+                model.summ_syn_p: syn_ewp[2], 
                 model.summ_descriptor_loss: loss,
                 model.summ_obs_bw: obs_bw_img, 
                 model.summ_obs_fw: obs_fw_img, 
@@ -215,35 +203,32 @@ for epoch in range(flags.epochs):
                 model.summ_syn_fw: syn_fw_img,
                 model.summ_obs_im: obs_im,
                 model.summ_syn_im: syn_im, 
-                model.summ_obs_w: obs_ewpp[1][-1,:,0],
-                model.summ_syn_w: syn_ewpp[1][-1,:,0],
+                model.summ_obs_w: obs_ewp[1][-1,:,0],
+                model.summ_syn_w: syn_ewp[1][-1,:,0],
                 model.summ_syn_e_im: syn_e_im,
-                model.summ_syn_pr_im: syn_pr_im,
-                model.summ_syn_pn_im: syn_pn_im})
+                model.summ_syn_p_im: syn_p_im
+            })
         else:
             summ = sess.run(model.scalar_summ, feed_dict={
-                model.summ_obs_e: obs_ewpp[0], 
+                model.summ_obs_e: obs_ewp[0], 
                 model.summ_ini_e: syn_e_seq[0], 
-                model.summ_syn_e: syn_ewpp[0], 
-                model.summ_obs_pr: obs_ewpp[2], 
-                model.summ_ini_pr: syn_pr_seq[0], 
-                model.summ_syn_pr: syn_ewpp[2], 
-                model.summ_obs_pn: obs_ewpp[3], 
-                model.summ_ini_pn: syn_pn_seq[0], 
-                model.summ_syn_pn: syn_ewpp[3], 
+                model.summ_syn_e: syn_ewp[0], 
+                model.summ_obs_p: obs_ewp[2], 
+                model.summ_ini_p: syn_p_seq[0], 
+                model.summ_syn_p: syn_ewp[2], 
                 model.summ_descriptor_loss: loss,
-                model.summ_obs_w: obs_ewpp[1][-1,:,0],
-                model.summ_syn_w: syn_ewpp[1][-1,:,0]
+                model.summ_obs_w: obs_ewp[1][-1,:,0],
+                model.summ_syn_w: syn_ewp[1][-1,:,0]
             })
 
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
         assert not (np.any(np.isnan(syn_z_seq)) or np.any(np.isinf(syn_z_seq)))
-        print('\rE%dB%d/%d(C%d): Obs.E: %f, Obs.Pr: %f, Obs.Pn: %f, Ini.E: %f, Ini.Pr: %f, Ini.Pn: %f Syn.E: %f, Syn.Pr: %f, Syn.Pn: %f Loss: %f, Time: %f'%(
+        print('\rE%dB%d/%d(C%d): Obs.E: %f, Obs.P: %f, Ini.E: %f, Ini.P: %f, Syn.E: %f, Syn.P: %f, Loss: %f, Time: %f'%(
             epoch, batch_id, batch_num, cup_id, 
-            obs_ewpp[0], obs_ewpp[2], obs_ewpp[3],
-            syn_e_seq[0], syn_pr_seq[0], syn_pn_seq[0], 
-            syn_ewpp[0], syn_ewpp[2], syn_ewpp[3], 
+            obs_ewp[0], obs_ewp[2],
+            syn_e_seq[0], syn_p_seq[0],
+            syn_ewp[0], syn_ewp[2],
             loss, time.time() - t0), end='')
         
         if item_id % 100 == 0:
@@ -251,15 +236,13 @@ for epoch in range(flags.epochs):
                 'cup_id': cup_id, 
                 'cup_r' : cup_r, 
                 'obs_z' : obs_z, 
-                'obs_e' : obs_ewpp[0], 
-                'obs_w' : obs_ewpp[1], 
-                'obs_pr' : obs_ewpp[2],
-                'obs_pn' : obs_ewpp[3],
+                'obs_e' : obs_ewp[0], 
+                'obs_w' : obs_ewp[1], 
+                'obs_p' : obs_ewp[2],
                 'syn_e' : syn_e_seq, 
                 'syn_z' : syn_z_seq, 
                 'syn_w' : syn_w_seq,
-                'syn_pr' : syn_pr_seq,
-                'syn_pn' : syn_pn_seq
+                'syn_p' : syn_p_seq,
             }
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
