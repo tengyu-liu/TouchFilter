@@ -30,18 +30,39 @@ xquat = mat_data[frame, 1 + 28 * 3 + 6 * 4 : 1 + 28 * 3 + 28 * 4].reshape([-1, 4
 
 print(sum([int(stl_dict[p].area * 100000) for p in parts]))
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+side_eye = np.eye(6)
+
 for pid in range(21):
     p = stl_dict[parts[pid]]
     # p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
     # p.apply_translation(xpos[pid,:])
     pts, face_idx = p.sample(int(p.area * 100000), return_index=True)
+
+    xmin, ymin, zmin = pts.min(axis=0)
+    xmax, ymax, zmax = pts.max(axis=0)
+
+    dist_0 = np.abs(pts[:,0] - xmin)
+    dist_1 = np.abs(pts[:,0] - xmax)
+    dist_2 = np.abs(pts[:,1] - ymin)
+    dist_3 = np.abs(pts[:,1] - ymax)
+    dist_4 = np.abs(pts[:,2] - zmin)
+    dist_5 = np.abs(pts[:,2] - zmax)
+    dists = np.stack([dist_0, dist_1, dist_2, dist_3, dist_4, dist_5], axis=-1)
+    side_id = np.argmin(dists, axis=-1)
+
     normals = p.face_normals[face_idx]
+    feat = np.zeros([len(pts), 21 * 6])
+    feat[:, pid * 6 : (pid+1) * 6] = side_eye[side_id]
     # mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces)
     # mlab.points3d(pts[:,0], pts[:,1], pts[:,2], scale_factor=0.001)
     # mlab.quiver3d(pts[:,0], pts[:,1], pts[:,2], normals[:,0], normals[:,1], normals[:,2])
     # mlab.show()
-    np.save('../data/%s.surface_sample.npy'%parts[pid], pts)
+    np.save('../data/%s.sample_points.npy'%parts[pid], pts)
     np.save('../data/%s.sample_normal.npy'%parts[pid], normals)
+    np.save('../data/%s.sample_feat.npy'%parts[pid], feat)
 
 # mlab.show()
 
