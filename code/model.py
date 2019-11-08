@@ -47,6 +47,8 @@ class Model:
 
         self.cup_r = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'cup_r')
         self.is_training = tf.placeholder(tf.bool, [], 'is_training')
+
+        self.update_mask = tf.placeholder(tf.float32, [self.batch_size, 31], 'update_mask')
         pass
 
     def build_model(self):
@@ -98,10 +100,10 @@ class Model:
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 1, axes=-1)
 
-            grad_z = grad_z * self.z_weight
+            grad_z = grad_z * self.z_weight[0]
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
             # with tf.control_dependencies([p]):
-            z = z - self.step_size * grad_z + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight)
+            z = z - self.step_size * (grad_z + tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0])) * self.update_mask
             return [z, energy, weight, hand_prior, penalty]
             
         return langevin_dynamics

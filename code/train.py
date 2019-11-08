@@ -146,14 +146,23 @@ for epoch in range(flags.epochs):
 
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
+        update_mask = np.ones(syn_z.shape)
+        if flags.two_stage_optim > 0:
+            update_mask[:,:22] = 0
+
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e, syn_w, syn_pr, syn_pn = sess.run(model.syn_zewpp[cup_id], feed_dict={model.cup_r: inv_cup_r, model.inp_z: syn_z})
+            syn_z, syn_e, syn_w, syn_pr, syn_pn = sess.run(model.syn_zewpp[cup_id], feed_dict={model.cup_r: inv_cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
+
+            if langevin_step == flags.two_stage_optim:
+                update_mask[:,:22] = 1
+                update_mask[:,22:] = 0
+
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z[:22] = np.clip(syn_z[:,:22], z_min[:22], z_max[:22])
             assert not np.any(np.isnan(syn_w)) 
             assert not np.any(np.isinf(syn_w)) 
             assert not np.any(np.isnan(syn_z)) 
-            assert not np.any(np.isinf(syn_z))
+            assert not np.any(np.isinf(syn_z)) 
 
             syn_z_seq.append(syn_z)
             syn_e_seq.append(syn_e)

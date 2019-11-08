@@ -32,8 +32,8 @@ class TouchFilter:
 
             pts = tf.concat([pts, dists, angles, features], axis=-1)
 
-            f0 = tf.math.square(dists)
-            f1 = tf.math.square(tf.nn.relu(dists))
+            f0 = tf.nn.relu(-dists) + tf.nn.relu(dists) * 1000
+            f1 = tf.nn.relu(dists) * 1000
             features = tf.concat([f0, f1], axis=-1)  # B x N x 2
 
             weight = pointnet_model(pts)[0]
