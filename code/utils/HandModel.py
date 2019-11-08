@@ -9,7 +9,7 @@ from pyquaternion.quaternion import Quaternion as Q
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from tf_hand_kinematics import kinematics
+from .tf_hand_kinematics import kinematics
 
 
 
@@ -33,7 +33,7 @@ class HandModel:
         # Input placeholder
         self.gpos = tf.placeholder(tf.float32, [batch_size, 3])
         self.grot = tf.placeholder(tf.float32, [batch_size, 3, 2])
-        self.jrot = tf.placeholder(tf.float32, [batch_size, 22, 2])
+        self.jrot = tf.placeholder(tf.float32, [batch_size, 22])
 
         # Build model
         self.tf_forward_kinematics(self.gpos, self.grot, self.jrot)

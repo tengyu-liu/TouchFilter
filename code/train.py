@@ -13,7 +13,7 @@ from pyquaternion.quaternion import Quaternion as Q
 
 from config import flags
 from model import Model
-from vis_util import VisUtil
+from utils.vis_util import VisUtil
 
 
 print('name', flags.name)
@@ -21,9 +21,7 @@ print('restore_epoch', flags.restore_epoch)
 print('restore_batch', flags.restore_batch)
 print('epochs', flags.epochs)
 print('batch_size', flags.batch_size)
-print('use_pca', flags.use_pca)
 print('z_size', flags.z_size)
-print('pca_size', flags.pca_size)
 print('langevin_steps', flags.langevin_steps)
 print('step_size', flags.step_size)
 print('penalty_strength', flags.penalty_strength)
@@ -39,13 +37,6 @@ project_root = os.path.join(os.path.dirname(__file__), '..')
 
 # load vis_util
 vu = VisUtil()
-
-# load pca
-pca = pickle.load(open(os.path.join(os.path.dirname(__file__), 'pca/pkl%d/pca_%d.pkl'%(flags.pca_size, flags.z_size)), 'rb'))
-pca_components = pca.components_
-pca_mean = pca.mean_
-pca_var = pca.explained_variance_
-print('PCA loaded.')
 
 # load obj
 cup_id_list = [1,2,3,5,6,7,8]
@@ -75,10 +66,7 @@ for i in cup_id_list:
                 hand_jrot = mat_data[frame, 1 + 28 * 7 + 7 : 1 + 28 * 7 + 29]
                 hand_grot = Q(mat_data[frame, 1 + 28 * 3 + 1 * 4 : 1 + 28 * 3 + 2 * 4]).rotation_matrix[:,:2]
                 hand_gpos = mat_data[frame, 1 + 1 * 3 : 1 + 2 * 3] - cup_translation
-                hand_jrot = np.stack([np.sin(hand_jrot), np.cos(hand_jrot)], axis=-1)
-                hand_z = np.concatenate([hand_jrot.reshape([44]), hand_grot.reshape([6]), hand_gpos])
-                if flags.use_pca:
-                    hand_z = np.concatenate([np.matmul((hand_z[:flags.pca_size]-pca_mean), pca_components.T) / np.sqrt(pca_var), hand_z[flags.pca_size:]], axis=-1)
+                hand_z = np.concatenate([hand_jrot, hand_grot.reshape([6]), hand_gpos])
                 cup_rs[cup_id].append(cup_rotation)
                 obs_zs[cup_id].append(hand_z)
 
@@ -86,8 +74,10 @@ cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
 obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
 
 zs = np.vstack(obs_zs.values())
-stddev = np.std(zs, axis=0)
-mean = np.mean(zs, axis=0)
+stddev = np.std(zs, axis=0, keepdims=True)
+mean = np.mean(zs, axis=0, keepdims=True)
+z_min = np.min(zs, axis=0, keepdims=True)
+z_max = np.max(zs, axis=0, keepdims=True)
 
 minimum_data_length = min(len(cup_rs[cup_id]) for cup_id in cup_id_list)
 data_idxs = {cup_id: np.arange(len(cup_rs[cup_id])) for cup_id in cup_id_list}
@@ -159,6 +149,7 @@ for epoch in range(flags.epochs):
         for langevin_step in range(flags.langevin_steps):
             syn_z, syn_e, syn_w, syn_pr, syn_pn = sess.run(model.syn_zewpp[cup_id], feed_dict={model.cup_r: inv_cup_r, model.inp_z: syn_z})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
+            syn_z[:22] = np.clip(syn_z[:,:22], z_min[:22], z_max[:22])
             assert not np.any(np.isnan(syn_w)) 
             assert not np.any(np.isinf(syn_w)) 
             assert not np.any(np.isnan(syn_z)) 
@@ -261,9 +252,6 @@ for epoch in range(flags.epochs):
             saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
     print()
-
-# python train.py --pca_size 44 --z_size 2 --use_pca --debug --batch_size 1 --step_size 0.01 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin
-# python train.py --pca_size 44 --z_size 2 --use_pca --batch_size 8 --step_size 0.01 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin --situation_invariant --name situation_invariant
 
 # Note: z_size=2 doesn't work. data is too distorted to show real geometrical relationship
 # python3 train.py --batch_size 8 --step_size 0.05 --adaptive_langevin --langevin_steps 90 --clip_norm_langevin --situation_invariant --name situation_invariant --d_lr 1e-4 --penalty_strength 1e-2

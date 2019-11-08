@@ -59,8 +59,8 @@ def angle_axis_rotation_matrix(angle: tf.Tensor, direction: tf.Tensor) -> tf.Ten
 
     angle = angle / tf.norm(angle, axis=-1, keepdims=True)
     direction = direction / tf.norm(direction, axis=-1, keepdims=True)
-    sina = angle[:,0]
-    cosa = angle[:,1]
+    sina = tf.math.sin(angle)
+    cosa = tf.math.cos(angle)
 
     R = tf.reduce_sum(tf.diag(tf.stack([cosa, cosa, cosa], axis=-1)), axis=2)
 
@@ -110,7 +110,7 @@ Hand Kinematics for TensorFlow
 
 Input:  pos   (N x 3)       root translation
         rot   (N x 3 x 2)   root rotation
-        qpos  (N x 22 x 2)  rotation representation of each joint
+        qpos  (N x 22 x 1)  rotation representation of each joint
 Output: xpos, xquat  {p: (N x 3)} and {p: (N x 4 x 4)} for each part p
 
 This module converts original latent vector Z to trans-rot config C.
@@ -127,7 +127,7 @@ def kinematics(world_translation: tf.Tensor, world_rotation: tf.Tensor, angles: 
 
     wristy_axis = tf.constant([0., 1., 0.])
     wristy_pos1 = tf.tile(tf.reshape(tf.constant([0., 0, 0, 1]), [1, 4, 1]), [angles.shape[0], 1, 1])
-    Rot_forearm_wristy = angle_axis_rotation_matrix(angles[:,0,:], wristy_axis)
+    Rot_forearm_wristy = angle_axis_rotation_matrix(angles[:,0], wristy_axis)
     xquat['wristy'] = tf.matmul(xquat['forearm'], Rot_forearm_wristy)
     T_world_wristy = xquat['wristy']
     xpos['wristy'] = tf.matmul(Tran_world_forearm, tf.matmul(T_world_wristy, wristy_pos1))[:,:3, 0]
@@ -135,7 +135,7 @@ def kinematics(world_translation: tf.Tensor, world_rotation: tf.Tensor, angles: 
     wristx_axis = tf.constant([0., 0., -1.])
     wristx_pos = tf.tile(tf.reshape(tf.constant([-3.36826e-5, -0.0476452, 0.00203763]), [1, 3]), [angles.shape[0], 1])
     wristx_pos1 = tf.tile(tf.reshape(tf.constant([-3.36826e-5, -0.0476452, 0.00203763, 1]), [1, 4, 1]), [angles.shape[0], 1, 1])
-    Rot_wristy_wristx = angle_axis_rotation_matrix(angles[:,1,:], wristx_axis)
+    Rot_wristy_wristx = angle_axis_rotation_matrix(angles[:,1], wristx_axis)
     xquat['wristx'] = tf.matmul(xquat['wristy'], Rot_wristy_wristx)
     T_world_wristx = tf.matmul(T_world_wristy, tf.matmul(translation_matrix(wristx_pos), Rot_wristy_wristx))
     xpos['wristx'] = tf.matmul(Tran_world_forearm, tf.matmul(T_world_wristy, wristx_pos1))[:,:3,0]
@@ -143,7 +143,7 @@ def kinematics(world_translation: tf.Tensor, world_rotation: tf.Tensor, angles: 
     wristz_axis = tf.constant([1., 0., 0.])
     wristz_pos = tf.tile(tf.reshape(tf.constant([0.0001872, -0.03, -0.002094]), [1, 3]), [angles.shape[0], 1])
     wristz_pos1 = tf.tile(tf.reshape(tf.constant([0.0001872, -0.03, -0.002094, 1]), [1, 4, 1]), [angles.shape[0], 1, 1])
-    Rot_wristx_wristz = angle_axis_rotation_matrix(angles[:,2,:], wristz_axis)
+    Rot_wristx_wristz = angle_axis_rotation_matrix(angles[:,2], wristz_axis)
     xquat['wristz'] = tf.matmul(xquat['wristx'], Rot_wristx_wristz)
     T_world_wristz = tf.matmul(T_world_wristx, tf.matmul(translation_matrix(wristz_pos), Rot_wristx_wristz))
     xpos['wristz'] = tf.matmul(Tran_world_forearm, tf.matmul(T_world_wristx, wristz_pos1))[:,:3,0]
@@ -158,46 +158,46 @@ def kinematics(world_translation: tf.Tensor, world_rotation: tf.Tensor, angles: 
     xpos['thumb0'], xquat['thumb0'], T_palm_thumb0 = forward_kinematics(
         [0.00835752, -0.0206978, -0.010093], 
         [0.990237, 0.0412644, -0.0209178, -0.13149], 
-        angles[:,3,:], [0., 1., 0.], T_world_palm, xquat['palm'], Tran_world_forearm)
+        angles[:,3], [0., 1., 0.], T_world_palm, xquat['palm'], Tran_world_forearm)
 
     xpos['thumb1'], xquat['thumb1'], T_thumb0_thumb1 = forward_kinematics(
         [0.0209172, -0.00084, 0.0014476], 
         None,
-        angles[:,4,:], [0., 0., -1.], T_palm_thumb0, xquat['thumb0'], Tran_world_forearm)
+        angles[:,4], [0., 0., -1.], T_palm_thumb0, xquat['thumb0'], Tran_world_forearm)
 
     xpos['thumb2'], xquat['thumb2'], T_thumb1_thumb2 = forward_kinematics(
         [0.0335, 0, -0.0007426], 
         None,
-        angles[:,5,:], [0., 0., -1.], T_thumb0_thumb1, xquat['thumb1'], Tran_world_forearm)
+        angles[:,5], [0., 0., -1.], T_thumb0_thumb1, xquat['thumb1'], Tran_world_forearm)
 
     xpos['thumb3'], xquat['thumb3'], T_thumb2_thumb3 = forward_kinematics(
         [0.0335, 0, 0.0010854], 
         None,
-        angles[:,6,:], [0., 0., -1.], T_thumb1_thumb2, xquat['thumb2'], Tran_world_forearm)
+        angles[:,6], [0., 0., -1.], T_thumb1_thumb2, xquat['thumb2'], Tran_world_forearm)
 
     #=====================================INDEX=============================================
     xpos['index0'], xquat['index0'], T_palm_index0 = forward_kinematics(
         [0.00986485, -0.0658, 0.00101221], 
         [0.996195, 0, 0.0871557, 0], 
-        angles[:,7,:], [0., 0, 1], T_world_palm, xquat['palm'], Tran_world_forearm)
+        angles[:,7], [0., 0, 1], T_world_palm, xquat['palm'], Tran_world_forearm)
 
     xpos['index1'], xquat['index1'], T_index0_index1 = forward_kinematics(
         [6.26e-005, -0.018, 0], 
         None,
-        angles[:,8,:], [1., 0, 0], T_palm_index0, xquat['index0'], Tran_world_forearm)
+        angles[:,8], [1., 0, 0], T_palm_index0, xquat['index0'], Tran_world_forearm)
 
     xpos['index2'], xquat['index2'], T_index1_index2 = forward_kinematics(
         [0.001086, -0.0435, 0.0005], 
         None,
-        angles[:,9,:], [1., 0, 0], T_index0_index1, xquat['index1'], Tran_world_forearm)
+        angles[:,9], [1., 0, 0], T_index0_index1, xquat['index1'], Tran_world_forearm)
 
     xpos['index3'], xquat['index3'], T_index2_index3 = forward_kinematics(
         [-0.000635, -0.0245, 0], 
         None,
-        angles[:,10,:], [1., 0, 0], T_index1_index2, xquat['index2'], Tran_world_forearm)
+        angles[:,10], [1., 0, 0], T_index1_index2, xquat['index2'], Tran_world_forearm)
 
     #=====================================MIDDLE=============================================
-    zero_angle = tf.stack([tf.zeros(angles.shape[0]), tf.ones(angles.shape[0])], axis=-1)
+    zero_angle = tf.zeros(angles.shape[0])
     xpos['middle0'], xquat['middle0'], T_palm_middle0 = forward_kinematics(
         [-0.012814, -0.0779014, 0.00544608], 
         [-3.14, 0.0436194, 0, 0], 
@@ -206,59 +206,59 @@ def kinematics(world_translation: tf.Tensor, world_rotation: tf.Tensor, angles: 
     xpos['middle1'], xquat['middle1'], T_middle0_middle1 = forward_kinematics(
         [6.26e-005, -0.018, 0], 
         None,
-        angles[:,11,:], [1., 0, 0], T_palm_middle0, xquat['middle0'], Tran_world_forearm)
+        angles[:,11], [1., 0, 0], T_palm_middle0, xquat['middle0'], Tran_world_forearm)
 
     xpos['middle2'], xquat['middle2'], T_middle1_middle2 = forward_kinematics(
         [0.001086, -0.0435, 0.0005], 
         None,
-        angles[:,12,:], [1., 0, 0], T_middle0_middle1, xquat['middle1'], Tran_world_forearm)
+        angles[:,12], [1., 0, 0], T_middle0_middle1, xquat['middle1'], Tran_world_forearm)
 
     xpos['middle3'], xquat['middle3'], T_middle2_middle3 = forward_kinematics(
         [-0.000635, -0.0245, 0], 
         None,
-        angles[:,13,:], [1., 0, 0], T_middle1_middle2, xquat['middle2'], Tran_world_forearm)
+        angles[:,13], [1., 0, 0], T_middle1_middle2, xquat['middle2'], Tran_world_forearm)
 
     #=====================================RING=============================================
     xpos['ring0'], xquat['ring0'], T_palm_ring0 = forward_kinematics(
         [-0.0354928, -0.0666999, 0.00151221], 
         [0.996195, 0, -0.0871557, 0], 
-        angles[:,14,:], [0., 0, -1], T_world_palm, xquat['palm'], Tran_world_forearm)
+        angles[:,14], [0., 0, -1], T_world_palm, xquat['palm'], Tran_world_forearm)
 
     xpos['ring1'], xquat['ring1'], T_ring0_ring1 = forward_kinematics(
         [6.26e-005, -0.018, 0], 
         None,
-        angles[:,15,:], [1., 0, 0], T_palm_ring0, xquat['ring0'], Tran_world_forearm)
+        angles[:,15], [1., 0, 0], T_palm_ring0, xquat['ring0'], Tran_world_forearm)
 
     xpos['ring2'], xquat['ring2'], T_ring1_ring2 = forward_kinematics(
         [0.001086, -0.0435, 0.0005], 
         None,
-        angles[:,16,:], [1., 0, 0], T_ring0_ring1, xquat['ring1'], Tran_world_forearm)
+        angles[:,16], [1., 0, 0], T_ring0_ring1, xquat['ring1'], Tran_world_forearm)
 
     xpos['ring3'], xquat['ring3'], T_ring2_ring3 = forward_kinematics(
         [-0.000635, -0.0245, 0], 
         None,
-        angles[:,17,:], [1., 0, 0], T_ring1_ring2, xquat['ring2'], Tran_world_forearm)
+        angles[:,17], [1., 0, 0], T_ring1_ring2, xquat['ring2'], Tran_world_forearm)
 
     #=====================================PINKY=============================================
     xpos['pinky0'], xquat['pinky0'], T_palm_pinky0 = forward_kinematics(
         [-0.0562459, -0.0554001, -0.00563858], 
         [0.996195, 0, -0.0871557, 0], 
-        angles[:,18,:], [0., 0, -1], T_world_palm, xquat['palm'], Tran_world_forearm)
+        angles[:,18], [0., 0, -1], T_world_palm, xquat['palm'], Tran_world_forearm)
 
     xpos['pinky1'], xquat['pinky1'], T_pinky0_pinky1 = forward_kinematics(
         [6.26e-005, -0.0178999, 0], 
         None,
-        angles[:,19,:], [1., 0, 0], T_palm_pinky0, xquat['pinky0'], Tran_world_forearm)
+        angles[:,19], [1., 0, 0], T_palm_pinky0, xquat['pinky0'], Tran_world_forearm)
 
     xpos['pinky2'], xquat['pinky2'], T_pinky1_pinky2 = forward_kinematics(
         [0.000578, -0.033, 0.0005], 
         None,
-        angles[:,20,:], [1., 0, 0], T_pinky0_pinky1, xquat['pinky1'], Tran_world_forearm)
+        angles[:,20], [1., 0, 0], T_pinky0_pinky1, xquat['pinky1'], Tran_world_forearm)
 
     xpos['pinky3'], xquat['pinky3'], T_pinky2_pinky3 = forward_kinematics(
         [-4.78e-005, -0.0175, 0], 
         None,
-        angles[:,21,:], [1., 0, 0], T_pinky1_pinky2, xquat['pinky2'], Tran_world_forearm)
+        angles[:,21], [1., 0, 0], T_pinky1_pinky2, xquat['pinky2'], Tran_world_forearm)
 
     return xpos, xquat
 

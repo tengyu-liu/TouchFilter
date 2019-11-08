@@ -26,8 +26,8 @@ class VisUtil:
 
         xpos, xquat = ForwardKinematic(np.zeros([53]))
 
-        obj_base = os.path.join(os.path.dirname(__file__), '../data')
-        stl_dict = {obj: np.load(os.path.join(obj_base, '%s.surface_sample.npy'%obj)) for obj in self.parts}
+        obj_base = os.path.join(os.path.dirname(__file__), '../../data')
+        stl_dict = {obj: np.load(os.path.join(obj_base, '%s.sample_points.npy'%obj)) for obj in self.parts}
 
         start = 0
         end = 0
