@@ -14,7 +14,7 @@ class TouchFilter:
             pass
         pass
         
-    def __call__(self, pts, normals, features, cup_model, cup_r):
+    def __call__(self, pts, normals, feat, cup_model, cup_r):
         # pts: B x N x 3
         if self.situation_invariant:
             weight = self.weight
@@ -26,11 +26,13 @@ class TouchFilter:
             dists = tf.reshape(dists, [pts.shape[0], -1, 1])  # B x N x 1
             grads = tf.reshape(grads, [pts.shape[0], -1, 3])
 
-            normals /= tf.norm(normals, axis=-1)
-            grads /= tf.norm(grads, axis=-1)
+            # FIXME: grads is nan
+
+            normals /= tf.norm(normals, axis=-1, keepdims=True)
+            grads /= tf.norm(grads, axis=-1, keepdims=True)
             angles = tf.reduce_sum(normals * grads, axis=-1, keepdims=True)
 
-            pts = tf.concat([pts, dists, angles, features], axis=-1)
+            pts = tf.concat([pts, dists, angles, feat], axis=-1)
 
             f0 = tf.nn.relu(-dists) + tf.nn.relu(dists) * 1000
             f1 = tf.nn.relu(dists) * 1000
@@ -40,4 +42,6 @@ class TouchFilter:
         
         weight = tf.reshape(tf.nn.softmax(tf.reshape(weight, [-1, 2])), weight.shape)
         energies = weight * features # B x N x 2 
+
+        energy = tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2]))
         return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2])), weight, tf.reduce_mean(tf.reduce_sum(weight[...,1] + weight[...,0] * weight[...,1] * 4, axis=-1))

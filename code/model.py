@@ -11,8 +11,8 @@ from utils.TouchFilter import TouchFilter
 
 
 class Model:
-    def __init__(self, config, mean, stddev):
-        self.build_config(config, mean, stddev)
+    def __init__(self, config, mean, stddev, cup_list):
+        self.build_config(config, mean, stddev, cup_list)
         self.build_input()
         self.build_model()
         self.build_train()
@@ -23,7 +23,6 @@ class Model:
         self.penalty_strength = config.penalty_strength
         self.adaptive_langevin = config.adaptive_langevin
         self.clip_norm_langevin = config.clip_norm_langevin
-        self.hand_z_size = config.z_size
         self.batch_size = config.batch_size
         self.langevin_steps = config.langevin_steps
         self.step_size = config.step_size
@@ -89,9 +88,13 @@ class Model:
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
+            p1 = tf.print('z', z, summarize=-1)
             energy, weight, hand_prior, penalty = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            grad_z = tf.gradients(energy + hand_prior, z)[0]
-            gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
+            p2 = tf.print('e', energy, summarize=-1)
+            grad_z = tf.gradients(energy, z)[0]
+            p3 = tf.print('g', grad_z, summarize=-1)
+            with tf.control_dependencies([p1, p2, p3]):
+                gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
                 apply_op = self.EMA.apply([gz_abs])
                 with tf.control_dependencies([apply_op]):

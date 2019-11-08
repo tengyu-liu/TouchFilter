@@ -1,3 +1,5 @@
+import sys
+import datetime
 import copy
 import os
 import pickle
@@ -21,7 +23,6 @@ print('restore_epoch', flags.restore_epoch)
 print('restore_batch', flags.restore_batch)
 print('epochs', flags.epochs)
 print('batch_size', flags.batch_size)
-print('z_size', flags.z_size)
 print('langevin_steps', flags.langevin_steps)
 print('step_size', flags.step_size)
 print('penalty_strength', flags.penalty_strength)
@@ -32,6 +33,10 @@ print('debug', flags.debug)
 print('d_lr', flags.d_lr)
 print('beta1', flags.beta1)
 print('beta2', flags.beta2)
+
+f = open('history.txt', 'a')
+f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
+f.close()
 
 project_root = os.path.join(os.path.dirname(__file__), '..')
 
@@ -85,7 +90,7 @@ batch_num = minimum_data_length // flags.batch_size * len(cup_id_list)
 print('Training data loaded.')
 
 # load model
-model = Model(flags, mean, stddev)
+model = Model(flags, mean, stddev, cup_id_list)
 print('Model loaded')
 
 # create session
@@ -135,7 +140,7 @@ for epoch in range(flags.epochs):
         inv_cup_r = np.linalg.inv(cup_r)
         obs_z = obs_zs[cup_id][idxs]
         syn_z = np.zeros(obs_z.shape)
-        syn_z[:,1::2] = 1
+        syn_z[:,:22] = 0
         syn_z[:,-9:] = [1, 0, 0, 1, 0, 0, 0, 0.3, 0.3]
 
         syn_z_seq = [syn_z]
@@ -158,7 +163,7 @@ for epoch in range(flags.epochs):
                 update_mask[:,22:] = 0
 
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
-            syn_z[:22] = np.clip(syn_z[:,:22], z_min[:22], z_max[:22])
+            syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
             assert not np.any(np.isnan(syn_w)) 
             assert not np.any(np.isinf(syn_w)) 
             assert not np.any(np.isnan(syn_z)) 
