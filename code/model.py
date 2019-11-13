@@ -50,7 +50,7 @@ class Model:
         pass
 
     def build_model(self):
-        self.EMA = tf.train.ExponentialMovingAverage(decay=0.9999)
+        self.EMA = tf.train.ExponentialMovingAverage(decay=0.99)
         self.cup_models = { i: CupModel(i, self.cup_restore, self.cup_model_path) for i in self.cup_list}
 
         self.hand_model = HandModel(self.batch_size)
@@ -101,7 +101,7 @@ class Model:
             grad_z = grad_z * self.z_weight[0]
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
             # with tf.control_dependencies([p]):
-            z = z - self.step_size * grad_z * self.update_mask # + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask
+            z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask
             return [z, energy, weight, hand_prior]
             
         return langevin_dynamics

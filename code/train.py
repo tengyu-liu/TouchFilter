@@ -25,7 +25,6 @@ print('epochs', flags.epochs)
 print('batch_size', flags.batch_size)
 print('langevin_steps', flags.langevin_steps)
 print('step_size', flags.step_size)
-print('penalty_strength', flags.penalty_strength)
 print('situation_invariant', flags.situation_invariant)
 print('adaptive_langevin', flags.adaptive_langevin)
 print('clip_norm_langevin', flags.clip_norm_langevin)
@@ -137,7 +136,6 @@ for epoch in range(flags.epochs):
         idxs = shuffled_idxs[cup_id][flags.batch_size * item_id : flags.batch_size * (item_id + 1)]
 
         cup_r = cup_rs[cup_id][idxs]
-        inv_cup_r = np.linalg.inv(cup_r)
         obs_z = obs_zs[cup_id][idxs]
         syn_z = np.zeros(obs_z.shape)
         syn_z[:,:22] = 0
@@ -155,7 +153,7 @@ for epoch in range(flags.epochs):
 
         for langevin_step in range(flags.langevin_steps):
 
-            syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: inv_cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
+            syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
             assert not np.any(np.isnan(syn_w)) 
@@ -173,7 +171,7 @@ for epoch in range(flags.epochs):
             #     })
 
         syn_ewp, obs_ewp, loss, _ = sess.run([model.inp_ewp[cup_id], model.obs_ewp[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
-            model.cup_r: inv_cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+            model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
         })
         syn_e_seq.append(syn_ewp[0])
         syn_w_seq.append(syn_ewp[1])
