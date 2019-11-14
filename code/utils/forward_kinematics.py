@@ -2,7 +2,7 @@
 
 import numpy as np
 import math
-import mat_trans as mt
+from . import mat_trans as mt
 
 # Input: qpos (29,) as numpy array
 # Output: xpos (25,3) and xquat (25,4) as numpy array

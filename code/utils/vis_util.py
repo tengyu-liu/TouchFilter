@@ -9,8 +9,8 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 from pyquaternion.quaternion import Quaternion as Q
 
-import mat_trans as mt
-from forward_kinematics import ForwardKinematic
+from . import mat_trans as mt
+from .forward_kinematics import ForwardKinematic
 
 
 class VisUtil:
