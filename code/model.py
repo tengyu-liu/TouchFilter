@@ -38,6 +38,9 @@ class Model:
         self.cup_model_path = os.path.join(os.path.dirname(__file__), '../data/cups/models')
         self.cup_restore = 199
     
+        self.obs_penetration_penalty = tf.constant(0, dtype=tf.float32)
+        self.syn_penetration_penalty = tf.constant(1, dtype=tf.float32)
+
     def build_input(self):
 
         self.inp_z = tf.placeholder(tf.float32, [self.batch_size, 31], 'input_hand_z')
@@ -56,10 +59,10 @@ class Model:
         self.hand_model = HandModel(self.batch_size)
         self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
         print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
-        
-        self.obs_ewp = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], reuse=(i!=1)) for i in self.cup_list}
+
+        self.obs_ewp = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], self.obs_penetration_penalty, reuse=(i!=1)) for i in self.cup_list}
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in self.cup_list}
-        self.inp_ewp = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], reuse=True) for i in self.cup_list}
+        self.inp_ewp = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], self.syn_penetration_penalty, reuse=True) for i in self.cup_list}
         self.syn_zewp = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in self.cup_list}
 
         self.descriptor_loss = {i : self.obs_ewp[i][0] - self.inp_ewp[i][0] for i in self.cup_list}
@@ -67,9 +70,9 @@ class Model:
     
     def hand_prior(self, hand_z, reuse=True):
         with tf.variable_scope('des_h', reuse=reuse):
-            return tf.norm((hand_z - self.z_mean / self.z_weight)[:,-3:], axis=-1)
+            return 0 # tf.norm((hand_z - self.z_mean / self.z_weight)[:,-3:], axis=-1)
 
-    def descriptor(self, hand_z, cup_r, cup_model, reuse=True):
+    def descriptor(self, hand_z, cup_r, cup_model, penetration_penalty, reuse=True):
         with tf.variable_scope('des_t', reuse=reuse):
             z_ = hand_z
             jrot = z_[:,:22]
@@ -80,14 +83,14 @@ class Model:
             surf_normals = tf.concat(list(surf_normals.values()), axis=1)
 
             # touch response
-            energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, cup_model, cup_r)
+            energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, cup_model, cup_r, penetration_penalty)
             
             hand_prior = self.hand_prior(hand_z, reuse=reuse)
             return energy, weight, tf.reduce_mean(hand_prior)
 
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
-            energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id],reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
+            energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id], self.syn_penetration_penalty, reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:

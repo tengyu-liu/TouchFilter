@@ -76,7 +76,7 @@ class VisUtil:
             self.fig.clf()
             ax = self.fig.gca()
             pick = self.pts[:,2] > 0.001
-            _ = ax.scatter(self.pts[pick,0], self.pts[pick,1], c=weight[i,pick,0], vmin=0, vmax=1)
+            _ = ax.scatter(self.pts[pick,0], self.pts[pick,1], c=weight[i,pick,0])# , vmin=0, vmax=1)
             ax.axis('off')
             self.fig.colorbar(_)
             self.canvas.draw()
@@ -87,7 +87,7 @@ class VisUtil:
             self.fig.clf()
             ax = self.fig.gca()
             pick = self.pts[:,2] <= 0.001
-            _ = ax.scatter(self.pts[pick,0], self.pts[pick,1], c=weight[i,pick,0], vmin=0, vmax=1)
+            _ = ax.scatter(self.pts[pick,0], self.pts[pick,1], c=weight[i,pick,0])# , vmin=0, vmax=1)
             ax.axis('off')
             self.fig.colorbar(_)
             self.canvas.draw()

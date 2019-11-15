@@ -15,7 +15,7 @@ class TouchFilter:
             pass
         pass
         
-    def __call__(self, pts, normals, feat, cup_model, cup_r):
+    def __call__(self, pts, normals, feat, cup_model, cup_r, penetration_penalty):
         # pts: B x N x 3
         if self.situation_invariant:
             weight = self.weight
@@ -34,8 +34,8 @@ class TouchFilter:
 
         pts = tf.concat([pts, dists, angles, feat], axis=-1)
 
-        f0 = tf.nn.relu(-dists) + tf.nn.relu(dists) * 1000
-        f1 = tf.nn.relu(dists) * 1000
+        f0 = tf.nn.relu(-dists) + tf.nn.relu(dists) * penetration_penalty
+        f1 = tf.nn.relu(dists) * penetration_penalty
         features = tf.concat([f0, f1], axis=-1)  # B x N x 2
 
         weight = pointnet_model(pts)[0]

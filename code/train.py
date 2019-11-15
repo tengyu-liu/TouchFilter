@@ -57,7 +57,6 @@ cup_rs = defaultdict(list)
 obs_zs = defaultdict(list)
 
 for i in cup_id_list:
-    center = np.mean(cup_models[i].bounding_box.vertices, axis=0)
     for j in range(1,11):
         mat_data = sio.loadmat(os.path.join(project_root, 'data/grasp/cup%d/cup%d_grasping_60s_%d.mat'%(i,i,j)))['glove_data']
         annotation = cup_annotation['%d_%d'%(i,j)]
@@ -73,6 +72,12 @@ for i in cup_id_list:
                 hand_z = np.concatenate([hand_jrot, hand_grot.reshape([6]), hand_gpos])
                 cup_rs[cup_id].append(cup_rotation)
                 obs_zs[cup_id].append(hand_z)
+                if flags.debug:
+                    break
+            if flags.debug and len(obs_zs[cup_id]) >= flags.batch_size:
+                break
+        if flags.debug and len(obs_zs[cup_id]) >= flags.batch_size:
+            break
 
 cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
 obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
@@ -139,7 +144,8 @@ for epoch in range(flags.epochs):
         obs_z = obs_zs[cup_id][idxs]
         syn_z = np.zeros(obs_z.shape)
         syn_z[:,:22] = 0
-        syn_z[:,-9:-3] = obs_z[:,-9:-3]
+        syn_z[:,-9:] = obs_z[:,-9:]
+        syn_z[:,-3:] += np.random.normal(scale=0.03, size=(flags.batch_size, 3))
 
         syn_z_seq = [syn_z]
         syn_e_seq = []
@@ -152,7 +158,6 @@ for epoch in range(flags.epochs):
         update_mask[-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
-
             syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
@@ -179,7 +184,7 @@ for epoch in range(flags.epochs):
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
-        if batch_id % 20 == 0:
+        if (not flags.debug and batch_id % 20 == 0) or (flags.debug and epoch % 10 == 9):
             obs_im = vu.visualize(cup_id, cup_r, obs_z)
             syn_im = vu.visualize(cup_id, cup_r, syn_z)
             syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
