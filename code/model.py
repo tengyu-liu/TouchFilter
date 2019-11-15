@@ -63,7 +63,7 @@ class Model:
         self.obs_ewp = {i: self.descriptor(self.obs_z, self.cup_r, self.cup_models[i], self.obs_penetration_penalty, reuse=(i!=1)) for i in self.cup_list}
         self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in self.cup_list}
         self.inp_ewp = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], self.syn_penetration_penalty, reuse=True) for i in self.cup_list}
-        self.syn_zewp = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in self.cup_list}
+        self.syn_zewpg = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in self.cup_list}
 
         self.descriptor_loss = {i : self.obs_ewp[i][0] - self.inp_ewp[i][0] for i in self.cup_list}
         pass
@@ -93,6 +93,7 @@ class Model:
             energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id], self.syn_penetration_penalty, reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
+            g_avg = 0
             if self.adaptive_langevin:
                 apply_op = self.EMA.apply([gz_abs])
                 with tf.control_dependencies([apply_op]):
@@ -104,8 +105,8 @@ class Model:
             grad_z = grad_z * self.z_weight[0]
             # p = tf.print('GRAD: ', grad_z, summarize=-1)
             # with tf.control_dependencies([p]):
-            z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask
-            return [z, energy, weight, hand_prior]
+            z = z - self.step_size * grad_z * self.update_mask # + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask
+            return [z, energy, weight, hand_prior, g_avg]
             
         return langevin_dynamics
 
@@ -127,6 +128,7 @@ class Model:
         self.summ_descriptor_loss = tf.placeholder(tf.float32, [], 'summ_descriptor_loss')
         self.summ_obs_w = tf.placeholder(tf.float32, [None], 'summ_obs_w')
         self.summ_syn_w = tf.placeholder(tf.float32, [None], 'summ_syn_w')
+        self.summ_g_avg = tf.placeholder(tf.float32, [31], 'summ_g_avg')
         scalar_summs = [
             tf.summary.scalar('energy/obs', self.summ_obs_e), 
             tf.summary.scalar('energy/ini', self.summ_ini_e), 
@@ -138,8 +140,9 @@ class Model:
             tf.summary.scalar('prior/imp', self.summ_ini_p - self.summ_syn_p), 
             tf.summary.histogram('weight/obs', self.summ_obs_w),
             tf.summary.histogram('weight/syn', self.summ_syn_w),
-            tf.summary.scalar('loss', self.summ_descriptor_loss),
+            tf.summary.scalar('loss', self.summ_descriptor_loss)
         ]
+        scalar_summs += [tf.summary.scalar('g_avg/%d'%i, self.summ_g_avg[i]) for i in range(31)]
         self.summ_obs_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw')
         self.summ_obs_fw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw')
         self.summ_syn_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_bw')

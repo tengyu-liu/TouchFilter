@@ -126,8 +126,6 @@ print('syn_e', syn_e.shape)
 print('syn_z', syn_z.shape)
 print('syn_w', syn_w.shape)
 
-exit()
-
 fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
 mlab.figure(size=(640,480))
 

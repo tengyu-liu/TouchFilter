@@ -56,10 +56,19 @@ cup_annotation = {x.split(',')[0]: x.strip().split(',')[1:] for x in open(os.pat
 cup_rs = defaultdict(list)
 obs_zs = defaultdict(list)
 
+all_zs = []
+
 for i in cup_id_list:
     for j in range(1,11):
         mat_data = sio.loadmat(os.path.join(project_root, 'data/grasp/cup%d/cup%d_grasping_60s_%d.mat'%(i,i,j)))['glove_data']
         annotation = cup_annotation['%d_%d'%(i,j)]
+        for frame in range(len(mat_data)):
+            cup_translation = mat_data[frame, 1 + 27 * 3 : 1 + 28 * 3]
+            hand_jrot = mat_data[frame, 1 + 28 * 7 + 7 : 1 + 28 * 7 + 29]
+            hand_grot = Q(mat_data[frame, 1 + 28 * 3 + 1 * 4 : 1 + 28 * 3 + 2 * 4]).rotation_matrix[:,:2]
+            hand_gpos = mat_data[frame, 1 + 1 * 3 : 1 + 2 * 3] - cup_translation
+            hand_z = np.concatenate([hand_jrot, hand_grot.reshape([6]), hand_gpos])
+            all_zs.append(hand_z)
         for start_end in annotation:
             start, end = [int(x) for x in start_end.split(':')]
             for frame in range(start, end):
@@ -81,12 +90,14 @@ for i in cup_id_list:
 
 cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
 obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
+all_zs = np.array(all_zs)
 
-zs = np.vstack(obs_zs.values())
-stddev = np.std(zs, axis=0, keepdims=True)
-mean = np.mean(zs, axis=0, keepdims=True)
-z_min = np.min(zs, axis=0, keepdims=True)
-z_max = np.max(zs, axis=0, keepdims=True)
+stddev = np.std(all_zs, axis=0, keepdims=True)
+mean = np.mean(all_zs, axis=0, keepdims=True)
+z_min = np.min(all_zs, axis=0, keepdims=True)
+z_max = np.max(all_zs, axis=0, keepdims=True)
+
+print('Z-std', stddev)
 
 minimum_data_length = min(len(cup_rs[cup_id]) for cup_id in cup_id_list)
 data_idxs = {cup_id: np.arange(len(cup_rs[cup_id])) for cup_id in cup_id_list}
@@ -158,7 +169,7 @@ for epoch in range(flags.epochs):
         update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
+            syn_z, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zewpg[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
             # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
             assert not np.any(np.isnan(syn_w)) 
@@ -209,7 +220,8 @@ for epoch in range(flags.epochs):
                 model.summ_obs_w: obs_ewp[1][-1,:,0],
                 model.summ_syn_w: syn_ewp[1][-1,:,0],
                 model.summ_syn_e_im: syn_e_im,
-                model.summ_syn_p_im: syn_p_im
+                model.summ_syn_p_im: syn_p_im,
+                model.summ_g_avg : g_avg
             })
         else:
             summ = sess.run(model.scalar_summ, feed_dict={
@@ -221,7 +233,8 @@ for epoch in range(flags.epochs):
                 model.summ_syn_p: syn_ewp[2], 
                 model.summ_descriptor_loss: loss,
                 model.summ_obs_w: obs_ewp[1][-1,:,0],
-                model.summ_syn_w: syn_ewp[1][-1,:,0]
+                model.summ_syn_w: syn_ewp[1][-1,:,0],
+                model.summ_g_avg : g_avg
             })
 
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
