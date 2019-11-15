@@ -60,3 +60,5 @@
 [2019-11-08 14:56:58.128538] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug10
 [2019-11-13 13:34:43.467601] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug11
 [2019-11-13 13:47:03.328864] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug12
+[2019-11-14 15:55:20.231796] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-4 --debug --name debug13
+[2019-11-14 15:56:33.104543] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-3 --debug --name debug14

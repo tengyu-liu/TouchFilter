@@ -139,7 +139,7 @@ for epoch in range(flags.epochs):
         obs_z = obs_zs[cup_id][idxs]
         syn_z = np.zeros(obs_z.shape)
         syn_z[:,:22] = 0
-        syn_z[:,-9:] = [1, 0, 0, 1, 0, 0, 0, 0.3, 0.3]
+        syn_z[:,-9:-3] = obs_z[:,-9:-3]
 
         syn_z_seq = [syn_z]
         syn_e_seq = []
@@ -149,7 +149,7 @@ for epoch in range(flags.epochs):
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         update_mask = np.ones(syn_z.shape)
-        # update_mask[-9:-3] = 1.0
+        update_mask[-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
 
