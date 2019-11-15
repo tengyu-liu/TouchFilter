@@ -15,7 +15,9 @@ from pyquaternion.quaternion import Quaternion as Q
 
 from config import flags
 from model import Model
-from utils.vis_util import VisUtil
+
+if flags.tb_render:
+    from utils.vis_util import VisUtil
 
 
 print('name', flags.name)
@@ -32,6 +34,7 @@ print('debug', flags.debug)
 print('d_lr', flags.d_lr)
 print('beta1', flags.beta1)
 print('beta2', flags.beta2)
+print('tb_render', flags.tb_render)
 
 f = open('history.txt', 'a')
 f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
@@ -40,7 +43,7 @@ f.close()
 project_root = os.path.join(os.path.dirname(__file__), '..')
 
 # load vis_util
-vu = VisUtil()
+# vu = VisUtil()
 
 # load obj
 cup_id_list = [1,2,3,5,6,7,8]
@@ -195,7 +198,7 @@ for epoch in range(flags.epochs):
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
-        if (not flags.debug and batch_id % 20 == 0) or (flags.debug and epoch % 10 == 9):
+        if flags.tb_render and ((not flags.debug and batch_id % 20 == 0) or (flags.debug and epoch % 10 == 9)):
             obs_im = vu.visualize(cup_id, cup_r, obs_z)
             syn_im = vu.visualize(cup_id, cup_r, syn_z)
             syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
