@@ -15,9 +15,8 @@ from forward_kinematics import ForwardKinematic
 import matplotlib.pyplot as plt
 from pyquaternion.quaternion import Quaternion as Q
 
-name = sys.argv[1]
-epoch = int(sys.argv[2])
-batch = int(sys.argv[3])
+epoch = int(sys.argv[1])
+batch = int(sys.argv[2])
 
 mlab.options.offscreen = True
 
@@ -108,78 +107,94 @@ def visualize_hand(fig, weights, rows, i):
             raise
             continue
 
-data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
+for name in os.listdir(os.path.join(os.path.dirname(__file__), '../figs')):
+    data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
 
-cup_id = data['cup_id']
-cup_r = np.array(data['cup_r'])
-obs_z = np.array(data['obs_z'])
-obs_e = data['obs_e']
-obs_w = np.array(data['obs_w'])
-syn_e = np.array(data['syn_e'])
-syn_z = np.array(data['syn_z'])
-syn_w = np.array(data['syn_w'])
+    cup_id = data['cup_id']
+    cup_r = np.array(data['cup_r'])
+    obs_z = np.array(data['obs_z'])
+    obs_e = data['obs_e']
+    obs_w = np.array(data['obs_w'])
+    syn_e = np.array(data['syn_e'])
+    syn_z = np.array(data['syn_z'])
+    syn_w = np.array(data['syn_w'])
 
-print('cup_r', cup_r.shape)
-print('obs_z', obs_z.shape)
-print('obs_w', obs_w.shape)
-print('syn_e', syn_e.shape)
-print('syn_z', syn_z.shape)
-print('syn_w', syn_w.shape)
+    print('cup_r', cup_r.shape)
+    print('obs_z', obs_z.shape)
+    print('obs_w', obs_w.shape)
+    print('syn_e', syn_e.shape)
+    print('syn_z', syn_z.shape)
+    print('syn_w', syn_w.shape)
 
-fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
-mlab.figure(size=(640,480))
+    fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
+    mlab.figure(size=(640,480))
 
-for i_batch in range(len(cup_r)):
-    mlab.clf()
-    visualize(cup_id, cup_r[i_batch], obs_z[i_batch])
-    mlab.savefig('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
-
-    for i_seq in range(len(syn_z)):
-        # Draw 3D grasping
+    for i_batch in range(len(cup_r)):
         mlab.clf()
-        visualize(cup_id, cup_r[i_batch], syn_z[i_seq][i_batch])
-        mlab.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 1))
-        # Draw feature selection map
-        fig.clf()
-        if len(obs_w) == 1:
-            visualize_hand(fig, obs_w[0], 2, 1)
-            visualize_hand(fig, syn_w[i_seq, 0], 2, 2)
-        else:
-            visualize_hand(fig, obs_w[i_batch], 2, 1)
-            visualize_hand(fig, syn_w[i_seq, i_batch], 2, 2)
-        ax = fig.add_subplot(221)
-        ax.set_title('obs back')
-        ax = fig.add_subplot(222)
-        ax.set_title('obs front')
-        ax = fig.add_subplot(223)
-        ax.set_title('syn back')
-        ax = fig.add_subplot(224)
-        ax.set_title('syn front')
+        visualize(cup_id, cup_r[i_batch], obs_z[i_batch])
+        mlab.savefig('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
 
-        fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 2))
-        # Merge two
-        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
-            name, epoch, batch, i_batch, i_seq, 1, 
-            name, epoch, batch, i_batch, i_seq, 2, 
-            name, epoch, batch, i_batch, i_seq, 3
-        ))
+        for i_seq in range(len(syn_z)):
+            # Draw 3D grasping
+            mlab.clf()
+            visualize(cup_id, cup_r[i_batch], syn_z[i_seq][i_batch])
+            mlab.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 1))
+            # Draw feature selection map
+            fig.clf()
+            if len(obs_w) == 1:
+                visualize_hand(fig, obs_w[0], 2, 1)
+                visualize_hand(fig, syn_w[i_seq, 0], 2, 2)
+            else:
+                visualize_hand(fig, obs_w[i_batch], 2, 1)
+                visualize_hand(fig, syn_w[i_seq, i_batch], 2, 2)
+            ax = fig.add_subplot(221)
+            ax.set_title('obs back')
+            ax = fig.add_subplot(222)
+            ax.set_title('obs front')
+            ax = fig.add_subplot(223)
+            ax.set_title('syn back')
+            ax = fig.add_subplot(224)
+            ax.set_title('syn front')
+            fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 2))
+            # Draw energy plot
+            fig.clf()
+            ax = fig.add_subplot(111)
+            ax.plot(syn_e[:i_seq])
+            ax.plot([obs_e for _ in range(i_seq)])
+            fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 3))
+            # Merge two
+            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+                name, epoch, batch, i_batch, i_seq, 1, 
+                name, epoch, batch, i_batch, i_seq, 2, 
+                name, epoch, batch, i_batch, i_seq, 4
+            ))
 
-        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
-            name, epoch, batch, i_batch, 
-            name, epoch, batch, i_batch, i_seq, 3,
-            name, epoch, batch, i_batch, i_seq
-        ))
+            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+                name, epoch, batch, i_batch, 
+                name, epoch, batch, i_batch, i_seq, 3, 
+                name, epoch, batch, i_batch, i_seq, 5
+            ))
 
-        os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
-        os.remove('../figs/%s-%04d-%d-%d-%d-2.png'%(name, epoch, batch, i_batch, i_seq))
-        os.remove('../figs/%s-%04d-%d-%d-%d-3.png'%(name, epoch, batch, i_batch, i_seq))
+            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex vstack ../figs/%s-%04d-%d-%d-%d.png'%(
+                name, epoch, batch, i_batch, i_seq, 4,
+                name, epoch, batch, i_batch, i_seq, 5,
+                name, epoch, batch, i_batch, i_seq
+            ))
 
-    print("#### Generate palette ####")
-    os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
-    print("#### Generate GIF ####")
-    os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-    print("#### Remove palette ####")
-    os.remove('palette.png')
+            os.remove('../figs/%s-%04d-%d-%d-%d-1.png'%(name, epoch, batch, i_batch, i_seq))
+            os.remove('../figs/%s-%04d-%d-%d-%d-2.png'%(name, epoch, batch, i_batch, i_seq))
+            os.remove('../figs/%s-%04d-%d-%d-%d-3.png'%(name, epoch, batch, i_batch, i_seq))
+            os.remove('../figs/%s-%04d-%d-%d-%d-4.png'%(name, epoch, batch, i_batch, i_seq))
+            os.remove('../figs/%s-%04d-%d-%d-%d-5.png'%(name, epoch, batch, i_batch, i_seq))
 
-    for i_seq in range(len(syn_z)):
-        os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+        print("#### Generate palette ####")
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
+        print("#### Generate GIF ####")
+        print('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+        print("#### Remove palette ####")
+        os.remove('palette.png')
+
+        os.remove('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
+        for i_seq in range(len(syn_z)):
+            os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
