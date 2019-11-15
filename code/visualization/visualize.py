@@ -21,11 +21,6 @@ batch = int(sys.argv[3])
 
 mlab.options.offscreen = True
 
-pca = pickle.load(open('../pca/pkl44/pca_2.pkl', 'rb'))
-pca_components = pca.components_
-pca_mean = pca.mean_
-pca_var = pca.explained_variance_
-
 parts = ['palm', 
             'thumb0', 'thumb1', 'thumb2', 'thumb3',
             'index0', 'index1', 'index2', 'index3',
@@ -57,12 +52,10 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
         mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 0, 1))
 
     z_ = hand_z
-    # z_ = np.concatenate([np.matmul(hand_z[...,:-9], np.expand_dims(np.sqrt(pca_var), axis=-1) * pca_components) + pca_mean, hand_z[...,-9:]], axis=-1)
-    jrot = np.reshape(z_[:44], [22, 2])
-    grot = np.reshape(z_[44:50], [3, 2])
-    gpos = z_[50:]
+    jrot = z_[:22]
+    grot = np.reshape(z_[22:28], [3, 2])
+    gpos = z_[28:]
 
-    jrot = np.arcsin((jrot / np.linalg.norm(jrot, axis=-1, keepdims=True))[:,0])
     grot = mt.quaternion_from_matrix(rotation_matrix(grot))
 
     qpos = np.concatenate([gpos, grot, jrot])
@@ -85,7 +78,7 @@ def visualize_hand(fig, weights, rows, i):
     xpos, xquat = ForwardKinematic(np.zeros([53]))
 
     obj_base = '../../data'
-    stl_dict = {obj: np.load(os.path.join(obj_base, '%s.surface_sample.npy'%obj)) for obj in parts}
+    stl_dict = {obj: np.load(os.path.join(obj_base, '%s.sample_points.npy'%obj)) for obj in parts}
 
     start = 0
     end = 0
@@ -133,6 +126,8 @@ print('syn_e', syn_e.shape)
 print('syn_z', syn_z.shape)
 print('syn_w', syn_w.shape)
 
+exit()
+
 fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
 mlab.figure(size=(640,480))
 
@@ -165,13 +160,13 @@ for i_batch in range(len(cup_r)):
 
         fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 2))
         # Merge two
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
             name, epoch, batch, i_batch, i_seq, 1, 
             name, epoch, batch, i_batch, i_seq, 2, 
             name, epoch, batch, i_batch, i_seq, 3
         ))
 
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
+        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d.png'%(
             name, epoch, batch, i_batch, 
             name, epoch, batch, i_batch, i_seq, 3,
             name, epoch, batch, i_batch, i_seq
@@ -182,9 +177,9 @@ for i_batch in range(len(cup_r)):
         os.remove('../figs/%s-%04d-%d-%d-%d-3.png'%(name, epoch, batch, i_batch, i_seq))
 
     print("#### Generate palette ####")
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
+    os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
     print("#### Generate GIF ####")
-    os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+    os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
     print("#### Remove palette ####")
     os.remove('palette.png')
 

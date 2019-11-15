@@ -91,3 +91,7 @@
 [2019-11-15 00:57:23.717212] python train.py --batch_size 4 --langevin_steps 10 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-2 --debug --name debug18
 [2019-11-15 01:00:11.219294] python train.py --batch_size 4 --langevin_steps 10 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-2 --debug --name debug19
 [2019-11-15 01:02:29.551364] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-2 --debug --name debug20
+[2019-11-15 01:15:51.069878] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.05 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-3 --name debug20
+[2019-11-15 01:16:34.517186] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.05 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-3 --name langevin=0.05x20,clip_norm,adaptive_langevin,lr=1e-3,batchsize=8
+[2019-11-15 09:59:31.251846] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.05 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-3 --name langevin=0.05x20,clip_norm,adaptive_langevin,lr=1e-3,batchsize=8
+[2019-11-15 10:06:28.457229] python train.py --batch_size 8 --langevin_steps 20 --step_size 0.05 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-3 --name langevin=0.05x20,clip_norm,adaptive_langevin,lr=1e-3,batchsize=8

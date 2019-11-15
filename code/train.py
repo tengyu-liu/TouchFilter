@@ -155,7 +155,7 @@ for epoch in range(flags.epochs):
         # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
 
         update_mask = np.ones(syn_z.shape)
-        update_mask[-9:-3] = 0.0    # We disallow grot update
+        update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
             syn_z, syn_e, syn_w, syn_p = sess.run(model.syn_zewp[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
@@ -166,10 +166,10 @@ for epoch in range(flags.epochs):
             assert not np.any(np.isnan(syn_z)) 
             assert not np.any(np.isinf(syn_z)) 
 
-            syn_z_seq.append(syn_z)
-            syn_e_seq.append(syn_e)
-            syn_w_seq.append(syn_w)
-            syn_p_seq.append(syn_p)
+            syn_z_seq.append(copy.deepcopy(syn_z))
+            syn_e_seq.append(copy.deepcopy(syn_e))
+            syn_w_seq.append(copy.deepcopy(syn_w))
+            syn_p_seq.append(copy.deepcopy(syn_p))
             # if langevin_step % 100 == 99:
             #     syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             #         model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
@@ -178,9 +178,9 @@ for epoch in range(flags.epochs):
         syn_ewp, obs_ewp, loss, _ = sess.run([model.inp_ewp[cup_id], model.obs_ewp[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
             model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
         })
-        syn_e_seq.append(syn_ewp[0])
-        syn_w_seq.append(syn_ewp[1])
-        syn_p_seq.append(syn_ewp[2])
+        syn_e_seq.append(copy.deepcopy(syn_ewp[0]))
+        syn_w_seq.append(copy.deepcopy(syn_ewp[1]))
+        syn_p_seq.append(copy.deepcopy(syn_ewp[2]))
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
