@@ -15,8 +15,9 @@ from forward_kinematics import ForwardKinematic
 import matplotlib.pyplot as plt
 from pyquaternion.quaternion import Quaternion as Q
 
-epoch = int(sys.argv[1])
-batch = int(sys.argv[2])
+name = sys.argv[1]
+epoch = int(sys.argv[2])
+batch = int(sys.argv[3])
 
 mlab.options.offscreen = True
 
@@ -107,7 +108,8 @@ def visualize_hand(fig, weights, rows, i):
             raise
             continue
 
-for name in os.listdir(os.path.join(os.path.dirname(__file__), '../figs')):
+_batch = batch
+for batch in range(_batch, _batch + 7):
     data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
 
     cup_id = data['cup_id']
@@ -163,19 +165,19 @@ for name in os.listdir(os.path.join(os.path.dirname(__file__), '../figs')):
             ax.plot([obs_e for _ in range(i_seq)])
             fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 3))
             # Merge two
-            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+            os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
                 name, epoch, batch, i_batch, i_seq, 1, 
                 name, epoch, batch, i_batch, i_seq, 2, 
                 name, epoch, batch, i_batch, i_seq, 4
             ))
 
-            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+            os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
                 name, epoch, batch, i_batch, 
                 name, epoch, batch, i_batch, i_seq, 3, 
                 name, epoch, batch, i_batch, i_seq, 5
             ))
 
-            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex vstack ../figs/%s-%04d-%d-%d-%d.png'%(
+            os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex vstack ../figs/%s-%04d-%d-%d-%d.png'%(
                 name, epoch, batch, i_batch, i_seq, 4,
                 name, epoch, batch, i_batch, i_seq, 5,
                 name, epoch, batch, i_batch, i_seq
@@ -188,13 +190,13 @@ for name in os.listdir(os.path.join(os.path.dirname(__file__), '../figs')):
             os.remove('../figs/%s-%04d-%d-%d-%d-5.png'%(name, epoch, batch, i_batch, i_seq))
 
         print("#### Generate palette ####")
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
+        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
         print("#### Generate GIF ####")
         print('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
         print("#### Remove palette ####")
         os.remove('palette.png')
 
         os.remove('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
-        for i_seq in range(len(syn_z)):
+        for i_seq in range(len(syn_z) - 1):
             os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
