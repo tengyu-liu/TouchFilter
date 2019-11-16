@@ -26,14 +26,11 @@ saver = tf.train.Saver()
 
 step = 0
 
-batch_num = int(len(xs) / config.batch_size)
-
 for epoch in range(config.epochs):
 
-    idx = np.random.permutation(xs.shape[0])
     losses = []
 
-    for batch_id in range(batch_num):
+    for batch_id in range(2000):
         batch_x = np.random.random([config.batch_size, 3]) * 0.6 - 0.3
         batch_y = tm.proximity.signed_distance(cup, batch_x)
 
