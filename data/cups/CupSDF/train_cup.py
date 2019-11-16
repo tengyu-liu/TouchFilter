@@ -32,7 +32,7 @@ for epoch in range(config.epochs):
 
     for batch_id in range(2000):
         batch_x = np.random.random([config.batch_size, 3]) * 0.6 - 0.3
-        batch_y = tm.proximity.signed_distance(cup, batch_x)
+        batch_y = tm.proximity.signed_distance(cup, batch_x)[:,0]
 
         loss, error, _, w_grad, summ = sess.run([
             model.loss, 
