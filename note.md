@@ -1,14 +1,24 @@
+# Progress: 
+with_noise,0.1x90 works very well
 
-# TODO: 
-1. Setup 1-dim joint angles and joint-angle-priors. This will also solve p1 since hopefully the network will learn that points on the inner surface of a curvy shape are contact points     [check]
-2. Add another option as repulsive points (maybe substitute the non-contact points), and possibly make it parameterized, such that the parameter controls in what radius are they repulsive
-3. Add part ids + which side it is as additional features for each point.   [check]
-4. Multi-grid optimization: first do global parameters, then local ones     [check]
+## Parameters:
+* batch_size            8
+* name                  with_noise,0.1x90
+* restore_epoch         3  
+* restore_batch         3500
+* epochs                100
+* langevin_steps        90
+* step_size             0.1
+* situation_invariant   False
+* adaptive_langevin     True
+* clip_norm_langevin    True
+* two_stage_optim       -1
+* debug                 False
+* d_lr                  1e-3
+* beta1                 0.99
+* beta2                 0.999
+* tb_render             True
 
-# Problems:
-1. PointNet has no knowledge of point sequencing, which means there is no point-prior on which ones tend to be contact points
-2. Joint angles don't need to have 360 deg freedom, therefore don't need 2-dim representation. 1-dim is good enough. This will make hand-prior trivial
-
-TODO: 
-0. Visualize latest result from with_noise,0.1x90
-1. Run with_noise,0.1x90 without noise, see how it performs
+# Next step
+* hand-z prior as a weighted sum of joint angles
+* Transfer across different hand shapes - is it possible?
