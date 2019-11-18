@@ -92,9 +92,15 @@ class Model:
         def langevin_dynamics(z, r):
             energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id], self.syn_penetration_penalty, reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(energy, z)[0]
-            gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
-            g_avg = 0
-            if self.adaptive_langevin:
+            gz_abs = tf.reduce_mean(tfcup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
+obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
+.abs(grad_z), axis=0)
+            g_avg = 0cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
+obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
+
+            if self.adaptive_langevin:cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
+obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
+
                 apply_op = self.EMA.apply([gz_abs])
                 with tf.control_dependencies([apply_op]):
                     g_avg = self.EMA.average(gz_abs) + 1e-9

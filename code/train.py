@@ -18,6 +18,8 @@ from model import Model
 
 if flags.tb_render:
     from utils.vis_util import VisUtil
+    # load vis_util
+    vu = VisUtil()
 
 
 print('name', flags.name)
@@ -41,9 +43,6 @@ f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
 f.close()
 
 project_root = os.path.join(os.path.dirname(__file__), '..')
-
-# load vis_util
-# vu = VisUtil()
 
 # load obj
 cup_id_list = [1,2,3,5,6,7,8]
@@ -146,7 +145,7 @@ for epoch in range(flags.epochs):
         np.random.shuffle(shuffled_idxs[cup_id])
     
     for batch_id in range(batch_num):
-        if batch_id <= flags.restore_batch:
+        if epoch == flags.restore_epoch and batch_id <= flags.restore_batch:
             continue
         
         t0 = time.time()

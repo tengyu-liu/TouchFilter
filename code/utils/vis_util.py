@@ -14,8 +14,8 @@ from .forward_kinematics import ForwardKinematic
 
 
 class VisUtil:
-    def __init__(self, size=[640, 480]):
-        mlab.options.offscreen = True
+    def __init__(self, size=[640, 480], offscreen=True):
+        mlab.options.offscreen = offscreen
 
         self.parts = ['palm', 
                     'thumb0', 'thumb1', 'thumb2', 'thumb3',
@@ -137,7 +137,8 @@ class VisUtil:
                     mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
                 except:
                     continue
-            imgs.append(mlab.screenshot())
+            img = mlab.screenshot()
+            imgs.append(img)
 
         return np.array((imgs))
 
