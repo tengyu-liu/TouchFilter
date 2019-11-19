@@ -1,6 +1,6 @@
 *ckpt*
 *.pyc
 figs*
-logs
 models
 *.png
+events*

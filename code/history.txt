@@ -103,3 +103,4 @@
 [2019-11-17 12:03:41.654615] python train.py --batch_size 8 --name with_noise,0.1x90 --restore_epoch 3 --restore_batch 3506 --step_size 0.1 --langevin_steps 90 --adaptive_langevin --clip_norm_langevin
 [2019-11-17 12:04:19.345607] python train.py --batch_size 8 --restore_epoch 3 --restore_batch 3506 --step_size 0.1 --langevin_steps 90 --adaptive_langevin --clip_norm_langevin --tb_render
 [2019-11-18 17:54:01.717978] python train.py --batch_size 8 --adaptive_langevin --clip_norm_langevin --tb_render
+[2019-11-19 14:14:03.928127] python train.py --batch_size 8 --adaptive_langevin --clip_norm_langevin --tb_render --restore_epoch 1 --restore_batch 3500 --random_scale 0.1 --restore_name redo_experiment,noise_level=0.1std
