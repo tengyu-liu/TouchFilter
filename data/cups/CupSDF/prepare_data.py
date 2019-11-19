@@ -3,7 +3,7 @@ import os
 import trimesh as tm
 import numpy as np
 
-for cup_id in range(1,11):
+for cup_id in range(9,11):
     cup = tm.load(os.path.join(os.path.dirname(__file__), '../onepiece/%d.obj'%cup_id))
     
     pts = np.random.random((10000, 3)) * 0.2 - 0.1
