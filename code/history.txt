@@ -102,3 +102,4 @@
 [2019-11-15 22:39:11.757239] python train.py --batch_size 8 --langevin_steps 40 --step_size 0.1 --adaptive_langevin --clip_norm_langevin --two_stage_optim -1 --d_lr 1e-3 --name langevin=0.1x40,clip_norm,adaptive_langevin,lr=1e-3,batchsize=8,no_random
 [2019-11-17 12:03:41.654615] python train.py --batch_size 8 --name with_noise,0.1x90 --restore_epoch 3 --restore_batch 3506 --step_size 0.1 --langevin_steps 90 --adaptive_langevin --clip_norm_langevin
 [2019-11-17 12:04:19.345607] python train.py --batch_size 8 --restore_epoch 3 --restore_batch 3506 --step_size 0.1 --langevin_steps 90 --adaptive_langevin --clip_norm_langevin --tb_render
+[2019-11-18 17:54:01.717978] python train.py --batch_size 8 --adaptive_langevin --clip_norm_langevin --tb_render

@@ -57,7 +57,7 @@ for epoch in range(config.epochs):
 
         losses.append(loss)
         errors.append(error)
-        print('\r%d: %d/%d Loss: %f, Error: %f, WGrad: %f'%(epoch, batch_id, 2000, loss, error, np.mean(np.square(w_grad))), end='', flush=True)
+        print('\r%d: %d/%d Loss: %f, Error: %f, WGrad: %f'%(epoch, batch_id, train_batch_num, loss, error, np.mean(np.square(w_grad))), end='', flush=True)
         train_writer.add_summary(summ, global_step=step)
         step += 1
 

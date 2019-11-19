@@ -1,3 +1,4 @@
+import shutil
 import sys
 import datetime
 import copy
@@ -126,6 +127,10 @@ os.makedirs(os.path.join(os.path.dirname(__file__), 'figs', flags.name), exist_o
 log_dir = os.path.join(os.path.dirname(__file__), 'logs', flags.name)
 model_dir = os.path.join(os.path.dirname(__file__), 'models', flags.name)
 fig_dir = os.path.join(os.path.dirname(__file__), 'figs', flags.name)
+
+shutil.copy('train.py', os.path.join(log_dir, 'train.py'))
+shutil.copy('model.py', os.path.join(log_dir, 'model.py'))
+shutil.copy('config.py', os.path.join(log_dir, 'config.py'))
 
 # logger and saver
 train_writer = tf.summary.FileWriter(log_dir, sess.graph)

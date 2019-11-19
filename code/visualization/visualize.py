@@ -165,19 +165,19 @@ for batch in range(_batch, _batch + 7):
             ax.plot([obs_e for _ in range(i_seq)])
             fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 3))
             # Merge two
-            os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
                 name, epoch, batch, i_batch, i_seq, 1, 
                 name, epoch, batch, i_batch, i_seq, 2, 
                 name, epoch, batch, i_batch, i_seq, 4
             ))
 
-            os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
+            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
                 name, epoch, batch, i_batch, 
                 name, epoch, batch, i_batch, i_seq, 3, 
                 name, epoch, batch, i_batch, i_seq, 5
             ))
 
-            os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex vstack ../figs/%s-%04d-%d-%d-%d.png'%(
+            os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex vstack ../figs/%s-%04d-%d-%d-%d.png'%(
                 name, epoch, batch, i_batch, i_seq, 4,
                 name, epoch, batch, i_batch, i_seq, 5,
                 name, epoch, batch, i_batch, i_seq
@@ -190,10 +190,10 @@ for batch in range(_batch, _batch + 7):
             os.remove('../figs/%s-%04d-%d-%d-%d-5.png'%(name, epoch, batch, i_batch, i_seq))
 
         print("#### Generate palette ####")
-        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
         print("#### Generate GIF ####")
         print('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-        os.system('ffmpeg4 -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+        os.system('ffmpeg -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
         print("#### Remove palette ####")
         os.remove('palette.png')
 
