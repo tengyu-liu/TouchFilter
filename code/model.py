@@ -3,7 +3,6 @@ import pickle
 
 import numpy as np
 import tensorflow as tf
-from sklearn.decomposition import PCA
 
 from utils.CupModel import CupModel
 from utils.HandModel import HandModel
