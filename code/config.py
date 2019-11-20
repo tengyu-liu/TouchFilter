@@ -18,6 +18,6 @@ tf.flags.DEFINE_float('beta1', 0.99, '')
 tf.flags.DEFINE_float('beta2', 0.999, '')
 tf.flags.DEFINE_boolean('tb_render', False, '')
 tf.flags.DEFINE_float('random_scale', 0.3, '')
-tf.flags.DEFINE_float('prior_weight', 10)
+tf.flags.DEFINE_float('prior_weight', 10, '')
 
 flags = tf.flags.FLAGS
