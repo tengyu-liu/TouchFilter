@@ -25,7 +25,6 @@ class Model:
         self.batch_size = config.batch_size
         self.langevin_steps = config.langevin_steps
         self.step_size = config.step_size
-        self.prior_weight = config.prior_weight
         self.d_lr = config.d_lr
         self.beta1 = config.beta1
         self.beta2 = config.beta2
@@ -66,7 +65,7 @@ class Model:
         self.inp_ewp = {i: self.descriptor(self.inp_z, self.cup_r, self.cup_models[i], self.syn_penetration_penalty, reuse=True) for i in self.cup_list}
         self.syn_zewpg = {i: self.langevin_dynamics[i](self.inp_z, self.cup_r) for i in self.cup_list}
 
-        self.descriptor_loss = {i : (self.obs_ewp[i][0] + self.obs_ewp[i][2] * self.prior_weight) - (self.inp_ewp[i][0] + self.inp_ewp[i][2] * self.prior_weight) for i in self.cup_list}
+        self.descriptor_loss = {i : self.obs_ewp[i][0] - self.inp_ewp[i][0] for i in self.cup_list}
         pass
     
     def hand_prior(self, weight, surface_normals):
@@ -113,7 +112,7 @@ class Model:
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, r):
             energy, weight, hand_prior = self.descriptor(z,r,self.cup_models[cup_id], self.syn_penetration_penalty, reuse=True) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            grad_z = tf.gradients(energy + hand_prior * self.prior_weight, z)[0]
+            grad_z = tf.gradients(energy, z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             g_avg = 0
             if self.adaptive_langevin:
