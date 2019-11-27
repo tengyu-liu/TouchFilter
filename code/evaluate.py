@@ -140,41 +140,115 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
 
 count = 0
 
-plt.ion()
+# plt.ion()
 
-while True:
-    # Initial condition
-    cup_id = random.choice([5,7,8])
-    # item_id = random.choice(list(range(len(cup_rs[cup_id]))))
-    # cup_r = np.expand_dims(cup_rs[cup_id][item_id], axis=0)
+# while True:
+#     # Initial condition
+#     cup_id = random.choice([5,7,8])
+#     # item_id = random.choice(list(range(len(cup_rs[cup_id]))))
+#     # cup_r = np.expand_dims(cup_rs[cup_id][item_id], axis=0)
 
-    # hand_z = np.zeros([1, 31])
-    # hand_z[0,-9:] = obs_zs[cup_id][item_id][-9:]
-    # hand_z[0,-3:] += np.random.normal(scale=0.03, size=[3])
+#     # hand_z = np.zeros([1, 31])
+#     # hand_z[0,-9:] = obs_zs[cup_id][item_id][-9:]
+#     # hand_z[0,-3:] += np.random.normal(scale=0.03, size=[3])
 
-    cup_r = np.expand_dims(Q.random().rotation_matrix, axis=0)
-    hand_z = np.zeros([1,31])
-    hand_z[0,-9:-3] = Q.random().rotation_matrix[:,:2].reshape([6])
-    hand_z[0,-3:] = np.random.normal(scale=0.1, size=[3])
+#     cup_r = np.expand_dims(Q.random().rotation_matrix, axis=0)
+#     hand_z = np.zeros([1,31])
+#     hand_z[0,-9:-3] = Q.random().rotation_matrix[:,:2].reshape([6])
+#     hand_z[0,-3:] = np.random.normal(scale=0.1, size=[3])
 
-    update_mask = np.ones(hand_z.shape)
-    update_mask[:,-9:-3] = 0.0    # We disallow grot update
+#     update_mask = np.ones(hand_z.shape)
+#     update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
-    print('cup_id: ', cup_id)
-    print('cup_r: ', cup_r)
-    print('hand_z: ', hand_z)
+#     print('cup_id: ', cup_id)
+#     print('cup_r: ', cup_r)
+#     print('hand_z: ', hand_z)
 
-    syn_zs = []
+#     syn_zs = []
 
-    for langevin_step in range(flags.langevin_steps):
-        hand_z, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zewpg[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: hand_z, model.update_mask: update_mask})
-        hand_z[:,:22] = np.clip(hand_z[:,:22], z_min[:,:22], z_max[:,:22])
-        syn_zs.append(hand_z)
+#     for langevin_step in range(flags.langevin_steps):
+#         hand_z, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zewpg[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: hand_z, model.update_mask: update_mask})
+#         hand_z[:,:22] = np.clip(hand_z[:,:22], z_min[:,:22], z_max[:,:22])
+#         syn_zs.append(hand_z)
 
-    img = vu.visualize(cup_id, cup_r, syn_zs[-1])[0]
-    plt.clf()
-    plt.axis('off')
-    plt.imshow(img)
-    plt.pause(1e-5)
+#     img = vu.visualize(cup_id, cup_r, syn_zs[-1])[0]
+#     plt.clf()
+#     plt.axis('off')
+#     plt.imshow(img)
+#     plt.pause(1e-5)
 
-    count = save_gif(syn_zs, count)
+#     count = save_gif(syn_zs, count)
+
+import pickle
+
+import numpy as np
+from scipy.interpolate import griddata
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+from mayavi import mlab
+
+embed = pickle.load(open('embed.pkl', 'rb'))
+items = pickle.load(open('landscape_items.pkl', 'rb'))['items']
+cup_id = pickle.load(open('landscape_items.pkl', 'rb'))['cup_id']
+cup_r = pickle.load(open('landscape_items.pkl', 'rb'))['cup_r']
+
+zs = np.concatenate([item[0] for item in items])
+es = np.concatenate([item[1] for item in items])
+
+N_grid = 1000j
+xs = embed[:,0]
+ys = embed[:,1]
+x_min, y_min = np.min(embed, axis=0)
+x_max, y_max = np.max(embed, axis=0)
+grid_x, grid_y = np.mgrid[x_min:x_max:N_grid, y_min:y_max:N_grid]
+
+# e_mins = np.zeros([200, 200])
+# for i in range(200):
+#     for j in range(200):
+#         _es = es[np.logical_and(xs >= grid_x[i, j], np.logical_and(xs <=grid_x[i+1, j+1], np.logical_and(ys >= grid_y[i, j], ys <=grid_y[i+1, j+1] )))]
+#         if len(_es) == 0:
+#             e_mins[i,j] = np.nan
+#         else:
+#             e_mins[i,j] = np.mean(_es)
+
+grid_z2 = griddata(embed, np.log(es), (grid_x, grid_y), method='linear')
+
+# for i in range(10):
+i = np.random.randint(0, 10001)
+# mlab.clf()
+# mlab.surf(grid_x, grid_y, grid_z2)
+# mlab.axes(x_axis_visibility=True, y_axis_visibility=True, z_axis_visibility=True, zlabel="log(E)")
+# mlab.points3d(embed[i * 90 + 89, 0], embed[i * 90 + 89, 1], np.log(es[i * 90 + 89]), color=(1., 0., 0.), scale_factor=0.1)
+# mlab.plot3d(embed[i * 90 : (i+1) * 90, 0], embed[i * 90 : (i+1) * 90, 1], np.log(es[i * 90 : (i + 1) * 90]), color=(1.0, 1.0, 1.0))
+
+# ax = plt.subplot(111, projection='3d')
+# _ = ax.plot_surface(grid_x, grid_y, grid_z2, cmap=cm.coolwarm)
+# plt.colorbar(_, shrink=0.5, aspect=5)
+# plt.show()
+
+def transform_x(x):
+    # return x
+    return (x - x_min) / (x_max - x_min) * np.sqrt(-N_grid * N_grid) + x_min
+
+def transform_y(y):
+    # return y
+    return (y - y_min) / (y_max - y_min) * np.sqrt(-N_grid * N_grid) + y_min
+
+fig = plt.Figure(figsize=(6.40, 4.80), dpi=100)
+ax = fig.add_subplot(111)
+im = ax.imshow(grid_z2)
+ax.plot(transform_x(embed[i * 90 : (i+1) * 90, 0]), transform_y(embed[i * 90 : (i+1) * 90, 1]), c='black', linewidth=0.5)
+ax.scatter(transform_x(embed[i * 90 + 89, 0]), transform_y(embed[i * 90 + 89, 1]), c='red', s=2)
+ax.axis('off')
+fig.colorbar(im)
+plt.savefig('energy_landscape.png')
+
+plt.clf()
+
+# Save hand pose, filter activation, signed distances, and grasping figures
+vu = VisUtil(offscreen=True)
+for j in range(9):
+    idx = i * 90 + j * 10 + 9
+    hand_z = zs[idx,:]
+    ;

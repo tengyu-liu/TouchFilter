@@ -4,3 +4,4 @@ figs*
 models
 *.png
 events*
+landscape_items.pkl
