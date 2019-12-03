@@ -5,3 +5,4 @@ models
 *.png
 events*
 landscape_items.pkl
+landscape_items*
