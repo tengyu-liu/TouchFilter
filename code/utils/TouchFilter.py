@@ -43,4 +43,4 @@ class TouchFilter:
         weight = tf.reshape(tf.nn.softmax(tf.reshape(weight, [-1, 2])), weight.shape)
         energies = weight * features # B x N x 2 
 
-        return tf.reduce_mean(tf.reduce_sum(energies, axis=[1,2])), weight
+        return tf.reduce_sum(energies, axis=[1,2]), weight

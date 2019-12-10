@@ -142,6 +142,36 @@ class VisUtil:
 
         return np.array((imgs))
 
+    def visualize_filter_selection(self, hand_z, weight):
+        z_ = hand_z[i]
+        jrot = z_[:22]
+        grot = np.reshape(z_[22:28], [3, 2])
+        gpos = z_[28:]
+
+        grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
+
+        qpos = np.concatenate([gpos, grot, jrot])
+
+        xpos, xquat = ForwardKinematic(qpos)
+
+        for pid in range(4, 25):
+            p = copy.deepcopy(self.stl_dict[self.parts[pid - 4]])
+            try:
+                p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
+                p.apply_translation(xpos[pid,:])
+                mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
+            except:
+                continue
+
+    def get_xpos_xquat(self, z_):
+        jrot = z_[:22]
+        grot = np.reshape(z_[22:28], [3, 2])
+        gpos = z_[28:]
+        grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
+        qpos = np.concatenate([gpos, grot, jrot])
+        xpos, xquat = ForwardKinematic(qpos)
+        return xpos, xquat
+
 if __name__ == "__main__":
     vu = VisUtil()
     z = np.zeros([53])
