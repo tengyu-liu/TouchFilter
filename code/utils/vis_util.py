@@ -100,23 +100,22 @@ class VisUtil:
     def plot_e(self, syn_e, obs_e):
         self.fig.clf()
         ax = self.fig.gca()
-        ax.plot(obs_e - syn_e)
+        ax.plot(np.mean(obs_e - syn_e, axis=0))
         ax.set_yscale('symlog')
         self.canvas.draw()
         image = np.fromstring(self.canvas.tostring_rgb(), dtype='uint8')
         image = image.reshape([self.height, self.width, 3])
         return np.expand_dims(image, axis=0)
 
-    def visualize(self, cup_id, cup_r, hand_z):
+    def visualize(self, cup_id, hand_z):
         imgs = []
 
-        for i in range(len(cup_r)):
+        for i in range(len(hand_z)):
             if i == 3:
                 break
             mlab.clf()
             cup_model = self.cup_models[cup_id]
-            cvert = np.matmul(cup_r[i], cup_model.vertices.T).T
-            mlab.triangular_mesh(cvert[:,0], cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 1, 0))
+            mlab.triangular_mesh(cup_model.vertices[:,0], cup_model.vertices[:,1], cup_model.vertices[:,2], cup_model.faces, color=(0, 1, 0))
 
             xpos, xquat = self.get_xpos_xquat(hand_z[i])
 
@@ -133,7 +132,6 @@ class VisUtil:
 
         return np.array((imgs))
 
-<<<<<<< HEAD
     def visualize_filter_selection(self, hand_z, weight):
         z_ = hand_z[i]
         jrot = z_[:22]
@@ -159,12 +157,6 @@ class VisUtil:
         jrot = z_[:22]
         grot = np.reshape(z_[22:28], [3, 2])
         gpos = z_[28:]
-=======
-    def get_xpos_xquat(self, hand_z):
-        jrot = hand_z[:22]
-        grot = np.reshape(hand_z[22:28], [3, 2])
-        gpos = hand_z[28:]
->>>>>>> 022f0c26aef2bf693030366db9bec02abb98854a
         grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
         qpos = np.concatenate([gpos, grot, jrot])
         xpos, xquat = ForwardKinematic(qpos)

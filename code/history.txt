@@ -104,3 +104,38 @@
 [2019-11-17 12:04:19.345607] python train.py --batch_size 8 --restore_epoch 3 --restore_batch 3506 --step_size 0.1 --langevin_steps 90 --adaptive_langevin --clip_norm_langevin --tb_render
 [2019-11-18 17:54:01.717978] python train.py --batch_size 8 --adaptive_langevin --clip_norm_langevin --tb_render
 [2019-11-19 14:14:03.928127] python train.py --batch_size 8 --adaptive_langevin --clip_norm_langevin --tb_render --restore_epoch 1 --restore_batch 3500 --random_scale 0.1 --restore_name redo_experiment,noise_level=0.1std
+[2019-12-09 23:59:27.497039] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:00:40.462844] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:01:54.541202] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:08:45.685998] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:09:16.402986] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:10:07.800346] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:23:16.406924] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:23:45.582247] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:26:49.682552] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:28:31.752303] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:30:01.215099] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:31:43.749780] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:32:21.068389] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:33:59.467166] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:35:39.231066] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:37:34.038350] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:38:38.036093] python train.py --name trial --dynamic_z2 --batch_size 8 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:43:51.549386] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:45:30.207821] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:46:44.401607] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:50:56.058547] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:52:56.466706] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:53:04.969194] python train.py --name trial --dynamic_z2 --batch_size 3 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:54:58.591284] python train.py --name trial --dynamic_z2 --batch_size 3 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:56:12.241941] python train.py --name trial --dynamic_z2 --batch_size 3 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:58:09.990063] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 00:59:22.556072] python train.py --name trial --dynamic_z2 --batch_size 5 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:00:56.136003] python train.py --name trial --dynamic_z2 --batch_size 6 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:02:46.144913] python train.py --name trial --dynamic_z2 --batch_size 6 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:04:32.566677] python train.py --name trial --dynamic_z2 --batch_size 6 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:06:28.102367] python train.py --name trial --dynamic_z2 --batch_size 7 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:07:58.568535] python train.py --name trial --dynamic_z2 --batch_size 7 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:10:07.565996] python train.py --name trial --dynamic_z2 --batch_size 7 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:15:53.192760] python train.py --name trial --dynamic_z2 --batch_size 5 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 01:18:22.167034] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin

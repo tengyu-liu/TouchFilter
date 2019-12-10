@@ -15,15 +15,11 @@ class TouchFilter:
             pass
         pass
         
-    def __call__(self, pts, normals, feat, cup_model, cup_r, penetration_penalty):
+    def __call__(self, pts, normals, feat, z2, cup_model, penetration_penalty, is_training):
         # pts: B x N x 3
         if self.situation_invariant:
             weight = self.weight
         else:
-
-            pts = tf.transpose(tf.matmul(
-                    tf.transpose(cup_r, perm=[0,2,1]), 
-                    tf.transpose(pts, perm=[0,2,1])), perm=[0, 2, 1])
             dists, grads = cup_model.predict(tf.reshape(pts, [-1,3]))
             dists = tf.reshape(dists, [pts.shape[0], -1, 1])  # B x N x 1
             grads = tf.reshape(grads, [pts.shape[0], -1, 3])
@@ -38,7 +34,7 @@ class TouchFilter:
         f1 = tf.nn.relu(dists) * penetration_penalty
         features = tf.concat([f0, f1], axis=-1)  # B x N x 2
 
-        weight = pointnet_model(pts)[0]
+        weight = pointnet_model(pts, z2, is_training=is_training)[0]
         
         weight = tf.reshape(tf.nn.softmax(tf.reshape(weight, [-1, 2])), weight.shape)
         energies = weight * features # B x N x 2 
