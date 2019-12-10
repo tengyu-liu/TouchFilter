@@ -22,3 +22,9 @@ with_noise,0.1x90 works very well
 # Next step
 * hand-z prior as a weighted sum of joint angles
 * Transfer across different hand shapes - is it possible?
+
+# TODO (from Dr. Zhu):
+1. Visualize \phi and \psi: contact point coloring, distance to object, etc.
+2. Visualize energy landscape and show grasp types
+    * randomly sample points and collect energy
+    * plot with TSNE

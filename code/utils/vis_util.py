@@ -118,16 +118,7 @@ class VisUtil:
             cvert = np.matmul(cup_r[i], cup_model.vertices.T).T
             mlab.triangular_mesh(cvert[:,0], cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 1, 0))
 
-            z_ = hand_z[i]
-            jrot = z_[:22]
-            grot = np.reshape(z_[22:28], [3, 2])
-            gpos = z_[28:]
-
-            grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
-
-            qpos = np.concatenate([gpos, grot, jrot])
-
-            xpos, xquat = ForwardKinematic(qpos)
+            xpos, xquat = self.get_xpos_xquat(hand_z[i])
 
             for pid in range(4, 25):
                 p = copy.deepcopy(self.stl_dict[self.parts[pid - 4]])
@@ -142,6 +133,7 @@ class VisUtil:
 
         return np.array((imgs))
 
+<<<<<<< HEAD
     def visualize_filter_selection(self, hand_z, weight):
         z_ = hand_z[i]
         jrot = z_[:22]
@@ -167,6 +159,12 @@ class VisUtil:
         jrot = z_[:22]
         grot = np.reshape(z_[22:28], [3, 2])
         gpos = z_[28:]
+=======
+    def get_xpos_xquat(self, hand_z):
+        jrot = hand_z[:22]
+        grot = np.reshape(hand_z[22:28], [3, 2])
+        gpos = hand_z[28:]
+>>>>>>> 022f0c26aef2bf693030366db9bec02abb98854a
         grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
         qpos = np.concatenate([gpos, grot, jrot])
         xpos, xquat = ForwardKinematic(qpos)
