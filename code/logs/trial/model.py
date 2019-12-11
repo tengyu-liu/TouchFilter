@@ -74,7 +74,7 @@ class Model:
 
             self.descriptor_loss = {i : (tf.reduce_mean(self.obs_ewp[i][0]) + tf.reduce_mean(self.obs_ewp[i][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[i][0]) + tf.reduce_mean(self.inp_ewp[i][2]) * self.prior_weight) for i in self.cup_list}
     
-    def hand_prior(self, hand_z):
+    def hand_prior_nn(self, hand_z):
         h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
         h2 = fully_connected(h1, 64, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_2')
         prior = tf.reduce_min(h2, axis=-1, keepdims=True)
@@ -88,7 +88,7 @@ class Model:
         Intuition: Ideally the best grasp comes from when two contact points are facing 
                 each other, which makes the cosine of angle between surface normals -1.
         """
-        mean_prior = tf.constant(0, dtype=tf.float32)
+        mean_prior = [tf.constant(0, dtype=tf.float32) for i in range(self.batch_size)]
 
         def zero():
             return tf.constant(0, dtype=tf.float32)
@@ -102,8 +102,8 @@ class Model:
 
         for batch_i in range(self.batch_size):
             index = weight[batch_i,:,0] >= 0.5
-            mean_prior += tf.cond(tf.reduce_any(index), lambda : prior(surface_normals[batch_i], index), zero)
-        return mean_prior / tf.constant(self.batch_size, dtype=tf.float32)
+            mean_prior[batch_i] += tf.cond(tf.reduce_any(index), lambda : prior(surface_normals[batch_i], index), zero)
+        return tf.stack(mean_prior)
 
     def descriptor(self, hand_z, z2, cup_model, penetration_penalty):
         z_ = hand_z
@@ -117,7 +117,10 @@ class Model:
         # touch response
         energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, z2, cup_model, penetration_penalty, self.is_training)
         
-        hand_prior = self.hand_prior(hand_z)
+        if False:
+            hand_prior = self.hand_prior_nn(hand_z)
+        else:
+            hand_prior = self.hand_prior_physics(weight, surf_normals)
         return energy, weight, hand_prior
 
     def langevin_dynamics_fn(self, cup_id):
@@ -151,6 +154,9 @@ class Model:
         self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model')]
         self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
         des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
+        for (g,v) in des_grads_vars[3]:
+            if g is None:
+                print(v)
         des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in self.cup_list}
         self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in self.cup_list}
         self.obs_z2_update = {i : self.obs_z2 - tf.gradients(self.obs_ewp[i][0], self.obs_z2)[0] * self.d_lr for i in self.cup_list}
