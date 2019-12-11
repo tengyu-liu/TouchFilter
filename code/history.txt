@@ -139,3 +139,5 @@
 [2019-12-10 01:10:07.565996] python train.py --name trial --dynamic_z2 --batch_size 7 --adaptive_langevin --clip_norm_langevin
 [2019-12-10 01:15:53.192760] python train.py --name trial --dynamic_z2 --batch_size 5 --adaptive_langevin --clip_norm_langevin
 [2019-12-10 01:18:22.167034] python train.py --name trial --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 09:28:05.310751] python train.py --name static_z2 --batch_size 24 --adaptive_langevin --clip_norm_langevin
+[2019-12-10 09:28:05.506986] python train.py --name dynamic_z2 --dynamic_z2 --batch_size 24 --adaptive_langevin --clip_norm_langevin
