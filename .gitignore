@@ -4,10 +4,6 @@ figs*
 models
 *.png
 events*
-<<<<<<< HEAD
 code/landscape
 report
-=======
-landscape_items.pkl
-landscape_items*
->>>>>>> 022f0c26aef2bf693030366db9bec02abb98854a
+downloads
