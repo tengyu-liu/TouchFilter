@@ -1,0 +1,1 @@
+[2019-12-10 09:28:25.974097] python train.py --name dynamic_z2 --dynamic_z2 --batch_size 24 --adaptive_langevin --clip_norm_langevin

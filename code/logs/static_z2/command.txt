@@ -1,0 +1,1 @@
+[2019-12-10 09:28:25.971139] python train.py --name static_z2 --batch_size 24 --adaptive_langevin --clip_norm_langevin
