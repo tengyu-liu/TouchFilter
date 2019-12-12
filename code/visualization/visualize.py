@@ -47,13 +47,9 @@ cup_models = {i: tm.load_mesh('../../data/cups/onepiece/%d.obj'%i) for i in rang
 obj_base = '../../data/hand'
 stl_dict = {obj: tm.load_mesh(os.path.join(obj_base, '%s.STL'%obj)) for obj in parts}
 
-def visualize(cup_id, cup_r, hand_z, offset=0):
+def visualize(cup_id, hand_z):
     cup_model = cup_models[cup_id]
-    cvert = np.matmul(cup_r, cup_model.vertices.T).T
-    if offset == 0:
-        mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 1, 0))
-    else:
-        mlab.triangular_mesh(cvert[:,0] + offset, cvert[:,1], cvert[:,2], cup_model.faces, color=(0, 0, 1))
+    mlab.triangular_mesh(cup_model.vertices[:,0], cup_model.vertices[:,1], cup_model.vertices[:,2], cup_model.faces, color=(0, 0, 1))
 
     z_ = hand_z
     jrot = z_[:22]
@@ -74,7 +70,7 @@ def visualize(cup_id, cup_r, hand_z, offset=0):
         try:
             p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
             p.apply_translation(xpos[pid,:])
-            mlab.triangular_mesh(p.vertices[:,0] + offset, p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
+            mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
         except:
             continue
 
@@ -86,6 +82,9 @@ def visualize_hand(fig, weights, rows, i):
 
     start = 0
     end = 0
+
+    if len(weights.shape) == 2:
+        weights = weights[:,0]
 
     for pid in range(4, 25):
         if '0' in parts[pid - 4]:
@@ -99,12 +98,12 @@ def visualize_hand(fig, weights, rows, i):
 
             ax = fig.add_subplot(rows, 2, i * 2 - 1)
             pts = p[:,2] > 0.001
-            ax.scatter(p[pts,0], p[pts,1], c=weights[start:end, 0][pts])
+            ax.scatter(p[pts,0], p[pts,1], c=weights[start:end][pts])
             ax.axis('off')
 
             ax = fig.add_subplot(rows, 2, i * 2)
             pts = p[:,2] <= 0.001
-            ax.scatter(p[pts,0], p[pts,1], c=weights[start:end, 0][pts])
+            ax.scatter(p[pts,0], p[pts,1], c=weights[start:end][pts])
             ax.axis('off')
 
             start += len(p)
@@ -117,7 +116,6 @@ for batch in range(_batch, _batch + 7):
     data = pickle.load(open(os.path.join(os.path.dirname(__file__), '../figs', name, '%04d-%d.pkl'%(epoch, batch)), 'rb'))
 
     cup_id = data['cup_id']
-    cup_r = np.array(data['cup_r'])
     obs_z = np.array(data['obs_z'])
     obs_e = data['obs_e']
     obs_w = np.array(data['obs_w'])
@@ -125,34 +123,27 @@ for batch in range(_batch, _batch + 7):
     syn_z = np.array(data['syn_z'])
     syn_w = np.array(data['syn_w'])
 
-    print('cup_r', cup_r.shape)
-    print('obs_z', obs_z.shape)
-    print('obs_w', obs_w.shape)
-    print('syn_e', syn_e.shape)
-    print('syn_z', syn_z.shape)
-    print('syn_w', syn_w.shape)
-
     fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
     mlab.figure(size=(640,480))
 
-    for i_batch in range(len(cup_r)):
+    for i_batch in range(len(syn_z)):
         mlab.clf()
-        visualize(cup_id, cup_r[i_batch], obs_z[i_batch])
+        visualize(cup_id, obs_z[i_batch])
         mlab.savefig('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
 
-        for i_seq in range(len(syn_z)):
+        for i_seq in [90]:
             # Draw 3D grasping
             mlab.clf()
-            visualize(cup_id, cup_r[i_batch], syn_z[i_seq][i_batch])
+            visualize(cup_id, syn_z[i_batch][i_seq])
             mlab.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 1))
             # Draw feature selection map
             fig.clf()
             if len(obs_w) == 1:
                 visualize_hand(fig, obs_w[0], 2, 1)
-                visualize_hand(fig, syn_w[i_seq, 0], 2, 2)
+                visualize_hand(fig, syn_w[0, i_seq], 2, 2)
             else:
                 visualize_hand(fig, obs_w[i_batch], 2, 1)
-                visualize_hand(fig, syn_w[i_seq, i_batch], 2, 2)
+                visualize_hand(fig, syn_w[i_batch, i_seq], 2, 2)
             ax = fig.add_subplot(221)
             ax.set_title('obs back')
             ax = fig.add_subplot(222)
@@ -165,8 +156,8 @@ for batch in range(_batch, _batch + 7):
             # Draw energy plot
             fig.clf()
             ax = fig.add_subplot(111)
-            ax.plot(syn_e[:i_seq])
-            ax.plot([obs_e for _ in range(i_seq)])
+            ax.plot(syn_e[i_batch, :i_seq])
+            ax.plot([obs_e[i_batch] for _ in range(i_seq)])
             fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 3))
             # Merge two
             os.system(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(
@@ -193,14 +184,14 @@ for batch in range(_batch, _batch + 7):
             os.remove('../figs/%s-%04d-%d-%d-%d-4.png'%(name, epoch, batch, i_batch, i_seq))
             os.remove('../figs/%s-%04d-%d-%d-%d-5.png'%(name, epoch, batch, i_batch, i_seq))
 
-        print("#### Generate palette ####")
-        os.system(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" palette.png'%(name, epoch, batch, i_batch))
-        print("#### Generate GIF ####")
-        print(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-        os.system(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
-        print("#### Remove palette ####")
-        os.remove('palette.png')
+        # print("#### Generate palette ####")
+        # os.system(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%%d.png -filter_complex "[0:v] palettegen" -y palette.png'%(name, epoch, batch, i_batch))
+        # print("#### Generate GIF ####")
+        # print(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -y ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+        # os.system(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%%d.png -i palette.png -filter_complex "[0:v][1:v] paletteuse" -loop 1 -y ../figs/%s-%04d-%d-%d.gif'%(name, epoch, batch, i_batch, name, epoch, batch, i_batch))
+        # print("#### Remove palette ####")
+        # os.remove('palette.png')
 
-        os.remove('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
-        for i_seq in range(len(syn_z) - 1):
-            os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
+        # os.remove('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
+        # for i_seq in range(len(syn_z[0]) - 1):
+        #     os.remove('../figs/%s-%04d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq))
