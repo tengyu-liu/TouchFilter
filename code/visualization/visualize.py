@@ -131,19 +131,19 @@ for batch in range(_batch, _batch + 7):
         visualize(cup_id, obs_z[i_batch])
         mlab.savefig('../figs/%s-%04d-%d-%d.png'%(name, epoch, batch, i_batch))
 
-        for i_seq in [90]:
+        for i_seq in range(10):
             # Draw 3D grasping
             mlab.clf()
-            visualize(cup_id, syn_z[i_batch][i_seq])
+            visualize(cup_id, syn_z[i_batch][i_seq*i_seq])
             mlab.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 1))
             # Draw feature selection map
             fig.clf()
             if len(obs_w) == 1:
                 visualize_hand(fig, obs_w[0], 2, 1)
-                visualize_hand(fig, syn_w[0, i_seq], 2, 2)
+                visualize_hand(fig, syn_w[0, i_seq*i_seq], 2, 2)
             else:
                 visualize_hand(fig, obs_w[i_batch], 2, 1)
-                visualize_hand(fig, syn_w[i_batch, i_seq], 2, 2)
+                visualize_hand(fig, syn_w[i_batch, i_seq*i_seq], 2, 2)
             ax = fig.add_subplot(221)
             ax.set_title('obs back')
             ax = fig.add_subplot(222)
@@ -156,8 +156,8 @@ for batch in range(_batch, _batch + 7):
             # Draw energy plot
             fig.clf()
             ax = fig.add_subplot(111)
-            ax.plot(syn_e[i_batch, :i_seq])
-            ax.plot([obs_e[i_batch] for _ in range(i_seq)])
+            ax.plot(syn_e[i_batch, :i_seq*i_seq])
+            ax.plot([obs_e[i_batch] for _ in range(i_seq*i_seq)])
             fig.savefig('../figs/%s-%04d-%d-%d-%d-%d.png'%(name, epoch, batch, i_batch, i_seq, 3))
             # Merge two
             os.system(ffmpeg + ' -i ../figs/%s-%04d-%d-%d-%d-%d.png -i ../figs/%s-%04d-%d-%d-%d-%d.png -filter_complex hstack ../figs/%s-%04d-%d-%d-%d-%d.png'%(

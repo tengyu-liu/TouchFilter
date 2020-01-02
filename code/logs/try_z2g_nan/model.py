@@ -138,10 +138,12 @@ class Model:
                 grad_z = tf.clip_by_norm(grad_z, 31, axes=-1)
             z2g = 0
             if self.dynamic_z2:
-                z2g = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(tf.norm(z2, axis=-1)), z2)[0]
+                z2g = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z2)[0]
                 z2g /= tf.norm(z2g, axis=-1, keepdims=True)
 
             grad_z = grad_z * self.z_weight[0]
+            # p = tf.print('GRAD: ', grad_z, summarize=-1)
+            # with tf.control_dependencies([p]):
             z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
             z2 = z2 - self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
             return [z, z2, energy, weight, hand_prior, g_avg]
@@ -157,7 +159,7 @@ class Model:
                 print(v)
         des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in self.cup_list}
         self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in self.cup_list}
-        self.obs_z2_update = {i : self.obs_z2 - tf.gradients(self.obs_ewp[i][0] + tf.reduce_mean(tf.norm(self.obs_z2, axis=-1)), self.obs_z2)[0] * self.d_lr for i in self.cup_list}
+        self.obs_z2_update = {i : self.obs_z2 - tf.gradients(self.obs_ewp[i][0], self.obs_z2)[0] * self.d_lr for i in self.cup_list}
         pass
     
     def build_summary(self):

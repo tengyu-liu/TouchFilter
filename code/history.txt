@@ -145,3 +145,8 @@
 [2019-12-11 20:40:10.347512] python train.py --batch_size 24 --adaptive_langevin --clip_norm_langevin --name static_z2_physical_prior
 [2019-12-11 20:43:25.961152] python train.py --batch_size 22 --adaptive_langevin --clip_norm_langevin --dynamic_z2 --name dynamic_z2_physical_prior
 [2019-12-11 21:04:52.354539] python train.py --batch_size 16 --adaptive_langevin --clip_norm_langevin --dynamic_z2 --name dynamic_z2_physical_prior
+[2020-01-02 15:32:27.097571] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
+[2020-01-02 15:35:48.184831] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
+[2020-01-02 15:36:39.943117] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
+[2020-01-02 15:39:08.425353] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
+[2020-01-02 15:44:00.177118] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan

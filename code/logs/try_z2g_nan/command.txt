@@ -1,0 +1,1 @@
+[2020-01-02 15:39:25.591465] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
