@@ -1,0 +1,1 @@
+[2019-12-11 20:40:34.300058] python train.py --batch_size 24 --adaptive_langevin --clip_norm_langevin --name static_z2_physical_prior

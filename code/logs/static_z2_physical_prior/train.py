@@ -22,22 +22,8 @@ if flags.tb_render:
     # load vis_util
     vu = VisUtil()
 
-
-print('name', flags.name)
-print('restore_epoch', flags.restore_epoch)
-print('restore_batch', flags.restore_batch)
-print('epochs', flags.epochs)
-print('batch_size', flags.batch_size)
-print('langevin_steps', flags.langevin_steps)
-print('step_size', flags.step_size)
-print('situation_invariant', flags.situation_invariant)
-print('adaptive_langevin', flags.adaptive_langevin)
-print('clip_norm_langevin', flags.clip_norm_langevin)
-print('debug', flags.debug)
-print('d_lr', flags.d_lr)
-print('beta1', flags.beta1)
-print('beta2', flags.beta2)
-print('tb_render', flags.tb_render)
+for k, v in flags.flag_values_dict().items():
+    print(k, v)
 
 f = open('history.txt', 'a')
 f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
@@ -46,7 +32,7 @@ f.close()
 project_root = os.path.join(os.path.dirname(__file__), '..')
 
 # load obj
-cup_id_list = [1,2,3,5,6,7,8]
+cup_id_list = [3]
 if flags.debug:
     cup_id_list = [1]
 
@@ -56,7 +42,6 @@ print('Cup models loaded.')
 # load data
 cup_annotation = {x.split(',')[0]: x.strip().split(',')[1:] for x in open(os.path.join(project_root, 'data/cup_video_annotation.txt')).readlines()}
 
-cup_rs = defaultdict(list)
 obs_zs = defaultdict(list)
 
 all_zs = []
@@ -76,13 +61,11 @@ for i in cup_id_list:
             start, end = [int(x) for x in start_end.split(':')]
             for frame in range(start, end):
                 cup_id = i
-                cup_rotation = Q(mat_data[frame, 1 + 28 * 3 + 27 * 4: 1 + 28 * 3 + 28 * 4]).rotation_matrix
                 cup_translation = mat_data[frame, 1 + 27 * 3 : 1 + 28 * 3]
                 hand_jrot = mat_data[frame, 1 + 28 * 7 + 7 : 1 + 28 * 7 + 29]
-                hand_grot = Q(mat_data[frame, 1 + 28 * 3 + 1 * 4 : 1 + 28 * 3 + 2 * 4]).rotation_matrix[:,:2]
-                hand_gpos = mat_data[frame, 1 + 1 * 3 : 1 + 2 * 3] - cup_translation
+                hand_grot = (Q(mat_data[frame, 1 + 28 * 3 + 27 * 4: 1 + 28 * 3 + 28 * 4]).inverse * Q(mat_data[frame, 1 + 28 * 3 + 1 * 4 : 1 + 28 * 3 + 2 * 4])).rotation_matrix[:,:2]
+                hand_gpos = Q(mat_data[frame, 1 + 28 * 3 + 27 * 4: 1 + 28 * 3 + 28 * 4]).inverse.rotate(mat_data[frame, 1 + 1 * 3 : 1 + 2 * 3] - cup_translation)
                 hand_z = np.concatenate([hand_jrot, hand_grot.reshape([6]), hand_gpos])
-                cup_rs[cup_id].append(cup_rotation)
                 obs_zs[cup_id].append(hand_z)
                 if flags.debug:
                     break
@@ -91,8 +74,8 @@ for i in cup_id_list:
         if flags.debug and len(obs_zs[cup_id]) >= flags.batch_size:
             break
 
-cup_rs = {i:np.array(x) for (i,x) in cup_rs.items()}
-obs_zs = {i:np.array(x) for (i,x) in obs_zs.items()}
+obs_zs = {i : np.array(x) for (i,x) in obs_zs.items()}
+obs_z2s = {i : np.random.normal(size=[len(obs_zs[i]), flags.z2_size])}
 all_zs = np.array(all_zs)
 
 stddev = np.std(all_zs, axis=0, keepdims=True)
@@ -100,10 +83,8 @@ mean = np.mean(all_zs, axis=0, keepdims=True)
 z_min = np.min(all_zs, axis=0, keepdims=True)
 z_max = np.max(all_zs, axis=0, keepdims=True)
 
-print('Z-std', stddev)
-
-minimum_data_length = min(len(cup_rs[cup_id]) for cup_id in cup_id_list)
-data_idxs = {cup_id: np.arange(len(cup_rs[cup_id])) for cup_id in cup_id_list}
+minimum_data_length = min(len(obs_zs[cup_id]) for cup_id in cup_id_list)
+data_idxs = {cup_id: np.arange(len(obs_zs[cup_id])) for cup_id in cup_id_list}
 batch_num = minimum_data_length // flags.batch_size * len(cup_id_list)
 print('Training data loaded.')
 
@@ -132,11 +113,15 @@ shutil.copy('train.py', os.path.join(log_dir, 'train.py'))
 shutil.copy('model.py', os.path.join(log_dir, 'model.py'))
 shutil.copy('config.py', os.path.join(log_dir, 'config.py'))
 
+f = open(os.path.join(log_dir, 'command.txt'), 'w')
+f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
+f.close()
+
 # logger and saver
 train_writer = tf.summary.FileWriter(log_dir, sess.graph)
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 print('Start training...')
 
@@ -158,65 +143,66 @@ for epoch in range(flags.epochs):
         item_id = batch_id // len(cup_id_list)
         idxs = shuffled_idxs[cup_id][flags.batch_size * item_id : flags.batch_size * (item_id + 1)]
 
-        cup_r = cup_rs[cup_id][idxs]
         obs_z = obs_zs[cup_id][idxs]
         syn_z = np.zeros(obs_z.shape)
         syn_z[:,:22] = 0
         syn_z[:,-9:] = obs_z[:,-9:]
-        syn_z[:,-3:] += np.random.normal(scale=0.03, size=(flags.batch_size, 3))
+        syn_z[:,-3:] += np.random.normal(scale=flags.random_scale, size=(flags.batch_size, 3))
+        syn_z2 = np.random.normal(size=[flags.batch_size, flags.z2_size])
+        obs_z2 = obs_z2s[cup_id][idxs]
 
-        syn_z_seq = [syn_z]
-        syn_e_seq = []
-        syn_w_seq = []
-        syn_p_seq = []
+        syn_z_seq = np.zeros([flags.batch_size, 91, 31])
+        syn_z2_seq = np.zeros([flags.batch_size, 91, flags.z2_size])
+        syn_e_seq = np.zeros([flags.batch_size, 91, 1])
+        syn_w_seq = np.zeros([flags.batch_size, 91, 5871])
+        syn_p_seq = np.zeros([flags.batch_size, 91, 1])
 
-        # ini_e = sess.run(model.inp_e[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: ini_z})
+        syn_z_seq[:,0,:] = syn_z
+        syn_z2_seq[:,0,:] = syn_z2
 
         update_mask = np.ones(syn_z.shape)
         update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zewpg[cup_id], feed_dict={model.cup_r: cup_r, model.inp_z: syn_z, model.update_mask: update_mask})
-            # print(langevin_step, syn_z, syn_e, np.any(np.isnan(syn_w)), np.any(np.isinf(syn_w)))
+            syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False})
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
             assert not np.any(np.isnan(syn_w)) 
             assert not np.any(np.isinf(syn_w)) 
             assert not np.any(np.isnan(syn_z)) 
             assert not np.any(np.isinf(syn_z)) 
 
-            syn_z_seq.append(copy.deepcopy(syn_z))
-            syn_e_seq.append(copy.deepcopy(syn_e))
-            syn_w_seq.append(copy.deepcopy(syn_w))
-            syn_p_seq.append(copy.deepcopy(syn_p))
-            # if langevin_step % 100 == 99:
-            #     syn_ew, obs_ew, loss, _ = sess.run([model.inp_ew[cup_id], model.obs_ew[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
-            #         model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
-            #     })
+            syn_z_seq[:, langevin_step+1, :] = syn_z
+            syn_z2_seq[:, langevin_step+1, :] = syn_z2
+            syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
+            syn_w_seq[:, langevin_step, :] = syn_w[...,0]
+            syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
 
-        syn_ewp, obs_ewp, loss, _ = sess.run([model.inp_ewp[cup_id], model.obs_ewp[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
-            model.cup_r: cup_r, model.obs_z: obs_z, model.inp_z: syn_z
+        syn_ewp, obs_ewp, obs_z2, loss, _ = sess.run([model.inp_ewp[cup_id], model.obs_ewp[cup_id], model.obs_z2_update[cup_id], model.descriptor_loss[cup_id], model.des_train[cup_id]], feed_dict={
+            model.obs_z: obs_z, model.inp_z: syn_z, model.obs_z2: obs_z2, model.inp_z2: syn_z2, model.is_training: True
         })
-        syn_e_seq.append(copy.deepcopy(syn_ewp[0]))
-        syn_w_seq.append(copy.deepcopy(syn_ewp[1]))
-        syn_p_seq.append(copy.deepcopy(syn_ewp[2]))
+        syn_e_seq[:, -1, 0] = syn_ewp[0].reshape([-1])
+        syn_w_seq[:, -1, :] = syn_ewp[1][...,0]
+        syn_p_seq[:, -1, 0] = syn_ewp[2].reshape([-1])
+
+        obs_z2s[cup_id][idxs] = obs_z2
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
         if flags.tb_render and ((not flags.debug and batch_id % 20 == 0) or (flags.debug and epoch % 10 == 9)):
-            obs_im = vu.visualize(cup_id, cup_r, obs_z)
-            syn_im = vu.visualize(cup_id, cup_r, syn_z)
+            obs_im = vu.visualize(cup_id, obs_z)
+            syn_im = vu.visualize(cup_id, syn_z)
             syn_e_im = vu.plot_e(syn_e_seq, obs_ewp[0])
             syn_p_im = vu.plot_e(syn_p_seq, obs_ewp[2])
 
             syn_bw_img, syn_fw_img = vu.visualize_hand(syn_ewp[1])
             obs_bw_img, obs_fw_img = vu.visualize_hand(obs_ewp[1])
             summ = sess.run(model.all_summ, feed_dict={
-                model.summ_obs_e: obs_ewp[0], 
-                model.summ_ini_e: syn_e_seq[0], 
-                model.summ_syn_e: syn_ewp[0], 
-                model.summ_obs_p: obs_ewp[2], 
-                model.summ_ini_p: syn_p_seq[0], 
-                model.summ_syn_p: syn_ewp[2], 
+                model.summ_obs_e: np.mean(obs_ewp[0]), 
+                model.summ_ini_e: np.mean(syn_e_seq[:,0]),
+                model.summ_syn_e: np.mean(syn_ewp[0]), 
+                model.summ_obs_p: np.mean(obs_ewp[2]), 
+                model.summ_ini_p: np.mean(syn_p_seq[:,0]),
+                model.summ_syn_p: np.mean(syn_ewp[2]),
                 model.summ_descriptor_loss: loss,
                 model.summ_obs_bw: obs_bw_img, 
                 model.summ_obs_fw: obs_fw_img, 
@@ -232,12 +218,12 @@ for epoch in range(flags.epochs):
             })
         else:
             summ = sess.run(model.scalar_summ, feed_dict={
-                model.summ_obs_e: obs_ewp[0], 
-                model.summ_ini_e: syn_e_seq[0], 
-                model.summ_syn_e: syn_ewp[0], 
-                model.summ_obs_p: obs_ewp[2], 
-                model.summ_ini_p: syn_p_seq[0], 
-                model.summ_syn_p: syn_ewp[2], 
+                model.summ_obs_e: np.mean(obs_ewp[0]), 
+                model.summ_ini_e: np.mean(syn_e_seq[:,0]), 
+                model.summ_syn_e: np.mean(syn_ewp[0]), 
+                model.summ_obs_p: np.mean(obs_ewp[2]), 
+                model.summ_ini_p: np.mean(syn_p_seq[0]), 
+                model.summ_syn_p: np.mean(syn_ewp[2]), 
                 model.summ_descriptor_loss: loss,
                 model.summ_obs_w: obs_ewp[1][-1,:,0],
                 model.summ_syn_w: syn_ewp[1][-1,:,0],
@@ -249,23 +235,25 @@ for epoch in range(flags.epochs):
         assert not (np.any(np.isnan(syn_z_seq)) or np.any(np.isinf(syn_z_seq)))
         print('\rE%dB%d/%d(C%d): Obs.E: %f, Obs.P: %f, Ini.E: %f, Ini.P: %f, Syn.E: %f, Syn.P: %f, Loss: %f, Time: %f'%(
             epoch, batch_id, batch_num, cup_id, 
-            obs_ewp[0], obs_ewp[2],
-            syn_e_seq[0], syn_p_seq[0],
-            syn_ewp[0], syn_ewp[2],
+            np.mean(obs_ewp[0]), np.mean(obs_ewp[2]),
+            np.mean(syn_e_seq[0]), np.mean(syn_p_seq[0]),
+            np.mean(syn_ewp[0]), np.mean(syn_ewp[2]),
             loss, time.time() - t0), end='')
         
         if item_id % 100 == 0:
             data = {
                 'cup_id': cup_id, 
-                'cup_r' : cup_r, 
                 'obs_z' : obs_z, 
+                'obs_z2' : obs_z2, 
                 'obs_e' : obs_ewp[0], 
                 'obs_w' : obs_ewp[1], 
                 'obs_p' : obs_ewp[2],
                 'syn_e' : syn_e_seq, 
                 'syn_z' : syn_z_seq, 
+                'syn_z2' : syn_z2_seq, 
                 'syn_w' : syn_w_seq,
                 'syn_p' : syn_p_seq,
+                'g_avg' : g_avg
             }
 
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
