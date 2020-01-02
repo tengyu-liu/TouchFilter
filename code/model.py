@@ -26,6 +26,7 @@ class Model:
         self.langevin_steps = config.langevin_steps
         self.step_size = config.step_size
         self.prior_weight = config.prior_weight
+        self.prior_type = config.prior_type
         self.d_lr = config.d_lr
         self.beta1 = config.beta1
         self.beta2 = config.beta2
@@ -117,10 +118,12 @@ class Model:
         # touch response
         energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, z2, cup_model, penetration_penalty, self.is_training)
         
-        if False:
+        if self.prior_type == "NN":
             hand_prior = self.hand_prior_nn(hand_z)
-        else:
+        elif self.prior_type == "Phys":
             hand_prior = self.hand_prior_physics(weight, surf_normals)
+        else:
+            raise NotImplementedError("Prior type must be \"NN\" or \"Phys\"")
         return energy, weight, hand_prior
 
     def langevin_dynamics_fn(self, cup_id):

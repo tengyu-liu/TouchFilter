@@ -14,6 +14,7 @@ tf.flags.DEFINE_integer('z2_size', 10, '')
 tf.flags.DEFINE_float('random_scale', 0.3, 'for initializing syn position')
 tf.flags.DEFINE_float('prior_weight', 10, '')
 tf.flags.DEFINE_float('random_strength', 0.1, 'for langevin dynamics')
+tf.flags.DEFINE_string('prior_type', 'NN', 'choose between "NN" and "Phys"')
 
 # Train
 tf.flags.DEFINE_integer('epochs', 100, '')
