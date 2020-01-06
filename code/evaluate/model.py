@@ -43,7 +43,7 @@ class Model:
 
         self.cup_list = cup_list
 
-        self.cup_model_path = os.path.join(os.path.dirname(__file__), '../data/cups/models')
+        self.cup_model_path = os.path.join(os.path.dirname(__file__), '../../data/cups/models')
         self.cup_restore = 199
     
         self.obs_penetration_penalty = tf.constant(0, dtype=tf.float32)
