@@ -1,9 +1,9 @@
 import tensorflow as tf
 
 # Meta
-tf.flags.DEFINE_string('name', 'exp', '')
-tf.flags.DEFINE_integer('restore_epoch', -1, '')
-tf.flags.DEFINE_integer('restore_batch', -1, '')
+tf.flags.DEFINE_string('name', 'static_z2_nobn', '')
+tf.flags.DEFINE_integer('restore_epoch', 43, '')
+tf.flags.DEFINE_integer('restore_batch', 0, '')
 tf.flags.DEFINE_string('restore_name', '', '')
 tf.flags.DEFINE_bool('debug', False, '')
 tf.flags.DEFINE_boolean('tb_render', False, '')
@@ -27,8 +27,8 @@ tf.flags.DEFINE_float('l2_reg', 0.001, '')
 # Langevin
 tf.flags.DEFINE_float('step_size', 0.1, '')
 tf.flags.DEFINE_integer('langevin_steps', 90, '')
-tf.flags.DEFINE_bool('adaptive_langevin', False, '')
-tf.flags.DEFINE_bool('clip_norm_langevin', False, '')
+tf.flags.DEFINE_bool('adaptive_langevin', True, '')
+tf.flags.DEFINE_bool('clip_norm_langevin', True, '')
 
 # Touch Filter
 tf.flags.DEFINE_bool('situation_invariant', False, '')
