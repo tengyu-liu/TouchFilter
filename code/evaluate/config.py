@@ -1,8 +1,8 @@
 import tensorflow as tf
 
 # Meta
-tf.flags.DEFINE_string('name', 'static_z2_physical_piror_nobn', '')
-tf.flags.DEFINE_integer('restore_epoch', 43, '')
+tf.flags.DEFINE_string('name', 'static_z2_physical_prior_nobn', '')
+tf.flags.DEFINE_integer('restore_epoch', 35, '')
 tf.flags.DEFINE_integer('restore_batch', 0, '')
 tf.flags.DEFINE_string('restore_name', '', '')
 tf.flags.DEFINE_bool('debug', False, '')
