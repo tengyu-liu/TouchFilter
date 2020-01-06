@@ -113,8 +113,8 @@ for batch_id in range(batch_num):
     t0 = time.time()
     cup_id = cup_id_list[batch_id % len(cup_id_list)]
     item_id = batch_id // len(cup_id_list)
-    idxs = shuffled_idxs[cup_id][item_id : item_id + 1] * flags.batch_size
-    print(shuffled_idxs[cup_id][item_id : item_id + 1], flags.batch_size, idxs)
+    idxs = np.tile(shuffled_idxs[cup_id][item_id : item_id + 1], [flags.batch_size])
+
     obs_z = obs_zs[cup_id][idxs]
     syn_z = np.zeros(obs_z.shape)
     syn_z[:,:22] = 0
