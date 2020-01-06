@@ -4,10 +4,13 @@ import pickle
 import numpy as np
 import tensorflow as tf
 
-from ..utils.CupModel import CupModel
-from ..utils.HandModel import HandModel
-from ..utils.TouchFilter import TouchFilter
-from ..utils.tf_util import fully_connected
+import sys
+sys.path.append('..')
+
+from utils.CupModel import CupModel
+from utils.HandModel import HandModel
+from utils.TouchFilter import TouchFilter
+from utils.tf_util import fully_connected
 
 class Model:
     def __init__(self, config, mean, stddev, cup_list):
