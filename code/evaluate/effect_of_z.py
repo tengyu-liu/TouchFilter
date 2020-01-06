@@ -23,7 +23,7 @@ f = open('history.txt', 'a')
 f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
 f.close()
 
-project_root = os.path.join(os.path.dirname(__file__), '..')
+project_root = os.path.join(os.path.dirname(__file__), '../..')
 
 # load obj
 cup_id_list = [3]
