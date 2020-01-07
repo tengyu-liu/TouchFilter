@@ -114,7 +114,7 @@ class Model:
         surf_pts, surf_normals = self.hand_model.tf_forward_kinematics(gpos, grot, jrot)
         surf_pts = tf.concat(list(surf_pts.values()), axis=1)
         surf_normals = tf.concat(list(surf_normals.values()), axis=1)
-        z2 = z2 / tf.norm(z2, axis=-1)
+        z2 = z2 / tf.norm(z2, axis=-1, keepdims=True)
         # touch response
         energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, z2, cup_model, penetration_penalty, self.is_training)
         
