@@ -1,10 +1,10 @@
 *ckpt*
 *.pyc
-figs*
 models
-*.png
 events*
 code/landscape
 report
 downloads
 code/evaluate/synthesis
+code/figs
+code/visualization/figs
