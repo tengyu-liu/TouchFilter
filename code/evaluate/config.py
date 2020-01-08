@@ -1,8 +1,8 @@
 import tensorflow as tf
 
 # Meta
-tf.flags.DEFINE_string('name', 'static_z2_nobn_unitz2', '')
-tf.flags.DEFINE_integer('restore_epoch', 16, '')
+tf.flags.DEFINE_string('name', 'static_z2_physical_prior_nobn_unitz2', '')
+tf.flags.DEFINE_integer('restore_epoch', 15, '')
 tf.flags.DEFINE_integer('restore_batch', 0, '')
 tf.flags.DEFINE_string('restore_name', '', '')
 tf.flags.DEFINE_bool('debug', False, '')
@@ -14,7 +14,7 @@ tf.flags.DEFINE_integer('z2_size', 10, '')
 tf.flags.DEFINE_float('random_scale', 0.3, 'for initializing syn position')
 tf.flags.DEFINE_float('prior_weight', 10, '')
 tf.flags.DEFINE_float('random_strength', 0.0, 'for langevin dynamics')
-tf.flags.DEFINE_string('prior_type', 'NN', 'choose between "NN" and "Phys"')
+tf.flags.DEFINE_string('prior_type', 'Phys', 'choose between "NN" and "Phys"')
 
 # Train
 tf.flags.DEFINE_integer('epochs', 100, '')
