@@ -26,7 +26,7 @@ tf.flags.DEFINE_float('l2_reg', 0.001, '')
 
 # Langevin
 tf.flags.DEFINE_float('step_size', 0.1, '')
-tf.flags.DEFINE_integer('langevin_steps', 90, '')
+tf.flags.DEFINE_integer('langevin_steps', 200, '')
 tf.flags.DEFINE_bool('adaptive_langevin', True, '')
 tf.flags.DEFINE_bool('clip_norm_langevin', True, '')
 

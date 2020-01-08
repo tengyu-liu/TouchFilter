@@ -78,8 +78,11 @@ fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
 mlab.figure(size=(640,480))
 
 for fn in os.listdir('synthesis'):
+    if 'unit' not in fn:
+        continue
     data = pickle.load(open(os.path.join('synthesis', fn), 'rb'))
-    for batch_id in range(len(data['syn_z_seq'])):
-        mlab.clf()
-        visualize(3, data['syn_z_seq'][batch_id,-1,:])
-        mlab.savefig('figs/%s:%d.png'%(fn, batch_id))
+    for item_id in range(len(data['syn_z_seq'])):
+        for z_id in range(len(data['syn_z_seq'][0])):
+            mlab.clf()
+            visualize(3, data['syn_z_seq'][item_id,z_id,:])
+            mlab.savefig('figs/%s-%d-%d.png'%(fn, item_id, z_id))

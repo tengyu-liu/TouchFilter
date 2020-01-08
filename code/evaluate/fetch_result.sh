@@ -1,1 +1,1 @@
-scp -r antelope:/home/tengyu/github/TouchFilter/code/evaluate/synthesis .
+scp -r antelope:/home/tengyu/github/TouchFilter/code/evaluate/synthesis/*unit* synthesis

@@ -117,15 +117,13 @@ for batch_id in range(batch_num):
     t0 = time.time()
     cup_id = cup_id_list[batch_id % len(cup_id_list)]
     item_id = batch_id // len(cup_id_list)
-    idxs = np.tile(shuffled_idxs[cup_id][item_id : item_id + 1], [flags.batch_size])
+    idxs = shuffled_idxs[cup_id][flags.batch_size * item_id : flags.batch_size * (item_id + 1)]
 
     obs_z = obs_zs[cup_id][idxs]
     syn_z = np.zeros(obs_z.shape)
     syn_z[:,:22] = 0
     syn_z[:,-9:] = obs_z[:,-9:]
     syn_z[:,-3:] += palm_directions[cup_id][idxs] * 0.1
-    syn_z2_a = np.random.normal(size=[flags.z2_size])
-    syn_z2_b = np.random.normal(size=[flags.z2_size])
     syn_z2 = z2[0]
 
     syn_z_seq = np.zeros([flags.batch_size, 10, 31])
