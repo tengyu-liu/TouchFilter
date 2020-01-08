@@ -109,6 +109,10 @@ shuffled_idxs = copy.deepcopy(data_idxs)
 for cup_id in cup_id_list:
     np.random.shuffle(shuffled_idxs[cup_id])
 
+z2A = np.random.random(size=[flags.batch_size, flags.z2_size])
+z2B = np.random.random(size=[flags.batch_size, flags.z2_size])
+z2 = np.linspace(z2A, z2B, 10)
+
 for batch_id in range(batch_num):
     t0 = time.time()
     cup_id = cup_id_list[batch_id % len(cup_id_list)]
@@ -122,13 +126,13 @@ for batch_id in range(batch_num):
     syn_z[:,-3:] += palm_directions[cup_id][idxs] * 0.1
     syn_z2_a = np.random.normal(size=[flags.z2_size])
     syn_z2_b = np.random.normal(size=[flags.z2_size])
-    syn_z2 = np.linspace(syn_z2_a, syn_z2_b, flags.batch_size)
+    syn_z2 = z2[0]
 
-    syn_z_seq = np.zeros([flags.batch_size, 91, 31])
-    syn_z2_seq = np.zeros([flags.batch_size, 91, flags.z2_size])
-    syn_e_seq = np.zeros([flags.batch_size, 91, 1])
-    syn_w_seq = np.zeros([flags.batch_size, 91, 5871])
-    syn_p_seq = np.zeros([flags.batch_size, 91, 1])
+    syn_z_seq = np.zeros([flags.batch_size, 10, 31])
+    syn_z2_seq = np.zeros([flags.batch_size, 10, flags.z2_size])
+    syn_e_seq = np.zeros([flags.batch_size, 10, 1])
+    syn_w_seq = np.zeros([flags.batch_size, 10, 5871])
+    syn_p_seq = np.zeros([flags.batch_size, 10, 1])
 
     syn_z_seq[:,0,:] = syn_z
     syn_z2_seq[:,0,:] = syn_z2
@@ -136,6 +140,7 @@ for batch_id in range(batch_num):
     update_mask = np.ones(syn_z.shape)
     update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
+    # Step 1. Generate initial synthesis results
     for langevin_step in range(flags.langevin_steps):
         syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False})
         syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
@@ -148,16 +153,37 @@ for batch_id in range(batch_num):
         assert not np.any(np.isnan(syn_p))
         assert not np.any(np.isinf(syn_p))
 
-        syn_z_seq[:, langevin_step+1, :] = syn_z
         syn_z2_seq[:, langevin_step+1, :] = syn_z2
         syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
         syn_w_seq[:, langevin_step, :] = syn_w[...,0]
         syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
 
     syn_ewp = sess.run(model.inp_ewp[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.is_training: True})
-    syn_e_seq[:, -1, 0] = syn_ewp[0].reshape([-1])
-    syn_w_seq[:, -1, :] = syn_ewp[1][...,0]
-    syn_p_seq[:, -1, 0] = syn_ewp[2].reshape([-1])
+    syn_z_seq[:, 0, :] = syn_z
+    syn_z2_seq[:, 0, :] = syn_z2
+    syn_e_seq[:, 0, 0] = syn_ewp[0].reshape([-1])
+    syn_w_seq[:, 0, :] = syn_ewp[1][...,0]
+    syn_p_seq[:, 0, 0] = syn_ewp[2].reshape([-1])
+
+    # Step 2. For each subsequent z2, generate synthesis result
+    for i in range(1, 10):
+        syn_z2 = z2[i]
+        for langevin_step in range(10):
+            syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False})
+            syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
+            assert not np.any(np.isnan(syn_w))
+            assert not np.any(np.isinf(syn_w))
+            assert not np.any(np.isnan(syn_z))
+            assert not np.any(np.isinf(syn_z))
+            assert not np.any(np.isnan(syn_z2))
+            assert not np.any(np.isinf(syn_z2))
+            assert not np.any(np.isnan(syn_p))
+            assert not np.any(np.isinf(syn_p))
+        syn_z_seq[:, i, :] = syn_z
+        syn_z2_seq[:, i, :] = syn_z2
+        syn_e_seq[:, i, 0] = syn_ewp[0].reshape([-1])
+        syn_w_seq[:, i, :] = syn_ewp[1][...,0]
+        syn_p_seq[:, i, 0] = syn_ewp[2].reshape([-1])
 
     pickle.dump({
         'syn_z_seq': syn_z_seq,

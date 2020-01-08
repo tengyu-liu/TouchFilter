@@ -117,6 +117,7 @@ class Model:
         surf_pts, surf_normals = self.hand_model.tf_forward_kinematics(gpos, grot, jrot)
         surf_pts = tf.concat(list(surf_pts.values()), axis=1)
         surf_normals = tf.concat(list(surf_normals.values()), axis=1)
+        z2 = z2 / tf.norm(z2, axis=-1, keepdims=True)
 
         # touch response
         energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, z2, cup_model, penetration_penalty, self.is_training)
@@ -146,6 +147,7 @@ class Model:
             if self.dynamic_z2:
                 z2g = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(tf.norm(z2, axis=-1)), z2)[0]
                 z2g /= tf.norm(z2g, axis=-1, keepdims=True)
+                z2g = 0
 
             grad_z = grad_z * self.z_weight[0]
             z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
