@@ -153,11 +153,6 @@ for batch_id in range(batch_num):
         assert not np.any(np.isnan(syn_p))
         assert not np.any(np.isinf(syn_p))
 
-        syn_z2_seq[:, langevin_step+1, :] = syn_z2
-        syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
-        syn_w_seq[:, langevin_step, :] = syn_w[...,0]
-        syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
-
     syn_ewp = sess.run(model.inp_ewp[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.is_training: True})
     syn_z_seq[:, 0, :] = syn_z
     syn_z2_seq[:, 0, :] = syn_z2
