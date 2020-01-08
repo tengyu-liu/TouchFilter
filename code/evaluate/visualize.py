@@ -78,7 +78,7 @@ fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
 mlab.figure(size=(640,480))
 
 for fn in os.listdir('synthesis'):
-    if 'static_z2_physical_prior_nobn_unitz2' not in fn:
+    if 'dynamic_z2_nobn_unitz2' not in fn:
         continue
     data = pickle.load(open(os.path.join('synthesis', fn), 'rb'))
     for item_id in range(len(data['syn_z_seq'])):

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 # Meta
-tf.flags.DEFINE_string('name', 'dynamic_physical_prior_z2_nobn_unitz2', '')
+tf.flags.DEFINE_string('name', 'dynamic_z2_physical_prior_nobn_unitz2', '')
 tf.flags.DEFINE_integer('restore_epoch', 13, '')
 tf.flags.DEFINE_integer('restore_batch', 200, '')
 tf.flags.DEFINE_string('restore_name', '', '')
