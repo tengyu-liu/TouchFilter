@@ -78,14 +78,15 @@ fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
 mlab.figure(size=(640,480))
 
 syn_dir = 'synthesis/individual_z2/'
-fn = 'dynamic-z2_nobn_unitz2/0028-200.pkl'
-os.makedirs('figs/%s'%(fn.split('/')[0]), exist_ok=True)
-os.makedirs('figs/%s'%(fn[:-4]), exist_ok=True)
+for exp in os.listdir(syn_dir):
+    for fn in os.listdir(os.path.join(syn_dir, exp)):
+        os.makedirs('figs/%s'%exp, exist_ok=True)
+        os.makedirs('figs/%s/%s'%(exp, fn[:-4]), exist_ok=True)
 
-data = pickle.load(open(os.path.join(syn_dir, fn), 'rb'))
+        data = pickle.load(open(os.path.join(syn_dir, exp, fn), 'rb'))
 
-for item_id in range(len(data['syn_z'])):
-    mlab.clf()
-    visualize(3, data['syn_z'][item_id,:])
-    mlab.savefig('figs/%s/%d.png'%(fn[:-4], item_id))
+        for item_id in range(len(data['syn_z'])):
+            mlab.clf()
+            visualize(3, data['syn_z'][item_id,:])
+            mlab.savefig('figs/%s/%s/%d.png'%(exp, fn[:-4], item_id))
 
