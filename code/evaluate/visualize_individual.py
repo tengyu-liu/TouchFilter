@@ -80,6 +80,8 @@ mlab.figure(size=(640,480))
 syn_dir = 'synthesis/individual_z2/'
 for exp in os.listdir(syn_dir):
     for fn in os.listdir(os.path.join(syn_dir, exp)):
+        if 'dynamic_z2_nobn' not in exp or '0099' not in fn:
+            continue
         os.makedirs('figs/%s'%exp, exist_ok=True)
         os.makedirs('figs/%s/%s'%(exp, fn[:-4]), exist_ok=True)
 

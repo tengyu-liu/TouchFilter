@@ -130,8 +130,7 @@ for batch_id in range(batch_num):
     # Step 1. Generate initial synthesis results
     for langevin_step in range(flags.langevin_steps):
         syn_z[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], \
-            syn_z2[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], \
-            _, _, _, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+            _, _, _, _, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={
                 model.inp_z: syn_z[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], 
                 model.inp_z2: syn_z2[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], 
                 model.update_mask: update_mask, 
