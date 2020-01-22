@@ -82,7 +82,7 @@ z_min = np.min(all_zs, axis=0, keepdims=True)
 z_max = np.max(all_zs, axis=0, keepdims=True)
 
 data_idxs = {cup_id: np.arange(len(obs_zs[cup_id])) for cup_id in cup_id_list}
-batch_num = 10  # Run experiments on 10 batches
+batch_num = int(len(batch_idxs[3]) // flags.batch_size)  # Run experiments on 10 batches
 print('Training data loaded.')
 
 # load model
@@ -110,7 +110,7 @@ for cup_id in cup_id_list:
     np.random.shuffle(shuffled_idxs[cup_id])
 
 cup_id = 3
-idxs = shuffled_idxs[cup_id][[0] * (flags.batch_size * batch_num)]
+idxs = shuffled_idxs[cup_id][:flags.batch_size * batch_num]
 obs_z = obs_zs[cup_id][idxs]
 syn_z = np.zeros([flags.batch_size * batch_num, 31])
 syn_z[:,:22] = 0
@@ -126,11 +126,11 @@ update_mask = np.ones([flags.batch_size, 31])
 update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
 for batch_id in range(batch_num):
-
     # Step 1. Generate initial synthesis results
     for langevin_step in range(flags.langevin_steps):
         syn_z[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], \
-            _, _, _, _, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+            syn_z2[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :],
+            , _, _, _, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={
                 model.inp_z: syn_z[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], 
                 model.inp_z2: syn_z2[batch_id * flags.batch_size : (batch_id + 1) * flags.batch_size, :], 
                 model.update_mask: update_mask, 

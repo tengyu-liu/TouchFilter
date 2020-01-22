@@ -9,7 +9,7 @@ import numpy as np
 import trimesh as tm
 from mpl_toolkits.mplot3d import Axes3D
 from pyquaternion.quaternion import Quaternion as Q
-from sklearn.cluster import KMeans
+from sklearn.cluster import *
 from sklearn.manifold import TSNE
 
 import mat_trans as mt
@@ -69,20 +69,20 @@ mlab.figure(size=(640,480))
 data = pickle.load(open('synthesis/individual_z2/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))
 keep_ids = (data['syn_e'] < 3).reshape([-1])
 data['syn_w'] = data['syn_w'][keep_ids, :]
-data['syn_z'] = data['syn_z'][keep_ids, :]
+data['syn_z'] = data['syn_z'][keep_ids, :22]
 data['syn_z2'] = data['syn_z2'][keep_ids, :]
 data['syn_z2'] /= np.linalg.norm(data['syn_z2'], axis=-1, keepdims=True)
 data['syn_e'] = data['syn_e'][keep_ids, :]
 data['syn_p'] = data['syn_p'][keep_ids, :]
 
 
-n_clusters = 2
+n_clusters = 3
 
 tsne = TSNE()
-kmeans = KMeans(n_clusters=n_clusters)
-cluster_ids = kmeans.fit_predict(data['syn_w'])
+kmeans = SpectralClustering(n_clusters=n_clusters)
+cluster_ids = kmeans.fit_predict(data['syn_z'])
 
-w_2d = tsne.fit_transform(data['syn_w'])
+w_2d = tsne.fit_transform(data['syn_z'])
 for i in range(n_clusters):
     plt.scatter(w_2d[cluster_ids==i, 0], w_2d[cluster_ids==i, 1])
 

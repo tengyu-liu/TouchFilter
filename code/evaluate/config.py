@@ -18,7 +18,7 @@ tf.flags.DEFINE_string('prior_type', 'NN', 'choose between "NN" and "Phys"')
 
 # Train
 tf.flags.DEFINE_integer('epochs', 100, '')
-tf.flags.DEFINE_integer('batch_size', 12, '')
+tf.flags.DEFINE_integer('batch_size', 16, '')
 tf.flags.DEFINE_float('d_lr', 1e-3, '')
 tf.flags.DEFINE_float('beta1', 0.99, '')
 tf.flags.DEFINE_float('beta2', 0.999, '')
