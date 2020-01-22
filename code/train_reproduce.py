@@ -25,7 +25,7 @@ flags.dynamic_z2 = True
 flags.batch_size = 16
 flags.adaptive_langevin = True
 flags.clip_norm_langevin = True
-flags.prior_type = NN
+flags.prior_type = 'NN'
 
 for k, v in flags.flag_values_dict().items():
     print(k, v)
