@@ -19,6 +19,7 @@ from model import Model
 from utils.vis_util import VisUtil
 
 flags.name = 'dynamic_z2_nobn_unitz2'
+flags.restore_name = 'dynamic_z2_nobn_unitz2'
 flags.restore_epoch = 99
 flags.restore_batch = 300
 flags.dynamic_z2 = True
