@@ -10,3 +10,4 @@ code/figs
 code/visualization/figs
 *.png
 *.zip
+*.pkl
