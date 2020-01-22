@@ -105,18 +105,14 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
     saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 # load training result
-data = pickle.load(open('evaluate/synthesis/individual_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
+data = pickle.load(open('figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
 print(data.keys())
 _GT_syn_e = data['syn_e']
-print('syn_e', _GT_syn_e.shape)
 _GT_syn_z = data['syn_z']
-print('syn_z', _GT_syn_z.shape)
 _GT_syn_z2 = data['syn_z2']
-print('syn_z2', _GT_syn_z2.shape)
 _GT_syn_w = data['syn_w']
-print('syn_w', _GT_syn_w.shape)
 _GT_syn_p = data['syn_p']
-print('syn_p', _GT_syn_p.shape)
+_GT_g_avg = data['g_avg']
 
 # prepare local data
 update_mask = np.ones([flags.batch_size, 31])
@@ -153,10 +149,11 @@ for langevin_step in range(flags.langevin_steps):
     syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
     syn_w_seq[:, langevin_step, :] = syn_w[...,0]
     syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
+    local_g_avg.append(g_avg)
 
     # Compare g_avg
-    g_avg_norm = np.linalg.norm(g_avg)
-    print('Norm of g_avg: %.2f'%(g_avg_norm))
+    relative_diff = np.linalg.norm(g_avg - _GT_g_avg) / np.linalg.norm(_GT_g_avg)
+    print('Relative Difference in g_avg: %.2f%%'%(relative_diff * 100))
 
 # save reproduce results
 pickle.dump({'z': syn_z_seq, 'z2': syn_z2_seq, 'e': syn_e_seq, 'w': syn_w_seq, 'p': syn_p_seq}, open('reproduce.pkl', 'wb'))
