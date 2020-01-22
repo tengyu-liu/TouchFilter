@@ -99,7 +99,6 @@ sess = tf.Session(config=config)
 sess.run(tf.global_variables_initializer())
 
 # restore
-train_writer = tf.summary.FileWriter(log_dir, sess.graph)
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
     saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
