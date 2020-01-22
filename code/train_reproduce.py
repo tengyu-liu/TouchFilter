@@ -105,7 +105,7 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
     saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 # load training result
-data = pickle.load(open('evaluate/synthesis/individual_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.retore_batch)))
+data = pickle.load(open('evaluate/synthesis/individual_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch)))
 _GT_cup_i = data['cup_id']
 _GT_obs_z = data['obs_z']
 _GT_obs_z2 = data['obs_z2']
