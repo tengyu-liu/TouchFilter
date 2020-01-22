@@ -71,6 +71,7 @@ keep_ids = (data['syn_e'] < 3).reshape([-1])
 data['syn_w'] = data['syn_w'][keep_ids, :]
 data['syn_z'] = data['syn_z'][keep_ids, :]
 data['syn_z2'] = data['syn_z2'][keep_ids, :]
+data['syn_z2'] /= np.linalg.norm(data['syn_z2'], axis=-1, keepdims=True)
 data['syn_e'] = data['syn_e'][keep_ids, :]
 data['syn_p'] = data['syn_p'][keep_ids, :]
 
