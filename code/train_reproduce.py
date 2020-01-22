@@ -106,12 +106,6 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
 
 # load training result
 data = pickle.load(open('evaluate/synthesis/individual_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
-_GT_cup_i = data['cup_id']
-_GT_obs_z = data['obs_z']
-_GT_obs_z2 = data['obs_z2']
-_GT_obs_e = data['obs_e']
-_GT_obs_w = data['obs_w']
-_GT_obs_p = data['obs_p']
 _GT_syn_e = data['syn_e']
 _GT_syn_z = data['syn_z']
 _GT_syn_z2 = data['syn_z2']
