@@ -82,7 +82,7 @@ z_min = np.min(all_zs, axis=0, keepdims=True)
 z_max = np.max(all_zs, axis=0, keepdims=True)
 
 data_idxs = {cup_id: np.arange(len(obs_zs[cup_id])) for cup_id in cup_id_list}
-batch_num = int(len(batch_idxs[3]) // flags.batch_size)  # Run experiments on 10 batches
+batch_num = int(len(data_idxs[3]) // flags.batch_size)  # Run experiments on 10 batches
 print('Training data loaded.')
 
 # load model
