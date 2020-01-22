@@ -108,10 +108,15 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
 data = pickle.load(open('evaluate/synthesis/individual_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
 print(data.keys())
 _GT_syn_e = data['syn_e']
+print('syn_e', _GT_syn_e.shape)
 _GT_syn_z = data['syn_z']
+print('syn_z', _GT_syn_z.shape)
 _GT_syn_z2 = data['syn_z2']
+print('syn_z2', _GT_syn_z2.shape)
 _GT_syn_w = data['syn_w']
+print('syn_w', _GT_syn_w.shape)
 _GT_syn_p = data['syn_p']
+print('syn_p', _GT_syn_p.shape)
 
 # prepare local data
 update_mask = np.ones([flags.batch_size, 31])
