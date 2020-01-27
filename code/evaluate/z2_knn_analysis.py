@@ -17,14 +17,15 @@ data['syn_z2'] /= np.linalg.norm(data['syn_z2'], axis=-1, keepdims=True)
 data['syn_e'] = data['syn_e'][keep_ids, :]
 data['syn_p'] = data['syn_p'][keep_ids, :]
 
-tsne = MDS()
+tsne = TSNE()
 z2_manifold = tsne.fit_transform(data['syn_z2'])
 knn = KDTree(data['syn_z2'])
 
 i = random.randint(0, len(data['syn_z2'])-1)
 z2 = data['syn_z2'][i]
 
-neighbor_indices = knn.query([z2], 5, return_distance=False, sort_results=True)[0]
+neighbor_distance, neighbor_indices = knn.query([z2], 5, return_distance=True, sort_results=True)
+neighbor_distance, neighbor_indices = neighbor_distance[0], neighbor_indices[0]
 
 ax = plt.subplot2grid((5, 6), (0, 0), rowspan=10, colspan=4)
 ax.scatter(z2_manifold[:,0], z2_manifold[:,1], s=1, c='blue')
@@ -42,6 +43,7 @@ for i in range(5):
     except:
         pass
     ax.axis('off')
+    ax.set_title('d=%f'%neighbor_distance[i])
     ax = plt.subplot2grid((5,6), (i,5))
     try:
         ax.imshow(sio.imread('figs/plotly/%04d-1.png'%(neighbor_indices[i])))

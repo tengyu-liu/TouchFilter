@@ -153,34 +153,44 @@ for epoch in range(flags.epochs):
         syn_z[:,-9:] = obs_z[:,-9:]
         syn_z[:,-3:] += palm_directions[cup_id][idxs] * 0.1
         syn_z2 = np.random.normal(size=[flags.batch_size, flags.z2_size])
-        obs_z2 = obs_z2s[cup_id][idxs]
+        obs_z2 = np.random.normal(size=[flags.batch_size, flags.z2_size])
+        syn_z2 /= np.linalg.norm(syn_z2, axis=-1, keepdims=True)
+        obs_z2 /= np.linalg.norm(obs_z2, axis=-1, keepdims=True)
 
         syn_z_seq = np.zeros([flags.batch_size, 91, 31])
         syn_z2_seq = np.zeros([flags.batch_size, 91, flags.z2_size])
+        obs_z2_seq = np.zeros([flags.batch_size, 91, flags.z2_size])
         syn_e_seq = np.zeros([flags.batch_size, 91, 1])
         syn_w_seq = np.zeros([flags.batch_size, 91, 5871])
         syn_p_seq = np.zeros([flags.batch_size, 91, 1])
 
         syn_z_seq[:,0,:] = syn_z
         syn_z2_seq[:,0,:] = syn_z2
+        obs_z2_seq[:,0,:] = obs_z2
 
         update_mask = np.ones(syn_z.shape)
         update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
             syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False})
+            _, obs_z2, _, _, _, _ = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: obs_z, model.inp_z2: obs_z2, model.update_mask: update_mask, model.is_training: False})
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
+            syn_z2 /= np.linalg.norm(syn_z2, axis=-1, keepdims=True)
+            obs_z2 /= np.linalg.norm(obs_z2, axis=-1, keepdims=True)
             assert not np.any(np.isnan(syn_w))
             assert not np.any(np.isinf(syn_w))
             assert not np.any(np.isnan(syn_z))
             assert not np.any(np.isinf(syn_z))
             assert not np.any(np.isnan(syn_z2))
             assert not np.any(np.isinf(syn_z2))
+            assert not np.any(np.isnan(obs_z2))
+            assert not np.any(np.isinf(obs_z2))
             assert not np.any(np.isnan(syn_p))
             assert not np.any(np.isinf(syn_p))
 
             syn_z_seq[:, langevin_step+1, :] = syn_z
             syn_z2_seq[:, langevin_step+1, :] = syn_z2
+            obs_z2_seq[:, langevin_step+1, :] = obs_z2
             syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
             syn_w_seq[:, langevin_step, :] = syn_w[...,0]
             syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
@@ -267,6 +277,7 @@ for epoch in range(flags.epochs):
             pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
             saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
 
+    pickle.dump(obs_z2s, open(os.path.join(fig_dir, '%04d.obs_z2s.pkl'), 'wb'))
     print()
 
 # Note: z_size=2 doesn't work. data is too distorted to show real geometrical relationship
