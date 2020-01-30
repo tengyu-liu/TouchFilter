@@ -32,10 +32,6 @@ ax.scatter(z2_manifold[:,0], z2_manifold[:,1], s=1, c='blue')
 ax.scatter(z2_manifold[neighbor_indices,0], z2_manifold[neighbor_indices,1], s=5, c='red')
 ax.axis('off')
 
-for idx in neighbor_indices:
-    if (not os.path.exists('figs/plotly/%04d-0.png'%idx)) or (not os.path.exists('figs/plotly/%04d-1.png'%idx)):
-        os.system('/home/tengyu/anaconda2/envs/tensorflow/bin/python visualize_grasp_and_distance.py %d'%idx)
-
 for i in range(5):
     ax = plt.subplot2grid((5,6), (i,4))
     try:
