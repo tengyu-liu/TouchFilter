@@ -24,10 +24,11 @@ def trial(i):
         sim.reset()
         sim.generate_world(syn_z[i])
         sim.set_gravity(g)
-        for j in range(100):
+        for j in range(1000):
             sim.simulate()
-        delta_xs.append(np.linalg.norm(sim.get_cup_position_orientation()[0]))
-    return max(delta_xs)
+            if np.linalg.norm(sim.get_cup_position_orientation()[0]) > 1:
+                return False
+    return True
 
 for i in range(script_idx * 1000, min((script_idx + 1) * 1000, len(syn_z))):
     print('\r%d/%d'%(i, len(syn_z)), end='', flush=True)

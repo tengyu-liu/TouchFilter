@@ -1,17 +1,19 @@
-import sys
-import datetime
 import copy
+import datetime
 import os
 import pickle
+import sys
 import time
 from collections import defaultdict
 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 import trimesh as tm
 from pyquaternion.quaternion import Quaternion as Q
 
+from config import flags
 from model import Model
 
 
@@ -108,11 +110,16 @@ class SimulatedAnnealing:
         z[:,:22] = np.clip(z[:,:22], self.z_min[:,:22], self.a_max[:,:22])
         return z
     
-    def simulated_annealing(self, cup_id, initial_z, z2, n_steps, temperature_fn, keep_history=True):
+    def simulated_annealing(self, cup_id, initial_z, z2, n_steps, temperature_fn, keep_history=True, viz_energy = False):
         z = np.tile(initial_z.reshape([1, 31]), [self.batch_size, 1])
         z2 = np.tile(z2.reshape([1, 10]), [self.batch_size, 10])
 
         curr_energy = self.__energy(cup_id, z, z2)
+
+
+        if viz_energy:
+            plot_e = []
+            plt.ion()
 
         if keep_history:
             z_history = np.zeros([n_steps, self.batch_size, 31])
@@ -122,6 +129,12 @@ class SimulatedAnnealing:
             if keep_history:
                 z_history[i_step,...] = z
                 e_history[i_step,...] = curr_energy
+            if viz_energy:
+                if i_step % 100 = 0:
+                    plot_e.append(np.mean(curr_energy))
+                    plt.clf()
+                    plt.plot(plot_e)
+                    plt.pause(1e-5)
             new_z = self.__perturb(z)
             new_energy = self.__energy(cup_id, new_z, z2)
             acceptance = np.exp((curr_energy - new_energy) / temperature_fn(i_step))
@@ -130,8 +143,19 @@ class SimulatedAnnealing:
             curr_energy[acceptance > rand] = new_energy[acceptance > rand]
             print('\r[Step %d/%d] Energies: %s'%(i_step, n_steps, ' '.join(['%.2f'%x for x in curr_energy])), end='', flush=True)
         
-        print('\r Done. Energies: %s'%(' '.join(['%.2f'%x for x in curr_energy]))), end='\n', flush=True)
+        print('\r Done. Energies: %s'%(' '.join(['%.2f'%x for x in curr_energy])), end='\n', flush=True)
         if keep_history:
             return z, curr_energy, z_history, e_history
         else:
             return z, curr_energy
+
+if __name__ == '__main__':
+    SA = SimulatedAnnealing(flags)
+    initial_z = np.random.random([1, 31])
+    z2 = np.random.random([1, 10])
+    n_steps = 700000
+    def temp_fn(xs):
+        return np.exp(-xs * 1e-4)
+    sampled_z, sampled_energy, z_history, e_history = SA.simulated_annealing(cup_id, initial_z, z2, n_steps, temp_fn, keep_history=True, viz_energy=False)
+    os.makedirs('simulated_annealing', exist_ok=True)
+    pickle.dump([sampled_z, sampled_energy, z_history, e_history], open('simulated_annealing/%s-%04d-%d.pkl', 'wb'))
