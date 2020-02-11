@@ -258,24 +258,23 @@ for epoch in range(flags.epochs):
             np.mean(syn_ewp[0]), np.mean(syn_ewp[2]),
             loss, time.time() - t0), end='')
         
-        if item_id % 100 == 0:
-            data = {
-                'cup_id': cup_id, 
-                'obs_z' : obs_z, 
-                'obs_z2' : obs_z2, 
-                'obs_e' : obs_ewp[0], 
-                'obs_w' : obs_ewp[1], 
-                'obs_p' : obs_ewp[2],
-                'syn_e' : syn_e_seq, 
-                'syn_z' : syn_z_seq, 
-                'syn_z2' : syn_z2_seq, 
-                'syn_w' : syn_w_seq,
-                'syn_p' : syn_p_seq,
-                'g_avg' : g_avg
-            }
+    data = {
+        'cup_id': cup_id, 
+        'obs_z' : obs_z, 
+        'obs_z2' : obs_z2, 
+        'obs_e' : obs_ewp[0], 
+        'obs_w' : obs_ewp[1], 
+        'obs_p' : obs_ewp[2],
+        'syn_e' : syn_e_seq, 
+        'syn_z' : syn_z_seq, 
+        'syn_z2' : syn_z2_seq, 
+        'syn_w' : syn_w_seq,
+        'syn_p' : syn_p_seq,
+        'g_avg' : g_avg
+    }
 
-            pickle.dump(data, open(os.path.join(fig_dir, '%04d-%d.pkl'%(epoch, batch_id)), 'wb'))
-            saver.save(sess, os.path.join(model_dir, '%04d-%d.ckpt'%(epoch, batch_id)))
+    pickle.dump(data, open(os.path.join(fig_dir, '%04d.pkl'%(epoch)), 'wb'))
+    saver.save(sess, os.path.join(model_dir, '%04d.ckpt'%(epoch)))
 
     pickle.dump(obs_z2s, open(os.path.join(fig_dir, '%04d.obs_z2s.pkl'%epoch), 'wb'))
     print()
