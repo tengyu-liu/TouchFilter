@@ -33,8 +33,6 @@ class Model:
         self.random_strength = config.random_strength
         self.dynamic_z2 = config.dynamic_z2
         self.l2_reg = config.l2_reg
-        self.z_mean = tf.constant(mean, dtype=tf.float32)
-        self.z_weight = tf.constant(stddev, dtype=tf.float32)
 
         self.debug = config.debug
 
@@ -42,38 +40,52 @@ class Model:
 
         self.cup_model_path = os.path.join(os.path.dirname(__file__), '../data/cups/models')
         self.cup_restore = 199
-    
-        self.obs_penetration_penalty = tf.constant(0, dtype=tf.float32)
-        self.syn_penetration_penalty = tf.constant(1, dtype=tf.float32)
+
+        self.graph = tf.Graph()
+
+        with self.graph.as_default(), tf.device('/cpu:0'):
+            self.z_mean = tf.constant(mean, dtype=tf.float32)
+            self.z_weight = tf.constant(stddev, dtype=tf.float32)
+            self.obs_penetration_penalty = tf.constant(0, dtype=tf.float32)
+            self.syn_penetration_penalty = tf.constant(1, dtype=tf.float32)
 
     def build_input(self):
-        
-        self.inp_z2 = tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'input_latent')
-        self.obs_z2 = tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'obs_latent')
-
-        self.inp_z = tf.placeholder(tf.float32, [self.batch_size, 31], 'input_hand_z')
-        self.obs_z = tf.placeholder(tf.float32, [self.batch_size, 31], 'obs_z')
-
-        self.is_training = tf.placeholder(tf.bool, [], 'is_training')
-
-        self.update_mask = tf.placeholder(tf.float32, [self.batch_size, 31], 'update_mask')
+        with self.graph.as_default(), tf.device('/cpu:0'):
+            self.inp_z2 = {i: tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'input_latent') for i in self.cup_list}
+            self.obs_z2 = {i: tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'obs_latent') for i in self.cup_list}
+            self.inp_z = {i: tf.placeholder(tf.float32, [self.batch_size, 31], 'input_hand_z') for i in self.cup_list}
+            self.obs_z = {i: tf.placeholder(tf.float32, [self.batch_size, 31], 'obs_z') for i in self.cup_list}
+            self.is_training = tf.placeholder(tf.bool, [], 'is_training')
+            self.update_mask = tf.placeholder(tf.float32, [self.batch_size, 31], 'update_mask')
         pass
 
     def build_model(self):
-        with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
+        with self.graph.as_default(), tf.device('/cpu:0'):
             self.EMA = tf.train.ExponentialMovingAverage(decay=0.99)
-            self.cup_models = { i: CupModel(i, self.cup_restore, self.cup_model_path) for i in self.cup_list}
+            self.cup_models = {}
+            self.hand_models = {}
+            self.touch_filters = {}
+            self.obs_ewp = {}
+            self.langevin_dynamics = {}
+            self.inp_ewp = {}
+            self.syn_zzewpg = {}
+            self.descriptor_loss = {}
+            self.gradients = {}
+            self.obs_z2_update = {}
 
-            self.hand_model = HandModel(self.batch_size)
-            self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
-            print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
-
-            self.obs_ewp = {i: self.descriptor(self.obs_z, self.obs_z2, self.cup_models[i], self.obs_penetration_penalty) for i in self.cup_list}
-            self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in self.cup_list}
-            self.inp_ewp = {i: self.descriptor(self.inp_z, self.inp_z2, self.cup_models[i], self.syn_penetration_penalty) for i in self.cup_list}
-            self.syn_zzewpg = {i: self.langevin_dynamics[i](self.inp_z, self.inp_z2) for i in self.cup_list}
-
-            self.descriptor_loss = {i : (tf.reduce_mean(self.obs_ewp[i][0]) + tf.reduce_mean(self.obs_ewp[i][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[i][0]) + tf.reduce_mean(self.inp_ewp[i][2]) * self.prior_weight) for i in self.cup_list}
+            with tf.variable_scope(tf.get_variable_scope()):
+                for i_gpu, cup_id in enumerate(self.cup_list):
+                    self.cup_models[cup_id] = CupModel(i, self.cup_restore, self.cup_model_path)
+                    self.hand_model[cup_id] = HandModel(self.batch_size)
+                    self.touch_filter[cup_id] = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
+                    self.obs_ewp[cup_id] = self.descriptor(self.obs_z[cup_id], self.obs_z2[cup_id], self.cup_models[cup_id], self.obs_penetration_penalty)
+                    tf.get_variable_scope().reuse_variables()
+                    self.langevin_dynamics[cup_id] = self.langevin_dynamics_fn(i)
+                    self.inp_ewp[cup_id] = self.descriptor(self.inp_z[cup_id], self.inp_z2[cup_id], self.cup_models[cup_id], self.syn_penetration_penalty)
+                    self.syn_zzewpg[cup_id] = self.langevin_dynamics[cup_id](self.inp_z[cup_id], self.inp_z2[cup_id])
+                    self.descriptor_loss[cup_id] = (tf.reduce_mean(self.obs_ewp[cup_id][0]) + tf.reduce_mean(self.obs_ewp[cup_id][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[cup_id][0]) + tf.reduce_mean(self.inp_ewp[cup_id][2]) * self.prior_weight)
+                    self.gradients[cup_id] = self.des_optim.compute_gradients(self.descriptor_loss[cup_id], var_list=[var for var in tf.trainable_variables()])
+                    self.obs_z2_update[cup_id] = self.obs_z2[cup_id] - tf.gradients(self.obs_ewp[cup_id][0] + tf.reduce_mean(tf.norm(self.obs_z2[cup_id], axis=-1)), self.obs_z2[cup_id])[0] * self.d_lr
     
     def hand_prior_nn(self, hand_z):
         h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
@@ -153,16 +165,16 @@ class Model:
         return langevin_dynamics
 
     def build_train(self):
-        self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model')]
-        self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
-        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
-        for (g,v) in des_grads_vars[3]:
-            if g is None:
-                print(v)
-        des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in self.cup_list}
-        self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in self.cup_list}
-        self.obs_z2_update = {i : self.obs_z2 - tf.gradients(self.obs_ewp[i][0] + tf.reduce_mean(tf.norm(self.obs_z2, axis=-1)), self.obs_z2)[0] * self.d_lr for i in self.cup_list}
-        pass
+        with self.graph.as_default(), tf.device('/cpu:0'):
+            self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
+            average_grads = []
+            for grad_and_vars in zip(*self.gradients)
+                grad = tf.vstack([g for g, _ in grad_and_vars])
+                grad = tf.reduce_mean(grad, axis=0)
+                v = grad_and_vars[0][1]
+                average_grads.append((grad, v))
+            
+            self.des_train = self.des_optim.apply_gradients(average_grads)
     
     def build_summary(self):
         self.summ_obs_e = tf.placeholder(tf.float32, [], 'summ_obs_e')
