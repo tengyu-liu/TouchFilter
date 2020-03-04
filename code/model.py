@@ -92,6 +92,7 @@ class Model:
         h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
         h2 = fully_connected(h1, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_2')
         prior = fully_connected(h2, 1, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_3')
+        tf.get_variable_scope().reuse_variables()
         return prior
 
     def hand_prior_physics(self, weight, surface_normals):
