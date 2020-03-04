@@ -79,20 +79,20 @@ class Model:
                     with tf.device('/gpu:%d'%i_gpu):
                         with tf.name_scope('TOWER_%d'%i_gpu) as scope:
                             self.cup_models[cup_id] = CupModel(cup_id, self.cup_restore, self.cup_model_path)
-                            self.obs_ewp[cup_id] = self.descriptor(self.obs_z[cup_id], self.obs_z2[cup_id], self.cup_models[cup_id], self.obs_penetration_penalty, i_gpu)
+                            self.obs_ewp[cup_id] = self.descriptor(self.obs_z[cup_id], self.obs_z2[cup_id], self.cup_models[cup_id], self.obs_penetration_penalty)
                             tf.get_variable_scope().reuse_variables()
-                            self.langevin_dynamics[cup_id] = self.langevin_dynamics_fn(cup_id, i_gpu)
-                            self.inp_ewp[cup_id] = self.descriptor(self.inp_z[cup_id], self.inp_z2[cup_id], self.cup_models[cup_id], self.syn_penetration_penalty, i_gpu)
-                            self.syn_zzewpg[cup_id] = self.langevin_dynamics[cup_id](self.inp_z[cup_id], self.inp_z2[cup_id], i_gpu)
+                            self.langevin_dynamics[cup_id] = self.langevin_dynamics_fn(cup_id)
+                            self.inp_ewp[cup_id] = self.descriptor(self.inp_z[cup_id], self.inp_z2[cup_id], self.cup_models[cup_id], self.syn_penetration_penalty)
+                            self.syn_zzewpg[cup_id] = self.langevin_dynamics[cup_id](self.inp_z[cup_id], self.inp_z2[cup_id])
                             self.descriptor_loss[cup_id] = (tf.reduce_mean(self.obs_ewp[cup_id][0]) + tf.reduce_mean(self.obs_ewp[cup_id][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[cup_id][0]) + tf.reduce_mean(self.inp_ewp[cup_id][2]) * self.prior_weight)
                             self.gradients[cup_id] = self.des_optim.compute_gradients(self.descriptor_loss[cup_id], var_list=[var for var in tf.trainable_variables()])
                             self.obs_z2_update[cup_id] = self.obs_z2[cup_id] - tf.gradients(self.obs_ewp[cup_id][0] + tf.reduce_mean(tf.norm(self.obs_z2[cup_id], axis=-1)), self.obs_z2[cup_id])[0] * self.d_lr
     
-    def hand_prior_nn(self, hand_z, i_gpu):
-        h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='TOWER_%d'%i_gpu)
-        h2 = fully_connected(h1, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='TOWER_%d'%i_gpu)
-        prior = fully_connected(h2, 1, activation_fn=None, weight_decay=self.l2_reg, scope='TOWER_%d'%i_gpu)
+    def hand_prior_nn(self, hand_z):
         tf.get_variable_scope().reuse_variables()
+        h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
+        h2 = fully_connected(h1, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_2')
+        prior = fully_connected(h2, 1, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_3')
         return prior
 
     def hand_prior_physics(self, weight, surface_normals):
@@ -120,7 +120,7 @@ class Model:
             mean_prior[batch_i] += tf.cond(tf.reduce_any(index), lambda : prior(surface_normals[batch_i], index), zero)
         return tf.stack(mean_prior)
 
-    def descriptor(self, hand_z, z2, cup_model, penetration_penalty, i_gpu):
+    def descriptor(self, hand_z, z2, cup_model, penetration_penalty):
         z_ = hand_z
         jrot = z_[:,:22]
         grot = tf.reshape(z_[:,22:28], [z_.shape[0], 3, 2])
@@ -134,16 +134,16 @@ class Model:
         energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, z2, cup_model, penetration_penalty, self.is_training)
         
         if self.prior_type == "NN":
-            hand_prior = self.hand_prior_nn(hand_z, i_gpu)
+            hand_prior = self.hand_prior_nn(hand_z)
         elif self.prior_type == "Phys":
             hand_prior = self.hand_prior_physics(weight, surf_normals)
         else:
             raise NotImplementedError("Prior type must be \"NN\" or \"Phys\"")
         return energy, weight, hand_prior
 
-    def langevin_dynamics_fn(self, cup_id, i_gpu):
+    def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, z2):
-            energy, weight, hand_prior = self.descriptor(z,z2,self.cup_models[cup_id], self.syn_penetration_penalty, i_gpu) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
+            energy, weight, hand_prior = self.descriptor(z,z2,self.cup_models[cup_id], self.syn_penetration_penalty) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             g_avg = 0
