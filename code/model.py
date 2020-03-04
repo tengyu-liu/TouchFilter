@@ -8,6 +8,7 @@ from utils.CupModel import CupModel
 from utils.HandModel import HandModel
 from utils.TouchFilter import TouchFilter
 from utils.tf_util import fully_connected
+from utils.HandPriorNN import HandPriorNN
 
 class Model:
     def __init__(self, config, mean, stddev, cup_list):
@@ -65,6 +66,8 @@ class Model:
             tf.get_variable_scope().reuse_variables()
             self.hand_model = HandModel(self.batch_size)
             self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
+            if self.prior_type == 'NN':
+                self.hand_prior_nn = HandPriorNN(self.l2_reg)
             self.cup_models = {}
             self.obs_ewp = {}
             self.langevin_dynamics = {}
@@ -88,14 +91,6 @@ class Model:
                             self.gradients[cup_id] = self.des_optim.compute_gradients(self.descriptor_loss[cup_id], var_list=[var for var in tf.trainable_variables()])
                             self.obs_z2_update[cup_id] = self.obs_z2[cup_id] - tf.gradients(self.obs_ewp[cup_id][0] + tf.reduce_mean(tf.norm(self.obs_z2[cup_id], axis=-1)), self.obs_z2[cup_id])[0] * self.d_lr
     
-    def hand_prior_nn(self, hand_z):
-        with tf.variable_scope('HandPriorNN', reuse=tf.AUTO_REUSE):
-            tf.get_variable_scope().reuse_variables()
-            h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
-            h2 = fully_connected(h1, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_2')
-            prior = fully_connected(h2, 1, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_3')
-            return prior
-
     def hand_prior_physics(self, weight, surface_normals):
         """
         Hand prior model. 
