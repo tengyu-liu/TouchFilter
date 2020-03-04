@@ -62,6 +62,7 @@ class Model:
     def build_model(self):
         with self.graph.as_default(), tf.device('/cpu:0'):
             self.EMA = tf.train.ExponentialMovingAverage(decay=0.99)
+            tf.get_variable_scope().reuse_variables()
             self.hand_model = HandModel(self.batch_size)
             self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
             self.cup_models = {}
