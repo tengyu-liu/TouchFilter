@@ -62,6 +62,7 @@ class Model:
     def build_model(self):
         with self.graph.as_default(), tf.device('/cpu:0'):
             self.EMA = tf.train.ExponentialMovingAverage(decay=0.99)
+            self.hand_model = HandModel(self.batch_size)
             self.cup_models = {}
             self.hand_models = {}
             self.touch_filters = {}
@@ -78,7 +79,6 @@ class Model:
                     with tf.device('/gpu:%d'%i_gpu):
                         with tf.name_scope('TOWER_%d'%i_gpu) as scope:
                             self.cup_models[cup_id] = CupModel(cup_id, self.cup_restore, self.cup_model_path)
-                            self.hand_model[cup_id] = HandModel(self.batch_size)
                             self.touch_filter[cup_id] = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
                             self.obs_ewp[cup_id] = self.descriptor(self.obs_z[cup_id], self.obs_z2[cup_id], self.cup_models[cup_id], self.obs_penetration_penalty)
                             tf.get_variable_scope().reuse_variables()
