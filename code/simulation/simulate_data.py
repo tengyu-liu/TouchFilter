@@ -6,51 +6,61 @@ import numpy as np
 
 from Simulator import Simulator
 
-data = pickle.load(open('/media/tengyu/BC9C613B9C60F0F6/Users/24jas/Desktop/TouchFilter/code/evaluate/synthesis/individual_z2/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))
-syn_z = data['syn_z']
+energies = []
+distances = []
 
-es = data['syn_e']
-xs = []
+for epoch in range(200):
+    os.system('scp antelope:/home/tengyu/github/TouchFilter/code/figs/nn_prior_lr-5/%04d-300.pkl ../figs/nn_prior_lr-5/'%epoch)
+    data = pickle.load(open('../figs/nn_prior_lr-5/%04d-300.pkl'%epoch, 'rb'))
+    syn_z = data['syn_z'][:,-1,:]
 
-sim = Simulator()
-sim.connect(with_gui=False)
+    es = data['syn_e'][:,-1,:]
+    xs = []
 
-def trial(i):
-    delta_xs = []
-    for g in [[10,0,0],[-10,0,0],[0,10,0],[0,-10,0],[0,0,10],[0,0,-10]]:
-        sim.reset()
-        sim.generate_world(syn_z[i])
-        sim.set_gravity(g)
-        for j in range(1000):
-            sim.simulate()
-            if np.linalg.norm(sim.get_cup_position_orientation()[0]) > 1:
-                return np.linalg.norm(sim.get_cup_position_orientation()[0])
-        delta_xs.append(np.linalg.norm(sim.get_cup_position_orientation()[0]))
-        print(delta_xs[-1])
-    return max(delta_xs)
+    sim = Simulator()
+    sim.connect(with_gui=False)
 
-for i in range(len(syn_z)):
-    print('\r%d/%d'%(i, len(syn_z)), end='', flush=True)
-    xs.append(trial(i))
+    def trial(i):
+        delta_xs = []
+        for g in [[10,0,0],[-10,0,0],[0,10,0],[0,-10,0],[0,0,10],[0,0,-10]]:
+            sim.reset()
+            sim.generate_world(syn_z[i])
+            sim.set_gravity(g)
+            for j in range(1000):
+                sim.simulate()
+                if np.linalg.norm(sim.get_cup_position_orientation()[0]) > 1:
+                    return np.linalg.norm(sim.get_cup_position_orientation()[0])
+            delta_xs.append(np.linalg.norm(sim.get_cup_position_orientation()[0]))
+        return max(delta_xs)
 
-sim.disconnect()
+    for i in range(len(syn_z)):
+        xs.append(trial(i))
+        print('\r[%d] %d/%d: %f'%(epoch, i, len(syn_z), xs[-1]), end='', flush=True)
 
-xs = np.array(xs)
-es = es.reshape([-1])
+    sim.disconnect()
 
+    energies.append(es)
+    distances.append(xs)
+
+pickle.dump([energies, distances], open('analysis.pkl', 'wb'))
+
+"""
+import pickle
 import matplotlib.pyplot as plt
+import numpy as np
 
-ax = plt.subplot(221)
-ax.set_title('Dist of X (E < 3)')
-ax.hist(xs[es < 3.0], bins=100)
-ax = plt.subplot(222)
-ax.set_title('Dist of X (E >= 3)')
-ax.hist(xs[es >= 3.0], bins=100)
-ax = plt.subplot(223)
-ax.set_title('Dist of E (X < 0.1)')
-ax.hist(es[xs < 0.1], bins=100)
-ax = plt.subplot(224)
-ax.set_title('Dist of E (X >= 0.1)')
-ax.hist(es[xs >= 0.1], bins=100)
+energies, distances = pickle.load(open('analysis.pkl', 'rb'))
+plt.subplot(221)
+plt.plot([np.mean(x) for x in energies])
+plt.title('mean energies')
+plt.subplot(222)
+plt.plot([np.std(x) for x in energies])
+plt.title('std energies')
+plt.subplot(223)
+plt.plot([np.min(x) for x in distances])
+plt.title('min distances')
+plt.subplot(224)
+plt.plot([np.mean(x) for x in distances])
+plt.title('mean distances')
 plt.show()
-
+"""
