@@ -170,7 +170,7 @@ class Model:
         with self.graph.as_default(), tf.device('/cpu:0'):
             self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
             average_grads = []
-            for grad_and_vars in zip(*self.gradients)
+            for grad_and_vars in zip(*self.gradients):
                 grad = tf.vstack([g for g, _ in grad_and_vars])
                 grad = tf.reduce_mean(grad, axis=0)
                 v = grad_and_vars[0][1]
