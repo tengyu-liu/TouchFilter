@@ -277,8 +277,8 @@ for epoch in range(flags.epochs):
 
         train_writer.add_summary(summ, global_step=epoch * batch_num + batch_id)
 
-        print('\rE%dB%d/%d(C%d): Obs.E: %f, Obs.P: %f, Ini.E: %f, Ini.P: %f, Syn.E: %f, Syn.P: %f, Loss: %f, Time: %f'%(
-            epoch, batch_id, batch_num, cup_id, 
+        print('\rE%dB%d/%d: Obs.E: %f, Obs.P: %f, Ini.E: %f, Ini.P: %f, Syn.E: %f, Syn.P: %f, Loss: %f, Time: %f'%(
+            epoch, batch_id, batch_num,
             np.mean([np.mean(obs_ewp[cup_id][0]) for cup_id in cup_id_list]), 
             np.mean([np.mean(obs_ewp[cup_id][2]) for cup_id in cup_id_list]),
             np.mean([np.mean(syn_e_seq[cup_id][0]) for cup_id in cup_id_list]), 
@@ -288,7 +288,6 @@ for epoch in range(flags.epochs):
             np.mean(list(loss.values())), time.time() - t0), end='')
         
     data = {
-        'cup_id': cup_id, 
         'obs_z' : obs_z, 
         'obs_z2' : obs_z2, 
         'obs_ewp' : obs_ewp,
