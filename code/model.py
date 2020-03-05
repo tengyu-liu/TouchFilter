@@ -172,50 +172,51 @@ class Model:
             self.des_train = self.des_optim.apply_gradients(average_grads)
     
     def build_summary(self):
-        self.summ_obs_e = {i : tf.placeholder(tf.float32, [], 'summ_obs_e/%d'%i) for i in self.cup_list}
-        self.summ_ini_e = {i : tf.placeholder(tf.float32, [], 'summ_ini_e/%d'%i) for i in self.cup_list}
-        self.summ_syn_e = {i : tf.placeholder(tf.float32, [], 'summ_syn_e/%d'%i) for i in self.cup_list}
-        self.summ_obs_p = {i : tf.placeholder(tf.float32, [], 'summ_obs_p/%d'%i) for i in self.cup_list}
-        self.summ_ini_p = {i : tf.placeholder(tf.float32, [], 'summ_ini_p/%d'%i) for i in self.cup_list}
-        self.summ_syn_p = {i : tf.placeholder(tf.float32, [], 'summ_syn_p/%d'%i) for i in self.cup_list}
-        self.summ_obs_w = {i : tf.placeholder(tf.float32, [None], 'summ_obs_w/%d'%i) for i in self.cup_list}
-        self.summ_syn_w = {i : tf.placeholder(tf.float32, [None], 'summ_syn_w/%d'%i) for i in self.cup_list}
-        self.summ_g_avg = {i : tf.placeholder(tf.float32, [31], 'summ_g_avg/%d'%i) for i in self.cup_list}
-        self.summ_descriptor_loss = {i : tf.placeholder(tf.float32, [], 'summ_descriptor_loss/%d'%i) for i in self.cup_list}
+        with self.graph.as_default(), tf.device('/cpu:0'):
+            self.summ_obs_e = {i : tf.placeholder(tf.float32, [], 'summ_obs_e/%d'%i) for i in self.cup_list}
+            self.summ_ini_e = {i : tf.placeholder(tf.float32, [], 'summ_ini_e/%d'%i) for i in self.cup_list}
+            self.summ_syn_e = {i : tf.placeholder(tf.float32, [], 'summ_syn_e/%d'%i) for i in self.cup_list}
+            self.summ_obs_p = {i : tf.placeholder(tf.float32, [], 'summ_obs_p/%d'%i) for i in self.cup_list}
+            self.summ_ini_p = {i : tf.placeholder(tf.float32, [], 'summ_ini_p/%d'%i) for i in self.cup_list}
+            self.summ_syn_p = {i : tf.placeholder(tf.float32, [], 'summ_syn_p/%d'%i) for i in self.cup_list}
+            self.summ_obs_w = {i : tf.placeholder(tf.float32, [None], 'summ_obs_w/%d'%i) for i in self.cup_list}
+            self.summ_syn_w = {i : tf.placeholder(tf.float32, [None], 'summ_syn_w/%d'%i) for i in self.cup_list}
+            self.summ_g_avg = {i : tf.placeholder(tf.float32, [31], 'summ_g_avg/%d'%i) for i in self.cup_list}
+            self.summ_descriptor_loss = {i : tf.placeholder(tf.float32, [], 'summ_descriptor_loss/%d'%i) for i in self.cup_list}
 
-        scalar_summs = []
-        for i in self.cup_list:
-            scalar_summs.append(tf.summary.scalar('energy/obs/%d'%i, self.summ_obs_e[i]))
-            scalar_summs.append(tf.summary.scalar('energy/ini/%d'%i, self.summ_ini_e[i]))
-            scalar_summs.append(tf.summary.scalar('energy/syn/%d'%i, self.summ_syn_e[i]))
-            scalar_summs.append(tf.summary.scalar('energy/obs/%d'%i, self.summ_obs_e[i]))
-            scalar_summs.append(tf.summary.scalar('prior/obs/%d'%i, self.summ_obs_p[i]))
-            scalar_summs.append(tf.summary.scalar('prior/ini/%d'%i, self.summ_ini_p[i]))
-            scalar_summs.append(tf.summary.scalar('prior/syn/%d'%i, self.summ_syn_p[i]))
-            scalar_summs.append(tf.summary.scalar('prior/imp/%d'%i, self.summ_ini_p[i] - self.summ_syn_p[i]))
-            scalar_summs.append(tf.summary.histogram('weight/obs/%d'%i, self.summ_obs_w[i]))
-            scalar_summs.append(tf.summary.histogram('weight/syn/%d'%i, self.summ_syn_w[i]))
-            scalar_summs.append(tf.summary.scalar('loss/%d'%i, self.summ_descriptor_loss[i]))
-            
-        self.summ_obs_bw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw/%d'%i) for i in self.cup_list}
-        self.summ_obs_fw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw/%d'%i) for i in self.cup_list}
-        self.summ_syn_bw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_bw/%d'%i) for i in self.cup_list}
-        self.summ_syn_fw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_fw/%d'%i) for i in self.cup_list}
-        self.summ_obs_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_im/%d'%i) for i in self.cup_list}
-        self.summ_syn_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_im/%d'%i) for i in self.cup_list}
-        self.summ_syn_e_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_e_im/%d'%i) for i in self.cup_list}
-        self.summ_syn_p_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_p_im/%d'%i) for i in self.cup_list}
-        img_summs = []
-        for i in self.cup_list:
-            img_summs.append(tf.summary.image('w/obs/back/%i', self.summ_obs_bw[i]))
-            img_summs.append(tf.summary.image('w/obs/front/%i', self.summ_obs_fw[i]))
-            img_summs.append(tf.summary.image('w/syn/back/%i', self.summ_syn_bw[i]))
-            img_summs.append(tf.summary.image('w/syn/front/%i', self.summ_syn_fw[i]))
-            img_summs.append(tf.summary.image('render/obs/%i', self.summ_obs_im[i]))
-            img_summs.append(tf.summary.image('render/syn/%i', self.summ_syn_im[i]))
-            img_summs.append(tf.summary.image('plot/syn_e/%i', self.summ_syn_e_im[i]))
-            img_summs.append(tf.summary.image('plot/syn_prior/%i', self.summ_syn_p_im[i]))
+            scalar_summs = []
+            for i in self.cup_list:
+                scalar_summs.append(tf.summary.scalar('energy/obs/%d'%i, self.summ_obs_e[i]))
+                scalar_summs.append(tf.summary.scalar('energy/ini/%d'%i, self.summ_ini_e[i]))
+                scalar_summs.append(tf.summary.scalar('energy/syn/%d'%i, self.summ_syn_e[i]))
+                scalar_summs.append(tf.summary.scalar('energy/obs/%d'%i, self.summ_obs_e[i]))
+                scalar_summs.append(tf.summary.scalar('prior/obs/%d'%i, self.summ_obs_p[i]))
+                scalar_summs.append(tf.summary.scalar('prior/ini/%d'%i, self.summ_ini_p[i]))
+                scalar_summs.append(tf.summary.scalar('prior/syn/%d'%i, self.summ_syn_p[i]))
+                scalar_summs.append(tf.summary.scalar('prior/imp/%d'%i, self.summ_ini_p[i] - self.summ_syn_p[i]))
+                scalar_summs.append(tf.summary.histogram('weight/obs/%d'%i, self.summ_obs_w[i]))
+                scalar_summs.append(tf.summary.histogram('weight/syn/%d'%i, self.summ_syn_w[i]))
+                scalar_summs.append(tf.summary.scalar('loss/%d'%i, self.summ_descriptor_loss[i]))
+                
+            self.summ_obs_bw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw/%d'%i) for i in self.cup_list}
+            self.summ_obs_fw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw/%d'%i) for i in self.cup_list}
+            self.summ_syn_bw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_bw/%d'%i) for i in self.cup_list}
+            self.summ_syn_fw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_fw/%d'%i) for i in self.cup_list}
+            self.summ_obs_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_im/%d'%i) for i in self.cup_list}
+            self.summ_syn_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_im/%d'%i) for i in self.cup_list}
+            self.summ_syn_e_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_e_im/%d'%i) for i in self.cup_list}
+            self.summ_syn_p_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_p_im/%d'%i) for i in self.cup_list}
+            img_summs = []
+            for i in self.cup_list:
+                img_summs.append(tf.summary.image('w/obs/back/%i', self.summ_obs_bw[i]))
+                img_summs.append(tf.summary.image('w/obs/front/%i', self.summ_obs_fw[i]))
+                img_summs.append(tf.summary.image('w/syn/back/%i', self.summ_syn_bw[i]))
+                img_summs.append(tf.summary.image('w/syn/front/%i', self.summ_syn_fw[i]))
+                img_summs.append(tf.summary.image('render/obs/%i', self.summ_obs_im[i]))
+                img_summs.append(tf.summary.image('render/syn/%i', self.summ_syn_im[i]))
+                img_summs.append(tf.summary.image('plot/syn_e/%i', self.summ_syn_e_im[i]))
+                img_summs.append(tf.summary.image('plot/syn_prior/%i', self.summ_syn_p_im[i]))
 
-        self.scalar_summ = tf.summary.merge(scalar_summs)
-        self.all_summ = tf.summary.merge(img_summs + scalar_summs)
-        pass
+            self.scalar_summ = tf.summary.merge(scalar_summs)
+            self.all_summ = tf.summary.merge(img_summs + scalar_summs)
+            pass
