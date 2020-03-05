@@ -285,7 +285,7 @@ for epoch in range(flags.epochs):
             np.mean([np.mean(syn_p_seq[cup_id][0]) for cup_id in cup_id_list]),
             np.mean([np.mean(syn_ewp[cup_id][0]) for cup_id in cup_id_list]), 
             np.mean([np.mean(syn_ewp[cup_id][2]) for cup_id in cup_id_list]),
-            np.mean(loss.values()), time.time() - t0), end='')
+            np.mean(list(loss.values())), time.time() - t0), end='')
         
     data = {
         'cup_id': cup_id, 
