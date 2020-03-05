@@ -15,5 +15,5 @@ class EMA:
     
     def get(self):
         if self.value is None:
-            return np.ones(size)
+            return np.ones(self.size)
         return self.value
