@@ -150,7 +150,7 @@ for epoch in range(flags.epochs):
             continue
         
         t0 = time.time()
-        obs_z, syn_z, obs_z2, syn_z2, syn_z_seq, syn_z2_seq, obs_z2_seq, syn_e_seq, syn_w_seq, syn_p_seq = {},{},{},{},{},{},{},{},{},{}
+        obs_z, syn_z, obs_z2, syn_z2, syn_z_seq, syn_z2_seq, obs_z2_seq, syn_e_seq, syn_w_seq, syn_p_seq, syn_e, syn_w, syn_p = {},{},{},{},{},{},{},{},{},{},{},{},{}
         for cup_id in cup_id_list:
             idxs = shuffled_idxs[cup_id][flags.batch_size * batch_id : flags.batch_size * (batch_id + 1)]
 
