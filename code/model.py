@@ -163,7 +163,7 @@ class Model:
     def build_train(self):
         with self.graph.as_default(), tf.device('/cpu:0'):
             average_grads = []
-            for grad_and_vars in zip(*self.gradients):
+            for grad_and_vars in zip(*self.gradients.values()):
                 grad = tf.vstack([g for g, _ in grad_and_vars])
                 grad = tf.reduce_mean(grad, axis=0)
                 v = grad_and_vars[0][1]
