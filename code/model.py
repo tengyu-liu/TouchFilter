@@ -56,6 +56,7 @@ class Model:
             self.obs_z2 = {i: tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'obs_latent') for i in self.cup_list}
             self.inp_z = {i: tf.placeholder(tf.float32, [self.batch_size, 31], 'input_hand_z') for i in self.cup_list}
             self.obs_z = {i: tf.placeholder(tf.float32, [self.batch_size, 31], 'obs_z') for i in self.cup_list}
+            self.g_avg = tf.placeholder(tf.float32, [31], 'g_avg')
             self.is_training = tf.placeholder(tf.bool, [], 'is_training')
             self.update_mask = tf.placeholder(tf.float32, [self.batch_size, 31], 'update_mask')
         pass
@@ -142,12 +143,9 @@ class Model:
             energy, weight, hand_prior = self.descriptor(z,z2,self.cup_models[cup_id], self.syn_penetration_penalty) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
-            g_avg = 0
             if self.adaptive_langevin:
-                apply_op = self.EMA.apply([gz_abs])
                 with tf.control_dependencies([apply_op]):
-                    g_avg = self.EMA.average(gz_abs) + 1e-9
-                    grad_z = grad_z / g_avg
+                    grad_z = grad_z / self.g_avg
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 31, axes=-1)
             z2g = 0
@@ -158,7 +156,7 @@ class Model:
             grad_z = grad_z * self.z_weight[0]
             z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
             z2 = z2 - self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
-            return [z, z2, energy, weight, hand_prior, g_avg]
+            return [z, z2, energy, weight, hand_prior, gz_abs]
             
         return langevin_dynamics
 

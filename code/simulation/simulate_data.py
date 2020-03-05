@@ -10,8 +10,12 @@ energies = []
 distances = []
 
 for epoch in range(200):
-    os.system('scp antelope:/home/tengyu/github/TouchFilter/code/figs/nn_prior_lr-5/%04d-300.pkl ../figs/nn_prior_lr-5/'%epoch)
-    data = pickle.load(open('../figs/nn_prior_lr-5/%04d-300.pkl'%epoch, 'rb'))
+    try:
+        os.system('scp antelope:/home/tengyu/github/TouchFilter/code/figs/nn_prior_lr-5/%04d-300.pkl ../figs/nn_prior_lr-5/'%epoch)
+        data = pickle.load(open('../figs/nn_prior_lr-5/%04d-300.pkl'%epoch, 'rb'))
+    except:
+        break
+    
     syn_z = data['syn_z'][:,-1,:]
 
     es = data['syn_e'][:,-1,:]

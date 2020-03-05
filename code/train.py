@@ -16,6 +16,7 @@ from pyquaternion.quaternion import Quaternion as Q
 
 from config import flags
 from model import Model
+from utils.EMA import EMA
 
 if flags.tb_render:
     from utils.vis_util import VisUtil
@@ -86,6 +87,8 @@ stddev = np.std(all_zs, axis=0, keepdims=True)
 mean = np.mean(all_zs, axis=0, keepdims=True)
 z_min = np.min(all_zs, axis=0, keepdims=True)
 z_max = np.max(all_zs, axis=0, keepdims=True)
+
+gradient_ema = EMA(decay=0.99, size=[31])
 
 minimum_data_length = min(len(obs_zs[cup_id]) for cup_id in cup_id_list)
 data_idxs = {cup_id: np.arange(len(obs_zs[cup_id])) for cup_id in cup_id_list}
@@ -172,27 +175,29 @@ for epoch in range(flags.epochs):
         update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
-            feed_dict = {model.update_mask: update_mask, model.is_training: False}
+            feed_dict = {model.update_mask: update_mask, model.is_training: False, model.g_avg: gradient_ema.get()}
             for cup_id in cup_id_list:
                 feed_dict[model.inp_z[cup_id]] = syn_z[cup_id]
                 feed_dict[model.inp_z2[cup_id]] = syn_z2[cup_id]            
             langevin_result_syn = sess.run(model.syn_zzewpg, feed_dict=feed_dict)
-            feed_dict = {model.update_mask: update_mask, model.is_training: False}
+            feed_dict = {model.update_mask: update_mask, model.is_training: False, model.g_avg: gradient_ema.get()}
             for cup_id in cup_id_list:
                 syn_z[cup_id] = langevin_result_syn[cup_id][0]
                 syn_z2[cup_id] = langevin_result_syn[cup_id][1]
                 syn_e[cup_id] = langevin_result_syn[cup_id][2]
                 syn_w[cup_id] = langevin_result_syn[cup_id][3]
                 syn_p[cup_id] = langevin_result_syn[cup_id][4]
-                g_avg[cup_id] = langevin_result_syn[cup_id][5]
                 feed_dict[model.inp_z[cup_id]] = obs_z[cup_id]
-                feed_dict[model.inp_z2[cup_id]] = obs_z2[cup_id]            
+                feed_dict[model.inp_z2[cup_id]] = obs_z2[cup_id]
+                gradient_ema.apply(langevin_result_syn[cup_id][5])
+
             langevin_result_obs = sess.run(model.syn_zzewpg, feed_dict=feed_dict)
             for cup_id in cup_id_list:
                 obs_z2[cup_id] = langevin_result_obs[cup_id][1]
                 syn_z[cup_id][:,:22] = np.clip(syn_z[cup_id][:,:22], z_min[:,:22], z_max[:,:22])
                 syn_z2[cup_id] /= np.linalg.norm(syn_z2[cup_id], axis=-1, keepdims=True)
                 obs_z2[cup_id] /= np.linalg.norm(obs_z2[cup_id], axis=-1, keepdims=True)
+                gradient_ema.apply(langevin_result_syn[cup_id][5])
                 assert not np.any(np.isnan(syn_w[cup_id]))
                 assert not np.any(np.isinf(syn_w[cup_id]))
                 assert not np.any(np.isnan(syn_z[cup_id]))
