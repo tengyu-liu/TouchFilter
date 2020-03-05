@@ -152,7 +152,7 @@ for epoch in range(flags.epochs):
         t0 = time.time()
         obs_z, syn_z, obs_z2, syn_z2, syn_z_seq, syn_z2_seq, obs_z2_seq, syn_e_seq, syn_w_seq, syn_p_seq = {},{},{},{},{},{},{},{},{},{}
         for cup_id in cup_id_list:
-            idxs = shuffled_idxs[cup_id][flags.batch_size * item_id : flags.batch_size * (item_id + 1)]
+            idxs = shuffled_idxs[cup_id][flags.batch_size * batch_id : flags.batch_size * (batch_id + 1)]
 
             obs_z[cup_id] = obs_zs[cup_id][idxs]
             syn_z[cup_id] = np.zeros(obs_z[cup_id].shape)
