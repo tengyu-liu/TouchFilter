@@ -80,7 +80,7 @@ for i in cup_id_list:
 
 obs_zs = {i : np.array(x) for (i,x) in obs_zs.items()}
 palm_directions = {i : np.array(x) for (i,x) in palm_directions.items()}
-obs_z2s = {i : np.random.normal(size=[len(obs_zs[i]), flags.z2_size])}
+obs_z2s = {i : np.random.normal(size=[len(obs_zs[i]), flags.z2_size]) for i in obs_zs.keys()}
 all_zs = np.array(all_zs)
 
 stddev = np.std(all_zs, axis=0, keepdims=True)
