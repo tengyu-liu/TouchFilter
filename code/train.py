@@ -150,15 +150,15 @@ for epoch in range(flags.epochs):
             continue
         
         t0 = time.time()
-        obs_z, syn_z, obs_z2, syn_z2, syn_z_seq, syn_z2_seq, obs_z2_seq, syn_e_seq, syn_w_seq, syn_p_seq, syn_e, syn_w, syn_p = {},{},{},{},{},{},{},{},{},{},{},{},{}
+        obs_z, syn_z, obs_z2, syn_z2, syn_z_seq, syn_z2_seq, obs_z2_seq, syn_e_seq, syn_w_seq, syn_p_seq, syn_e, syn_w, syn_p, idxs = {},{},{},{},{},{},{},{},{},{},{},{},{},{}
         for cup_id in cup_id_list:
-            idxs = shuffled_idxs[cup_id][flags.batch_size * batch_id : flags.batch_size * (batch_id + 1)]
+            idxs[cup_id] = shuffled_idxs[cup_id][flags.batch_size * batch_id : flags.batch_size * (batch_id + 1)]
 
-            obs_z[cup_id] = obs_zs[cup_id][idxs]
+            obs_z[cup_id] = obs_zs[cup_id][idxs[cup_id]]
             syn_z[cup_id] = np.zeros(obs_z[cup_id].shape)
             syn_z[cup_id][:,:22] = 0
             syn_z[cup_id][:,-9:] = obs_z[cup_id][:,-9:]
-            syn_z[cup_id][:,-3:] += palm_directions[cup_id][idxs] * 0.1
+            syn_z[cup_id][:,-3:] += palm_directions[cup_id][idxs[cup_id]] * 0.1
             syn_z2[cup_id] = np.random.normal(size=[flags.batch_size, flags.z2_size])
             obs_z2[cup_id] = np.random.normal(size=[flags.batch_size, flags.z2_size])
             syn_z2[cup_id] /= np.linalg.norm(syn_z2[cup_id], axis=-1, keepdims=True)
@@ -231,7 +231,7 @@ for epoch in range(flags.epochs):
             syn_e_seq[cup_id][:, -1, 0] = syn_ewp[cup_id][0].reshape([-1])
             syn_w_seq[cup_id][:, -1, :] = syn_ewp[cup_id][1][...,0]
             syn_p_seq[cup_id][:, -1, 0] = syn_ewp[cup_id][2].reshape([-1])
-            obs_z2s[cup_id][idxs] = obs_z2[cup_id]
+            obs_z2s[cup_id][idxs[cup_id]] = obs_z2[cup_id]
 
         # compute obs_w img and syn_w img if weight is situation invariant
 
