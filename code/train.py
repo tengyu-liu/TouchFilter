@@ -92,7 +92,7 @@ gradient_ema = EMA(decay=0.99, size=[31])
 
 minimum_data_length = min(len(obs_zs[cup_id]) for cup_id in cup_id_list)
 data_idxs = {cup_id: np.arange(len(obs_zs[cup_id])) for cup_id in cup_id_list}
-batch_num = minimum_data_length // flags.batch_size * len(cup_id_list)
+batch_num = minimum_data_length // flags.batch_size
 print('Training data loaded.')
 
 # load model
