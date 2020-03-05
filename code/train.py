@@ -33,7 +33,7 @@ f.close()
 project_root = os.path.join(os.path.dirname(__file__), '..')
 
 # load obj
-cup_id_list = [1,2,3,4,5,6]
+cup_id_list = [1,2,3,4,5,6,7]
 if flags.debug:
     cup_id_list = [1]
 

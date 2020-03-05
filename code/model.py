@@ -164,7 +164,7 @@ class Model:
         with self.graph.as_default(), tf.device('/cpu:0'):
             average_grads = []
             for grad_and_vars in zip(*self.gradients.values()):
-                grad = tf.vstack([g for g, _ in grad_and_vars])
+                grad = tf.concat([tf.expand_dims(g, axis=0) for g, _ in grad_and_vars], axis=0)
                 grad = tf.reduce_mean(grad, axis=0)
                 v = grad_and_vars[0][1]
                 average_grads.append((grad, v))
