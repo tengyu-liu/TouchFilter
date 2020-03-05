@@ -144,8 +144,7 @@ class Model:
             grad_z = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
             gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
-                with tf.control_dependencies([apply_op]):
-                    grad_z = grad_z / self.g_avg
+                grad_z = grad_z / self.g_avg
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 31, axes=-1)
             z2g = 0
