@@ -110,8 +110,7 @@ class Model:
             contact_normals = tf.boolean_mask(surface_normal, index) 
             c_normal_1 = tf.expand_dims(contact_normals, axis=0)   # 1 x N x 3
             c_normal_2 = tf.expand_dims(contact_normals, axis=1)   # N x 1 x 3
-            c_cosine_similarity = tf.reduce_sum(c_normal_1 * c_normal_2, axis            self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
-=-1) # N x N
+            c_cosine_similarity = tf.reduce_sum(c_normal_1 * c_normal_2, axis=-1) # N x N
             return tf.reduce_min(c_cosine_similarity)
 
         for batch_i in range(self.batch_size):
