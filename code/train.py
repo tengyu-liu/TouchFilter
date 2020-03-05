@@ -256,7 +256,7 @@ for epoch in range(flags.epochs):
                 feed_dict[model.summ_syn_w[cup_id]] = syn_ewp[cup_id][1][-1,:,0]
                 feed_dict[model.summ_syn_e_im[cup_id]] = vu.plot_e(syn_e_seq[cup_id], obs_ewp[cup_id][0])
                 feed_dict[model.summ_syn_p_im[cup_id]] = vu.plot_e(syn_p_seq[cup_id], obs_ewp[cup_id][2])
-                feed_dict[model.summ_g_avg[cup_id]] = g_avg[cup_id]
+                feed_dict[model.summ_g_avg[cup_id]] = gradient_ema.get()
 
             summ = sess.run(model.all_summ, feed_dict=feed_dict)
         else:
@@ -271,7 +271,7 @@ for epoch in range(flags.epochs):
                 feed_dict[model.summ_descriptor_loss[cup_id]] = loss[cup_id]
                 feed_dict[model.summ_obs_w[cup_id]] = obs_ewp[cup_id][1][-1,:,0]
                 feed_dict[model.summ_syn_w[cup_id]] = syn_ewp[cup_id][1][-1,:,0]
-                feed_dict[model.summ_g_avg[cup_id]] = g_avg[cup_id]
+                feed_dict[model.summ_g_avg[cup_id]] = gradient_ema.get()
 
             summ = sess.run(model.scalar_summ, feed_dict=feed_dict)
 
@@ -297,7 +297,7 @@ for epoch in range(flags.epochs):
         'syn_z2' : syn_z2_seq, 
         'syn_w' : syn_w_seq,
         'syn_p' : syn_p_seq,
-        'g_avg' : g_avg
+        'g_avg' : gradient_ema.get()
     }
 
     pickle.dump(data, open(os.path.join(fig_dir, '%04d.pkl'%(epoch)), 'wb'))
