@@ -131,8 +131,9 @@ train_writer = tf.summary.FileWriter(log_dir, sess.graph)
 with model.graph.as_default() as g:
     saver = tf.train.Saver(max_to_keep=0)
 
-if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+if flags.restore_epoch >= 0:
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d.ckpt'%(flags.restore_epoch)))
+    gradient_ema = pickle.load(open(os.path.join(model_dir, '%04d.gradient.pkl'), 'wb'))
 
 print('Start training...')
 
@@ -146,8 +147,6 @@ for epoch in range(flags.epochs):
         np.random.shuffle(shuffled_idxs[cup_id])
     
     for batch_id in range(batch_num):
-        if epoch == flags.restore_epoch and batch_id <= flags.restore_batch:
-            continue
         
         t0 = time.time()
         obs_z, syn_z, obs_z2, syn_z2, syn_z_seq, syn_z2_seq, obs_z2_seq, syn_e_seq, syn_w_seq, syn_p_seq, syn_e, syn_w, syn_p, idxs = {},{},{},{},{},{},{},{},{},{},{},{},{},{}
@@ -301,6 +300,7 @@ for epoch in range(flags.epochs):
 
     pickle.dump(data, open(os.path.join(fig_dir, '%04d.pkl'%(epoch)), 'wb'))
     saver.save(sess, os.path.join(model_dir, '%04d.ckpt'%(epoch)))
+    pickle.dump(gradient_ema, open(os.path.join(model_dir, '%04d.gradient.pkl'), 'wb'))
 
     pickle.dump(obs_z2s, open(os.path.join(fig_dir, '%04d.obs_z2s.pkl'%epoch), 'wb'))
     print()
