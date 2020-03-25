@@ -8,11 +8,12 @@ import plotly.graph_objects as go
 import trimesh as tm
 from plotly.subplots import make_subplots
 import plotly.io as pio
-pio.orca.config.use_xvfb = True
 from pyquaternion.quaternion import Quaternion as Q
 
 import mat_trans as mt
 from forward_kinematics import ForwardKinematic
+
+pio.orca.config.use_xvfb = True
 
 class Visualizer:
     def __init__(self):
