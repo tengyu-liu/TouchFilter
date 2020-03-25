@@ -131,7 +131,7 @@ TODO:
 syn_z = _GT_syn_z[:,0,:]
 syn_z2 = _GT_syn_z2[:,0,:]
 
-w = np.zeros([syn_z.shape[0], 10, 10, _GT_syn_w.shape[-1]])
+w = np.zeros([syn_z.shape[0], 10, 10, _GT_syn_w.shape[-1], 2])
 
 v = Visualizer()
 os.makedirs('figs', exist_ok=True)
