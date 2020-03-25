@@ -8,7 +8,6 @@ from utils.CupModel import CupModel
 from utils.HandModel import HandModel
 from utils.TouchFilter import TouchFilter
 from utils.tf_util import fully_connected
-from utils.HandPriorNN import HandPriorNN
 
 class Model:
     def __init__(self, config, mean, stddev, cup_list):
@@ -34,6 +33,8 @@ class Model:
         self.random_strength = config.random_strength
         self.dynamic_z2 = config.dynamic_z2
         self.l2_reg = config.l2_reg
+        self.z_mean = tf.constant(mean, dtype=tf.float32)
+        self.z_weight = tf.constant(stddev, dtype=tf.float32)
 
         self.debug = config.debug
 
@@ -41,58 +42,47 @@ class Model:
 
         self.cup_model_path = os.path.join(os.path.dirname(__file__), '../data/cups/models')
         self.cup_restore = 199
-
-        self.graph = tf.Graph()
-
-        with self.graph.as_default(), tf.device('/cpu:0'):
-            self.z_mean = tf.constant(mean, dtype=tf.float32)
-            self.z_weight = tf.constant(stddev, dtype=tf.float32)
-            self.obs_penetration_penalty = tf.constant(0, dtype=tf.float32)
-            self.syn_penetration_penalty = tf.constant(1, dtype=tf.float32)
+    
+        self.obs_penetration_penalty = tf.constant(0, dtype=tf.float32)
+        self.syn_penetration_penalty = tf.constant(1, dtype=tf.float32)
 
     def build_input(self):
-        with self.graph.as_default(), tf.device('/cpu:0'):
-            self.inp_z2 = {i: tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'input_latent') for i in self.cup_list}
-            self.obs_z2 = {i: tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'obs_latent') for i in self.cup_list}
-            self.inp_z = {i: tf.placeholder(tf.float32, [self.batch_size, 31], 'input_hand_z') for i in self.cup_list}
-            self.obs_z = {i: tf.placeholder(tf.float32, [self.batch_size, 31], 'obs_z') for i in self.cup_list}
-            self.g_avg = tf.placeholder(tf.float32, [31], 'g_avg')
-            self.is_training = tf.placeholder(tf.bool, [], 'is_training')
-            self.update_mask = tf.placeholder(tf.float32, [self.batch_size, 31], 'update_mask')
+        
+        self.inp_z2 = tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'input_latent')
+        self.obs_z2 = tf.placeholder(tf.float32, [self.batch_size, self.z2_size], 'obs_latent')
+
+        self.inp_z = tf.placeholder(tf.float32, [self.batch_size, 31], 'input_hand_z')
+        self.obs_z = tf.placeholder(tf.float32, [self.batch_size, 31], 'obs_z')
+
+        self.is_training = tf.placeholder(tf.bool, [], 'is_training')
+
+        self.update_mask = tf.placeholder(tf.float32, [self.batch_size, 31], 'update_mask')
+
+        self.gz_mean = tf.placeholder(tf.float32, [31])
         pass
 
     def build_model(self):
-        with self.graph.as_default(), tf.device('/cpu:0'):
+        with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
             self.EMA = tf.train.ExponentialMovingAverage(decay=0.99)
+            self.cup_models = { i: CupModel(i, self.cup_restore, self.cup_model_path) for i in self.cup_list}
+
             self.hand_model = HandModel(self.batch_size)
             self.touch_filter = TouchFilter(self.hand_model.n_surf_pts, situation_invariant=self.situation_invariant)
-            if self.prior_type == 'NN':
-                self.hand_prior_nn = HandPriorNN(self.l2_reg)
-            self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
-            tf.get_variable_scope().reuse_variables()
-            self.cup_models = {}
-            self.obs_ewp = {}
-            self.langevin_dynamics = {}
-            self.inp_ewp = {}
-            self.syn_zzewpg = {}
-            self.descriptor_loss = {}
-            self.gradients = {}
-            self.obs_z2_update = {}
+            print('Hand Model #PTS: %d'%self.hand_model.n_surf_pts)        
 
-            with tf.variable_scope(tf.get_variable_scope()):
-                for i_gpu, cup_id in enumerate(self.cup_list):
-                    with tf.device('/gpu:%d'%i_gpu):
-                        with tf.name_scope('TOWER_%d'%i_gpu) as scope:
-                            self.cup_models[cup_id] = CupModel(cup_id, self.cup_restore, self.cup_model_path)
-                            self.obs_ewp[cup_id] = self.descriptor(self.obs_z[cup_id], self.obs_z2[cup_id], self.cup_models[cup_id], self.obs_penetration_penalty)
-                            tf.get_variable_scope().reuse_variables()
-                            self.langevin_dynamics[cup_id] = self.langevin_dynamics_fn(cup_id)
-                            self.inp_ewp[cup_id] = self.descriptor(self.inp_z[cup_id], self.inp_z2[cup_id], self.cup_models[cup_id], self.syn_penetration_penalty)
-                            self.syn_zzewpg[cup_id] = self.langevin_dynamics[cup_id](self.inp_z[cup_id], self.inp_z2[cup_id])
-                            self.descriptor_loss[cup_id] = (tf.reduce_mean(self.obs_ewp[cup_id][0]) + tf.reduce_mean(self.obs_ewp[cup_id][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[cup_id][0]) + tf.reduce_mean(self.inp_ewp[cup_id][2]) * self.prior_weight)
-                            self.gradients[cup_id] = self.des_optim.compute_gradients(self.descriptor_loss[cup_id], var_list=[var for var in tf.trainable_variables()])
-                            self.obs_z2_update[cup_id] = self.obs_z2[cup_id] - tf.gradients(self.obs_ewp[cup_id][0] + tf.reduce_mean(tf.norm(self.obs_z2[cup_id], axis=-1)), self.obs_z2[cup_id])[0] * self.d_lr
+            self.obs_ewp = {i: self.descriptor(self.obs_z, self.obs_z2, self.cup_models[i], self.obs_penetration_penalty) for i in self.cup_list}
+            self.langevin_dynamics = {i : self.langevin_dynamics_fn(i) for i in self.cup_list}
+            self.inp_ewp = {i: self.descriptor(self.inp_z, self.inp_z2, self.cup_models[i], self.syn_penetration_penalty) for i in self.cup_list}
+            self.syn_zzewpg = {i: self.langevin_dynamics[i](self.inp_z, self.inp_z2) for i in self.cup_list}
+
+            self.descriptor_loss = {i : (tf.reduce_mean(self.obs_ewp[i][0]) + tf.reduce_mean(self.obs_ewp[i][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[i][0]) + tf.reduce_mean(self.inp_ewp[i][2]) * self.prior_weight) for i in self.cup_list}
     
+    def hand_prior_nn(self, hand_z):
+        h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
+        h2 = fully_connected(h1, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_2')
+        prior = fully_connected(h2, 1, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_3')
+        return prior
+
     def hand_prior_physics(self, weight, surface_normals):
         """
         Hand prior model. 
@@ -143,9 +133,12 @@ class Model:
         def langevin_dynamics(z, z2):
             energy, weight, hand_prior = self.descriptor(z,z2,self.cup_models[cup_id], self.syn_penetration_penalty) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             grad_z = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
-            gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
+            # gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
-                grad_z = grad_z / self.g_avg
+                # apply_op = self.EMA.apply([gz_abs])
+                # with tf.control_dependencies([apply_op]):
+                # g_avg = self.EMA.average(gz_abs) + 1e-9
+                grad_z = grad_z / self.gz_mean
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 31, axes=-1)
             z2g = 0
@@ -156,67 +149,65 @@ class Model:
             grad_z = grad_z * self.z_weight[0]
             z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
             z2 = z2 - self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
-            return [z, z2, energy, weight, hand_prior, gz_abs]
+            return [z, z2, energy, weight, hand_prior]
             
         return langevin_dynamics
 
     def build_train(self):
-        with self.graph.as_default(), tf.device('/cpu:0'):
-            average_grads = []
-            for grad_and_vars in zip(*self.gradients.values()):
-                grad = tf.concat([tf.expand_dims(g, axis=0) for g, _ in grad_and_vars], axis=0)
-                grad = tf.reduce_mean(grad, axis=0)
-                v = grad_and_vars[0][1]
-                average_grads.append((grad, v))
-            
-            self.des_train = self.des_optim.apply_gradients(average_grads)
+        self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model')]
+        self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
+        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
+        for (g,v) in des_grads_vars[3]:
+            if g is None:
+                print(v)
+        des_grads_vars = {i : [(tf.clip_by_norm(g,1), v) for (g,v) in des_grads_vars[i]] for i in self.cup_list}
+        self.des_train = {i : self.des_optim.apply_gradients(des_grads_vars[i]) for i in self.cup_list}
+        self.obs_z2_update = {i : self.obs_z2 - tf.gradients(self.obs_ewp[i][0] + tf.reduce_mean(tf.norm(self.obs_z2, axis=-1)), self.obs_z2)[0] * self.d_lr for i in self.cup_list}
+        pass
     
     def build_summary(self):
-        with self.graph.as_default(), tf.device('/cpu:0'):
-            self.summ_obs_e = {i : tf.placeholder(tf.float32, [], 'summ_obs_e/%d'%i) for i in self.cup_list}
-            self.summ_ini_e = {i : tf.placeholder(tf.float32, [], 'summ_ini_e/%d'%i) for i in self.cup_list}
-            self.summ_syn_e = {i : tf.placeholder(tf.float32, [], 'summ_syn_e/%d'%i) for i in self.cup_list}
-            self.summ_obs_p = {i : tf.placeholder(tf.float32, [], 'summ_obs_p/%d'%i) for i in self.cup_list}
-            self.summ_ini_p = {i : tf.placeholder(tf.float32, [], 'summ_ini_p/%d'%i) for i in self.cup_list}
-            self.summ_syn_p = {i : tf.placeholder(tf.float32, [], 'summ_syn_p/%d'%i) for i in self.cup_list}
-            self.summ_obs_w = {i : tf.placeholder(tf.float32, [None], 'summ_obs_w/%d'%i) for i in self.cup_list}
-            self.summ_syn_w = {i : tf.placeholder(tf.float32, [None], 'summ_syn_w/%d'%i) for i in self.cup_list}
-            self.summ_g_avg = {i : tf.placeholder(tf.float32, [31], 'summ_g_avg/%d'%i) for i in self.cup_list}
-            self.summ_descriptor_loss = {i : tf.placeholder(tf.float32, [], 'summ_descriptor_loss/%d'%i) for i in self.cup_list}
-
-            scalar_summs = []
-            for i in self.cup_list:
-                scalar_summs.append(tf.summary.scalar('energy/obs/%d'%i, self.summ_obs_e[i]))
-                scalar_summs.append(tf.summary.scalar('energy/ini/%d'%i, self.summ_ini_e[i]))
-                scalar_summs.append(tf.summary.scalar('energy/syn/%d'%i, self.summ_syn_e[i]))
-                scalar_summs.append(tf.summary.scalar('energy/obs/%d'%i, self.summ_obs_e[i]))
-                scalar_summs.append(tf.summary.scalar('prior/obs/%d'%i, self.summ_obs_p[i]))
-                scalar_summs.append(tf.summary.scalar('prior/ini/%d'%i, self.summ_ini_p[i]))
-                scalar_summs.append(tf.summary.scalar('prior/syn/%d'%i, self.summ_syn_p[i]))
-                scalar_summs.append(tf.summary.scalar('prior/imp/%d'%i, self.summ_ini_p[i] - self.summ_syn_p[i]))
-                scalar_summs.append(tf.summary.histogram('weight/obs/%d'%i, self.summ_obs_w[i]))
-                scalar_summs.append(tf.summary.histogram('weight/syn/%d'%i, self.summ_syn_w[i]))
-                scalar_summs.append(tf.summary.scalar('loss/%d'%i, self.summ_descriptor_loss[i]))
-                
-            self.summ_obs_bw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw/%d'%i) for i in self.cup_list}
-            self.summ_obs_fw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw/%d'%i) for i in self.cup_list}
-            self.summ_syn_bw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_bw/%d'%i) for i in self.cup_list}
-            self.summ_syn_fw = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_fw/%d'%i) for i in self.cup_list}
-            self.summ_obs_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_im/%d'%i) for i in self.cup_list}
-            self.summ_syn_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_im/%d'%i) for i in self.cup_list}
-            self.summ_syn_e_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_e_im/%d'%i) for i in self.cup_list}
-            self.summ_syn_p_im = {i : tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_p_im/%d'%i) for i in self.cup_list}
-            img_summs = []
-            for i in self.cup_list:
-                img_summs.append(tf.summary.image('w/obs/back/%i', self.summ_obs_bw[i]))
-                img_summs.append(tf.summary.image('w/obs/front/%i', self.summ_obs_fw[i]))
-                img_summs.append(tf.summary.image('w/syn/back/%i', self.summ_syn_bw[i]))
-                img_summs.append(tf.summary.image('w/syn/front/%i', self.summ_syn_fw[i]))
-                img_summs.append(tf.summary.image('render/obs/%i', self.summ_obs_im[i]))
-                img_summs.append(tf.summary.image('render/syn/%i', self.summ_syn_im[i]))
-                img_summs.append(tf.summary.image('plot/syn_e/%i', self.summ_syn_e_im[i]))
-                img_summs.append(tf.summary.image('plot/syn_prior/%i', self.summ_syn_p_im[i]))
-
-            self.scalar_summ = tf.summary.merge(scalar_summs)
-            self.all_summ = tf.summary.merge(img_summs + scalar_summs)
-            pass
+        self.summ_obs_e = tf.placeholder(tf.float32, [], 'summ_obs_e')
+        self.summ_ini_e = tf.placeholder(tf.float32, [], 'summ_ini_e')
+        self.summ_syn_e = tf.placeholder(tf.float32, [], 'summ_syn_e')
+        self.summ_obs_p = tf.placeholder(tf.float32, [], 'summ_obs_p')
+        self.summ_ini_p = tf.placeholder(tf.float32, [], 'summ_ini_p')
+        self.summ_syn_p = tf.placeholder(tf.float32, [], 'summ_syn_p')
+        self.summ_descriptor_loss = tf.placeholder(tf.float32, [], 'summ_descriptor_loss')
+        self.summ_obs_w = tf.placeholder(tf.float32, [None], 'summ_obs_w')
+        self.summ_syn_w = tf.placeholder(tf.float32, [None], 'summ_syn_w')
+        self.summ_g_avg = tf.placeholder(tf.float32, [31], 'summ_g_avg')
+        scalar_summs = [
+            tf.summary.scalar('energy/obs', self.summ_obs_e), 
+            tf.summary.scalar('energy/ini', self.summ_ini_e), 
+            tf.summary.scalar('energy/syn', self.summ_syn_e), 
+            tf.summary.scalar('energy/obs', self.summ_obs_e), 
+            tf.summary.scalar('prior/obs', self.summ_obs_p), 
+            tf.summary.scalar('prior/ini', self.summ_ini_p), 
+            tf.summary.scalar('prior/syn', self.summ_syn_p), 
+            tf.summary.scalar('prior/imp', self.summ_ini_p - self.summ_syn_p), 
+            tf.summary.histogram('weight/obs', self.summ_obs_w),
+            tf.summary.histogram('weight/syn', self.summ_syn_w),
+            tf.summary.scalar('loss', self.summ_descriptor_loss)
+        ]
+        scalar_summs += [tf.summary.scalar('g_avg/%d'%i, self.summ_g_avg[i]) for i in range(31)]
+        self.summ_obs_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_bw')
+        self.summ_obs_fw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_fw')
+        self.summ_syn_bw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_bw')
+        self.summ_syn_fw = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_fw')
+        self.summ_obs_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_obs_im')
+        self.summ_syn_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_im')
+        self.summ_syn_e_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_e_im')
+        self.summ_syn_p_im = tf.placeholder(tf.uint8, [None, 480, 640, 3], 'summ_syn_p_im')
+        img_summs = [
+            tf.summary.image('w/obs/back', self.summ_obs_bw), 
+            tf.summary.image('w/obs/front', self.summ_obs_fw), 
+            tf.summary.image('w/syn/back', self.summ_syn_bw), 
+            tf.summary.image('w/syn/front', self.summ_syn_fw), 
+            tf.summary.image('render/obs', self.summ_obs_im), 
+            tf.summary.image('render/syn', self.summ_syn_im), 
+            tf.summary.image('plot/syn_e', self.summ_syn_e_im), 
+            tf.summary.image('plot/syn_prior', self.summ_syn_p_im),
+        ]
+        self.scalar_summ = tf.summary.merge(scalar_summs)
+        self.all_summ = tf.summary.merge(img_summs + scalar_summs)
+        pass

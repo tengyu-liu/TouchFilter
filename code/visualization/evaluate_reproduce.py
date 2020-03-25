@@ -70,9 +70,14 @@ def visualize(cup_id, hand_z):
         except:
             continue
 
+import sys
+step = int(sys.argv[1])
+step_size = float(sys.argv[2])
+
+reproduce = 'reproduce[%dx%f]'%(step, step_size)
 
 train_data = pickle.load(open('../figs/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))
-local_data = pickle.load(open('../reproduce.pkl', 'rb'))
+local_data = pickle.load(open('../%s.pkl'%reproduce, 'rb'))
 
 # print('Z')
 # for i in range(16):
@@ -87,14 +92,17 @@ local_data = pickle.load(open('../reproduce.pkl', 'rb'))
 #         print('%.2f '%(np.linalg.norm(train_data['syn_z2'][i,j,:] - local_data['z2'][i,j,:]) / np.linalg.norm(train_data['syn_z2'][i,j,:])), end='')
 #     print()
 
+os.makedirs('figs', exist_ok=True)
+os.makedirs('figs/%s'%reproduce, exist_ok=True)
+
 fig = plt.figure(figsize=(6.40, 4.80), dpi=100)
 mlab.figure(size=(640,480))
 
 for i in range(16):
     mlab.clf()
     visualize(3, train_data['syn_z'][i,-1,:])
-    mlab.savefig('train_%d.png'%i)
+    mlab.savefig('figs/%s/train_%d.png'%(reproduce, i))
     mlab.clf()
     visualize(3, local_data['z'][i,-1,:])
-    mlab.savefig('local_%d.png'%i)
+    mlab.savefig('figs/%s/local_%d.png'%(reproduce, i))
     

@@ -3,7 +3,6 @@ import tensorflow as tf
 # Meta
 tf.flags.DEFINE_string('name', 'exp', '')
 tf.flags.DEFINE_integer('restore_epoch', -1, '')
-tf.flags.DEFINE_integer('restore_batch', -1, '')
 tf.flags.DEFINE_string('restore_name', '', '')
 tf.flags.DEFINE_bool('debug', False, '')
 tf.flags.DEFINE_boolean('tb_render', False, '')

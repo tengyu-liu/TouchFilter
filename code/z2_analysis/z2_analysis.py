@@ -7,6 +7,8 @@ import pickle
 import time
 from collections import defaultdict
 
+sys.path.append('..')
+
 import imageio
 import numpy as np
 import scipy.io as sio
@@ -16,7 +18,7 @@ from pyquaternion.quaternion import Quaternion as Q
 
 from config import flags
 from model import Model
-from utils.vis_util import VisUtil
+from viz_util import Visualizer
 
 flags.name = 'dynamic_z2_nobn_unitz2'
 flags.restore_name = 'dynamic_z2_nobn_unitz2'
@@ -27,11 +29,13 @@ flags.batch_size = 16
 flags.adaptive_langevin = True
 flags.clip_norm_langevin = True
 flags.prior_type = 'NN'
+flags.langevin_steps = 10000
+flags.step_size = 0.001
 
 for k, v in flags.flag_values_dict().items():
     print(k, v)
 
-project_root = os.path.join(os.path.dirname(__file__), '..')
+project_root = os.path.join(os.path.dirname(__file__), '../..')
 
 # load obj
 cup_id_list = [3]
@@ -102,10 +106,10 @@ sess.run(tf.global_variables_initializer())
 # restore
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), '../models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 # load training result
-data = pickle.load(open('figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
+data = pickle.load(open('../figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
 print(data.keys())
 _GT_syn_e = data['syn_e']
 _GT_syn_z = data['syn_z']
@@ -118,44 +122,27 @@ _GT_g_avg = data['g_avg']
 update_mask = np.ones([flags.batch_size, 31])
 update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
-syn_z_seq = np.zeros([flags.batch_size, 91, 31])
-syn_z2_seq = np.zeros([flags.batch_size, 91, flags.z2_size])
-syn_e_seq = np.zeros([flags.batch_size, 91, 1])
-syn_w_seq = np.zeros([flags.batch_size, 91, 5871])
-syn_p_seq = np.zeros([flags.batch_size, 91, 1])
+"""
+TODO: 
+1. initialize z, z2 as gt initial data
+2. fix z, interpolate z2 and draw contact activations
+"""
 
 syn_z = _GT_syn_z[:,0,:]
 syn_z2 = _GT_syn_z2[:,0,:]
-syn_z_seq[:,0,:] = syn_z
-syn_z2_seq[:,0,:] = syn_z2
 
-local_g_avg = []
+v = Visualizer()
+os.makedirs('figs', exist_ok=True)
+for i_batch in range(syn_z.shape[0]):
+    os.makedirs('figs/%d'%i_batch, exist_ok=True)
 
-# run local synthesis
-for langevin_step in range(flags.langevin_steps):
-    syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False})
-    syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
-    assert not np.any(np.isnan(syn_w))
-    assert not np.any(np.isinf(syn_w))
-    assert not np.any(np.isnan(syn_z))
-    assert not np.any(np.isinf(syn_z))
-    assert not np.any(np.isnan(syn_z2))
-    assert not np.any(np.isinf(syn_z2))
-    assert not np.any(np.isnan(syn_p))
-    assert not np.any(np.isinf(syn_p))
-
-    syn_z_seq[:, langevin_step+1, :] = syn_z
-    syn_z2_seq[:, langevin_step+1, :] = syn_z2
-    syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
-    syn_w_seq[:, langevin_step, :] = syn_w[...,0]
-    syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
-    local_g_avg.append(g_avg)
-
-    # Compare g_avg
-    relative_diff = np.linalg.norm(g_avg - _GT_g_avg) / np.linalg.norm(_GT_g_avg)
-    print('Relative Difference in g_avg: %.2f%%'%(relative_diff * 100))
-
-# save reproduce results
-pickle.dump({'z': syn_z_seq, 'z2': syn_z2_seq, 'e': syn_e_seq, 'w': syn_w_seq, 'p': syn_p_seq}, open('reproduce.pkl', 'wb'))
-
-print('Done.')
+for i_z2 in range(10):
+    _z2 = syn_z2.copy()
+    _z2[:,i_z2] -= 0.5
+    for i_value in range(10):
+        # run local synthesis
+        _z2[:,i_z2] += 0.1
+        z, z2, syn_e, syn_w, syn_p = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+            model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
+        for i_batch in range(syn_z.shape[0]):
+            v.visualize_weight(3, syn_z[i_batch], syn_w[i_batch], 'figs/%d/%d-%d'%(i_batch, i_z2, i_value))
