@@ -167,5 +167,5 @@ if __name__ == '__main__':
         for i_z2 in range(w.shape[1]):
             for i_val in range(w.shape[2]):
                 print(i_batch, i_z2, i_val)
-                v.visualize_weight(0, 0, w[i_batch, i_z2, i_val, :, 0], 'figs/%d/%d-%d-1'%(i_batch, i_z2 , i_val))
+                v.visualize_weight(0, 0, w[i_batch, i_z2, i_val, :, 0], 'figs/%d/%d-%d'%(i_batch, i_z2 , i_val))
 
