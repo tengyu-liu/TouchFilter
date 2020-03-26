@@ -13,7 +13,8 @@ from pyquaternion.quaternion import Quaternion as Q
 import mat_trans as mt
 from forward_kinematics import ForwardKinematic
 
-pio.orca.config.use_xvfb = True
+if os.name != 'nt':
+    pio.orca.config.use_xvfb = True
 
 class Visualizer:
     def __init__(self):
@@ -104,44 +105,46 @@ class Visualizer:
         fig2.write_image('%s-1.png'%save_path)
 
     def visualize_weight(self, cup_id, hand_z, hand_w, save_path):
-        cup_model = tm.load_mesh('../../data/cups/onepiece/3.obj')
-        z_ = hand_z
-        jrot = z_[:22]
-        grot = np.reshape(z_[22:28], [3, 2])
-        gpos = z_[28:]
-        grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
-        qpos = np.concatenate([gpos, grot, jrot])
-        xpos, xquat = ForwardKinematic(qpos)
-        stl_dict = {obj: tm.load_mesh(os.path.join(self.obj_base, '%s.STL'%obj)) for obj in self.parts}
-        fig_data = []
-        x, y, z, i, j, k, intensity = [], [], [], [], [], [], []
-        count = 0
-        fig_data = [go.Mesh3d(x=cup_model.vertices[:,0], y=cup_model.vertices[:,1], z=cup_model.vertices[:,2], \
-                                i=cup_model.faces[:,0], j=cup_model.faces[:,1], k=cup_model.faces[:,2], color='lightpink')]
-        for pid in range(4, 25):
-            p = copy.deepcopy(stl_dict[self.parts[pid - 4]])
-            try:
-                p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
-                p.apply_translation(xpos[pid,:])
-                x.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,0])
-                y.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,1])
-                z.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,2])
-                intensity.append(-np.power(-tm.proximity.signed_distance(cup_model, p.vertices), 1/2))
-                i.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,0] + count)
-                j.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,1] + count)
-                k.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,2] + count)
-                count += len(p.vertices)
-                fig_data.append(go.Mesh3d(x=p.vertices[:,0], y=p.vertices[:,1], z=p.vertices[:,2], \
-                                        i=p.faces[:,0], j=p.faces[:,1], k=p.faces[:,2], color='lightblue'))
-            except:
-                raise
-        # Draw figure 1
-        fig1 = go.Figure(data=fig_data)
-        camera = dict(eye=dict(x=1, y=1, z=1))
-        fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-        fig1.write_image('%s-0.png'%save_path)
+        # cup_model = tm.load_mesh('../../data/cups/onepiece/3.obj')
+        # z_ = hand_z
+        # jrot = z_[:22]
+        # grot = np.reshape(z_[22:28], [3, 2])
+        # gpos = z_[28:]
+        # grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
+        # qpos = np.concatenate([gpos, grot, jrot])
+        # xpos, xquat = ForwardKinematic(qpos)
+        # stl_dict = {obj: tm.load_mesh(os.path.join(self.obj_base, '%s.STL'%obj)) for obj in self.parts}
+        # fig_data = []
+        # x, y, z, i, j, k, intensity = [], [], [], [], [], [], []
+        # count = 0
+        # fig_data = [go.Mesh3d(x=cup_model.vertices[:,0], y=cup_model.vertices[:,1], z=cup_model.vertices[:,2], \
+        #                         i=cup_model.faces[:,0], j=cup_model.faces[:,1], k=cup_model.faces[:,2], color='lightpink')]
+        # for pid in range(4, 25):
+        #     p = copy.deepcopy(stl_dict[self.parts[pid - 4]])
+        #     try:
+        #         p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
+        #         p.apply_translation(xpos[pid,:])
+        #         x.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,0])
+        #         y.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,1])
+        #         z.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,2])
+        #         intensity.append(-np.power(-tm.proximity.signed_distance(cup_model, p.vertices), 1/2))
+        #         i.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,0] + count)
+        #         j.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,1] + count)
+        #         k.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,2] + count)
+        #         count += len(p.vertices)
+        #         fig_data.append(go.Mesh3d(x=p.vertices[:,0], y=p.vertices[:,1], z=p.vertices[:,2], \
+        #                                 i=p.faces[:,0], j=p.faces[:,1], k=p.faces[:,2], color='lightblue'))
+        #     except:
+        #         raise
+        # # Draw figure 1
+        # fig1 = go.Figure(data=fig_data)
+        # camera = dict(eye=dict(x=1, y=1, z=1))
+        # fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
+        # fig1.write_image('%s-0.png'%save_path)
         # Draw figure 2
         # x, y, z, i, j, k, intensity = map(np.hstack, [x, y, z, i, j, k, intensity])
+        hand_w -= hand_w.min()
+        hand_w /= hand_w.max()
         fig2 = go.Figure(data=[go.Scatter3d(
             x=self.__zero_pts[:,0], 
             y=self.__zero_pts[:,1], 
@@ -158,3 +161,10 @@ class Visualizer:
 
 if __name__ == '__main__':
     v = Visualizer()
+    import numpy as np
+    w = np.load('w.npy')
+    for i_batch in range(w.shape[0]):
+        for i_z2 in range(w.shape[1]):
+            for i_val in range(w.shape[2]):
+                v.visualize_weight(0, 0, w[i_batch, i_z2, i_val, :, 0], 'figs/%d/%d-%d-1'%(i_batch, i_z2 , i_val))
+

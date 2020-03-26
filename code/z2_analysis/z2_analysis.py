@@ -149,7 +149,7 @@ for i_z2 in range(10):
             model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
         print(' plot...', end='')
         for i_batch in range(syn_z.shape[0]):
-            v.visualize_weight(3, syn_z[i_batch], syn_w[i_batch], 'figs/%d/%d-%d'%(i_batch, i_z2, i_value))
+            v.visualize_weight(3, syn_z[i_batch], syn_w[i_batch,:,0], 'figs/%d/%d-%d'%(i_batch, i_z2, i_value))
         w[:,i_z2,i_value,:] = syn_w
 
 np.save('w.npy', w)

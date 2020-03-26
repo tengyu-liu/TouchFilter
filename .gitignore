@@ -11,3 +11,4 @@ code/visualization/figs
 *.png
 *.zip
 *.pkl
+w.npy
