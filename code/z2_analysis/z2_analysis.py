@@ -146,7 +146,7 @@ for i_z2 in range(10):
         # run local synthesis
         _z2[:,i_z2] += 0.1
         z, z2, syn_e, syn_w, syn_p = sess.run(model.syn_zzewpg[cup_id], feed_dict={
-            model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
+            model.inp_z: syn_z, model.inp_z2: _z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
         print(' plot...', end='')
         for i_batch in range(syn_z.shape[0]):
             v.visualize_weight(3, syn_z[i_batch], syn_w[i_batch,:,0], 'figs/%d/%d-%d'%(i_batch, i_z2, i_value))
