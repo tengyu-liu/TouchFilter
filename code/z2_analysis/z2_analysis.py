@@ -140,11 +140,11 @@ for i_batch in range(syn_z.shape[0]):
 
 for i_z2 in range(10):
     _z2 = syn_z2.copy()
-    _z2[:,i_z2] -= 0.5
+    _z2[:,i_z2] -= 5
     for i_value in range(10):
         print('\r%d,%d compute...'%(i_z2, i_value), end='')
         # run local synthesis
-        _z2[:,i_z2] += 0.1
+        _z2[:,i_z2] += 1
         z, z2, syn_e, syn_w, syn_p = sess.run(model.syn_zzewpg[cup_id], feed_dict={
             model.inp_z: syn_z, model.inp_z2: _z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
         print(' plot...', end='')
