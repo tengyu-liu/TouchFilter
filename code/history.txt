@@ -150,3 +150,10 @@
 [2020-01-02 15:36:39.943117] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
 [2020-01-02 15:39:08.425353] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
 [2020-01-02 15:44:00.177118] python train.py --dynamic_z2 --batch_size 4 --adaptive_langevin --clip_norm_langevin --name try_z2g_nan
+[2020-04-01 17:59:11.411890] python train.py --name added_weight_loss
+[2020-04-01 17:59:51.223450] python train.py --name added_weight_loss
+[2020-04-01 18:00:25.607033] python train.py --name added_weight_loss
+[2020-04-01 18:04:42.554936] python train.py --name added_weight_loss
+[2020-04-01 18:09:57.287342] python train.py --name added_weight_loss
+[2020-04-01 18:27:13.202888] python train.py --name added_weight_loss
+[2020-04-01 18:27:59.950884] python train.py --name added_weight_loss
