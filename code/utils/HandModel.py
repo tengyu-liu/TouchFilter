@@ -11,8 +11,6 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from .tf_hand_kinematics import kinematics
 
-
-
 class HandModel:
     def __init__(self, batch_size):
         # Hand shape
@@ -59,16 +57,15 @@ class HandModel:
 
 if __name__ == "__main__":
 
-    glove_data = sio.loadmat('/home/tengyu/Documents/DeepSDF/MujocoSDF/data/grasp/cup%d/cup%d_grasping_60s_1.mat'%(1, 1))['glove_data']
+    glove_data = sio.loadmat('../../data/grasp/cup%d/cup%d_grasping_60s_1.mat'%(1, 1))['glove_data']
 
     hm = HandModel(glove_data.shape[0])
-    print(hm.n_surf_pts)
-    exit()
 
     gpos = glove_data[:,4:7]
     grot = np.array([Q(glove_data[i,1 + 28 * 3 + 4 : 1 + 28 * 3 + 8]).rotation_matrix[:,:2] for i in range(len(glove_data))])
     jrot = glove_data[:,1 + 28 * 3 + 28 * 4 + 7 : 1 + 28 * 3 + 28 * 4 + 29]
-    jrot = np.stack([np.sin(jrot), np.cos(jrot)], axis=-1)
+    jrot = np.sin(jrot)
+    print(gpos.shape, grot.shape, jrot.shape)
 
     out_key_pts, out_normals = hm.tf_forward_kinematics(tf.constant(gpos, dtype=tf.float32), tf.constant(grot, dtype=tf.float32), tf.constant(jrot, dtype=tf.float32))
 
