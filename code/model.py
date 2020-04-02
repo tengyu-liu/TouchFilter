@@ -155,8 +155,8 @@ class Model:
                 z2g /= tf.norm(z2g, axis=-1, keepdims=True)
 
             grad_z = grad_z * self.z_weight[0]
-            z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
-            z2 = z2 - self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
+            z = z - self.step_size * self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
+            z2 = z2 - self.step_size * self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
             return [z, z2, energy, weight, hand_prior, gz]
             
         return langevin_dynamics
