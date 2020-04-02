@@ -76,11 +76,19 @@ class Model:
             self.syn_zzewpg = {i: self.langevin_dynamics[i](self.inp_z, self.inp_z2) for i in self.cup_list}
 
             self.descriptor_loss = {i : (tf.reduce_mean(self.obs_ewp[i][0]) + tf.reduce_mean(self.obs_ewp[i][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[i][0]) + tf.reduce_mean(self.inp_ewp[i][2]) * self.prior_weight) for i in self.cup_list}
+            self.weight_loss = {i : tf.reduce_mean(self.obs_ewp[i][1][...,0] * self.obs_ewp[i][1][...,1] + self.syn_ewp[i][1][...,0] * self.syn_ewp[i][1][...,1])}
     
-    def hand_prior_nn(self, hand_z):
-        h1 = fully_connected(hand_z, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
-        h2 = fully_connected(h1, 64, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_2')
-        prior = fully_connected(h2, 1, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_3')
+    def hand_prior_nn(self, hand_z, z2):
+        h1 = fully_connected(hand_z, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
+        h1_z2 = fully_connected(z2, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_z2')
+        h2 = fully_connected(h1 + h1_z2, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_2')
+        h3 = fully_connected(h2, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_3')
+        h3 = h1 + h1_z2 + h3
+        h4 = fully_connected(h3, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_4')
+        h5 = fully_connected(h4, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_5')
+        h5 = h3 + h5
+        h6 = fully_connected(h5, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_6')
+        prior = fully_connected(h6, 1, activation_fn=None, weight_decay=self.l2_reg, scope='hand_prior_7')
         return prior
 
     def hand_prior_physics(self, weight, surface_normals):
@@ -122,7 +130,7 @@ class Model:
         energy, weight = self.touch_filter(surf_pts, surf_normals, self.hand_model.pts_feature, z2, cup_model, penetration_penalty, self.is_training)
         
         if self.prior_type == "NN":
-            hand_prior = self.hand_prior_nn(hand_z)
+            hand_prior = self.hand_prior_nn(hand_z, z2)
         elif self.prior_type == "Phys":
             hand_prior = self.hand_prior_physics(weight, surf_normals)
         else:
@@ -132,13 +140,13 @@ class Model:
     def langevin_dynamics_fn(self, cup_id):
         def langevin_dynamics(z, z2):
             energy, weight, hand_prior = self.descriptor(z,z2,self.cup_models[cup_id], self.syn_penetration_penalty) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
-            grad_z = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
+            gz = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
             # gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
             if self.adaptive_langevin:
                 # apply_op = self.EMA.apply([gz_abs])
                 # with tf.control_dependencies([apply_op]):
                 # g_avg = self.EMA.average(gz_abs) + 1e-9
-                grad_z = grad_z / self.gz_mean
+                grad_z = gz / self.gz_mean
             if self.clip_norm_langevin:
                 grad_z = tf.clip_by_norm(grad_z, 31, axes=-1)
             z2g = 0
@@ -149,14 +157,14 @@ class Model:
             grad_z = grad_z * self.z_weight[0]
             z = z - self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
             z2 = z2 - self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
-            return [z, z2, energy, weight, hand_prior]
+            return [z, z2, energy, weight, hand_prior, gz]
             
         return langevin_dynamics
 
     def build_train(self):
         self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model')]
         self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
-        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
+        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + self.weight_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
         for (g,v) in des_grads_vars[3]:
             if g is None:
                 print(v)

@@ -9,6 +9,8 @@ import trimesh as tm
 from plotly.subplots import make_subplots
 from pyquaternion.quaternion import Quaternion as Q
 
+sys.path.append('../evaluate')
+
 import mat_trans as mt
 from forward_kinematics import ForwardKinematic
 
@@ -97,7 +99,7 @@ def visualize_distance(cup_id, hand_z, idx):
     fig2.write_image('figs/same_z_diff_z2/%04d-1.png'%idx)
 
 data = pickle.load(open('synthesis/same_z_diff_z2/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))
-keep_ids = (data['syn_e'] < 3).reshape([-1])
+keep_ids = (data['syn_e'] < 10).reshape([-1])
 data['syn_w'] = data['syn_w'][keep_ids, :]
 data['syn_z'] = data['syn_z'][keep_ids, :]
 data['syn_z2'] = data['syn_z2'][keep_ids, :]
@@ -105,5 +107,5 @@ data['syn_z2'] /= np.linalg.norm(data['syn_z2'], axis=-1, keepdims=True)
 data['syn_e'] = data['syn_e'][keep_ids, :]
 data['syn_p'] = data['syn_p'][keep_ids, :]
 
-for i in range(16):
+for i in range(len(data['syn_z'])):
     visualize_distance(3, data['syn_z'][i], i)

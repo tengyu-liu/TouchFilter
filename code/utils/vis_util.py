@@ -15,7 +15,7 @@ from .forward_kinematics import ForwardKinematic
 
 class VisUtil:
     def __init__(self, size=[640, 480], offscreen=True):
-        mlab.options.offscreen = offscreen
+        # mlab.options.offscreen = offscreen
 
         self.parts = ['palm', 
                     'thumb0', 'thumb1', 'thumb2', 'thumb3',
@@ -108,29 +108,20 @@ class VisUtil:
         return np.expand_dims(image, axis=0)
 
     def visualize(self, cup_id, hand_z):
-        imgs = []
+        mlab.clf()
+        cup_model = self.cup_models[cup_id]
+        mlab.triangular_mesh(cup_model.vertices[:,0], cup_model.vertices[:,1], cup_model.vertices[:,2], cup_model.faces, color=(0, 1, 0))
 
-        for i in range(len(hand_z)):
-            if i == 3:
-                break
-            mlab.clf()
-            cup_model = self.cup_models[cup_id]
-            mlab.triangular_mesh(cup_model.vertices[:,0], cup_model.vertices[:,1], cup_model.vertices[:,2], cup_model.faces, color=(0, 1, 0))
+        xpos, xquat = self.get_xpos_xquat(hand_z)
 
-            xpos, xquat = self.get_xpos_xquat(hand_z[i])
-
-            for pid in range(4, 25):
-                p = copy.deepcopy(self.stl_dict[self.parts[pid - 4]])
-                try:
-                    p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
-                    p.apply_translation(xpos[pid,:])
-                    mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
-                except:
-                    continue
-            img = mlab.screenshot()
-            imgs.append(img)
-
-        return np.array((imgs))
+        for pid in range(4, 25):
+            p = copy.deepcopy(self.stl_dict[self.parts[pid - 4]])
+            try:
+                p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
+                p.apply_translation(xpos[pid,:])
+                mlab.triangular_mesh(p.vertices[:,0], p.vertices[:,1], p.vertices[:,2], p.faces, color=(1, 0, 0))
+            except:
+                continue
 
     def visualize_filter_selection(self, hand_z, weight):
         z_ = hand_z[i]

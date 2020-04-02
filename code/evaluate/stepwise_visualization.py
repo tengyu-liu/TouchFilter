@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 import trimesh as tm
 from plotly.subplots import make_subplots
 from pyquaternion.quaternion import Quaternion as Q
+import skimage.io as sio
+import matplotlib.pyplot as plt
 
 import mat_trans as mt
 from forward_kinematics import ForwardKinematic
@@ -51,7 +53,9 @@ for pid in range(4, 25):
     except:
         continue
 
-def visualize_distance(cup_id, hand_z, idx):
+def visualize_distance(cup_id, hand_z, name):
+    if os.path.exists('stepwise/figs/%s-0.png'%name) and os.path.exists('stepwise/figs/%s-1.png'%name):
+        return 
     cup_model = tm.load_mesh('../../data/cups/onepiece/3.obj')
     z_ = hand_z
     jrot = z_[:22]
@@ -88,22 +92,51 @@ def visualize_distance(cup_id, hand_z, idx):
     fig1 = go.Figure(data=fig_data)
     camera = dict(eye=dict(x=1, y=1, z=1))
     fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-    fig1.write_image('figs/same_z_diff_z2/%04d-0.png'%idx)
+    fig1.write_image('stepwise/figs/%s-0.png'%name)
     # Draw figure 2
     x, y, z, i, j, k, intensity = map(np.hstack, [x, y, z, i, j, k, intensity])
     fig2 = go.Figure(data=go.Mesh3d(x=x, y=y, z=z, i=i, j=j, k=k, intensity=intensity, showscale=False))
     camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
     fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-    fig2.write_image('figs/same_z_diff_z2/%04d-1.png'%idx)
+    fig2.write_image('stepwise/figs/%s-1.png'%name)
 
-data = pickle.load(open('synthesis/same_z_diff_z2/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))
-keep_ids = (data['syn_e'] < 3).reshape([-1])
-data['syn_w'] = data['syn_w'][keep_ids, :]
-data['syn_z'] = data['syn_z'][keep_ids, :]
-data['syn_z2'] = data['syn_z2'][keep_ids, :]
-data['syn_z2'] /= np.linalg.norm(data['syn_z2'], axis=-1, keepdims=True)
-data['syn_e'] = data['syn_e'][keep_ids, :]
-data['syn_p'] = data['syn_p'][keep_ids, :]
+for ss in [0.1, 0.2, 0.01, 0.5, 1]:
+    data = pickle.load(open('stepwise/reproduce[%dx%f].pkl'%(250,ss), 'rb'))
+    simulation = pickle.load(open('stepwise/stability_%.1f.pkl'%ss, 'rb'))
+    # keep_ids = (data['syn_e'] < 3).reshape([-1])
+    # data['syn_w'] = data['syn_w'][keep_ids, :]
+    # data['syn_z'] = data['syn_z'][keep_ids, :]
+    # data['syn_z2'] = data['syn_z2'][keep_ids, :]
+    # data['syn_z2'] /= np.linalg.norm(data['syn_z2'], axis=-1, keepdims=True)
+    # data['syn_e'] = data['syn_e'][keep_ids, :]
+    # data['syn_p'] = data['syn_p'][keep_ids, :]
 
-for i in range(16):
-    visualize_distance(3, data['syn_z'][i], i)
+    fig = plt.figure(figsize=(175, 40))
+    idx = 0
+    for i in range(16):
+        for j in range(250):
+            try:
+                if j % 5 == 0:
+                    print('\r%.1f %d %d'%(ss, i, j), end='')
+                    name = '%.1f-%02d-%04d'%(ss, i, j)
+                    visualize_distance(3, data['z'][i,j], name)
+                    idx += 1
+                    ax = plt.subplot(16, 50, idx)
+                    ax.axis('off')
+                    img = sio.imread('stepwise/figs/%s-0.png'%name)
+                    h, w, _ = img.shape
+                    ax.imshow(img)
+                    color = 'red'
+                    if simulation[1][i,j] < 0.1:
+                        color = 'green'
+                    ax.plot([0,0,w,w,0], [0,h,h,0,0], linewidth=15, c=color)
+                    ax.set_xticklabels([])
+                    ax.set_yticklabels([])
+                    ax.set_aspect('equal')
+                    ax.set_title('Step %d'%j)
+            except:
+                pass
+
+    fig.subplots_adjust(wspace=0., hspace=0.)
+    plt.savefig('stepwise/ss=%.1f.png'%ss)
+    # plt.show()

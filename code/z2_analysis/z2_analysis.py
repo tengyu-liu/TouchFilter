@@ -15,6 +15,8 @@ import scipy.io as sio
 import tensorflow as tf
 import trimesh as tm
 from pyquaternion.quaternion import Quaternion as Q
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from config import flags
 from model import Model
@@ -25,17 +27,20 @@ flags.restore_name = 'dynamic_z2_nobn_unitz2'
 flags.restore_epoch = 99
 flags.restore_batch = 300
 flags.dynamic_z2 = True
-flags.batch_size = 16
+flags.batch_size = 2
 flags.adaptive_langevin = True
 flags.clip_norm_langevin = True
 flags.prior_type = 'NN'
-flags.langevin_steps = 10000
-flags.step_size = 0.001
+flags.langevin_steps = 90
+flags.step_size = 0.1
 
 for k, v in flags.flag_values_dict().items():
     print(k, v)
 
-project_root = os.path.join(os.path.dirname(__file__), '../..')
+try:
+    project_root = os.path.join(os.path.dirname(__file__), '../..')
+except:
+    project_root = os.path.join('../..')
 
 # load obj
 cup_id_list = [3]
@@ -106,7 +111,7 @@ sess.run(tf.global_variables_initializer())
 # restore
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), '../models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+    saver.restore(sess, os.path.join('../models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 # load training result
 data = pickle.load(open('../figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
@@ -138,18 +143,39 @@ os.makedirs('figs', exist_ok=True)
 for i_batch in range(syn_z.shape[0]):
     os.makedirs('figs/%d'%i_batch, exist_ok=True)
 
-for i_z2 in range(10):
-    _z2 = syn_z2.copy()
-    _z2[:,i_z2] -= 5
-    for i_value in range(10):
-        print('\r%d,%d compute...'%(i_z2, i_value), end='')
-        # run local synthesis
-        _z2[:,i_z2] += 1
-        z, z2, syn_e, syn_w, syn_p = sess.run(model.syn_zzewpg[cup_id], feed_dict={
-            model.inp_z: syn_z, model.inp_z2: _z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
-        print(' plot...', end='')
-        for i_batch in range(syn_z.shape[0]):
-            v.visualize_weight(3, syn_z[i_batch], syn_w[i_batch,:,0], 'figs/%d/%d-%d'%(i_batch, i_z2, i_value))
-        w[:,i_z2,i_value,:] = syn_w
+component = np.load('pca_components.npy')
 
-np.save('w.npy', w)
+def process(_GT_syn_z, _GT_syn_z2, sess, model, w_mean, w_std, i_batch, i_step, i_z2):
+    cup_id = 3
+    syn_z = _GT_syn_z[[i_batch,i_batch],i_step,:]
+    _z2 = _GT_syn_z2[[i_batch,i_batch],i_step,:]
+    _z2[0,:] -= component[0]
+    _z2[1,:] += component[0]
+    z, z2, syn_e, syn_w, syn_p = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+            model.inp_z: syn_z, model.inp_z2: _z2, model.update_mask: update_mask[[0,0]], model.is_training: False, model.gz_mean: _GT_g_avg})
+    syn_w = syn_w[...,0]
+    syn_w -= w_mean
+    syn_w /= w_std
+    fig = plt.figure()
+    ax1 = fig.add_subplot(221, projection='3d')
+    ax2 = fig.add_subplot(222, projection='3d')
+    ax3 = fig.add_subplot(223, projection='3d')
+    ax4 = fig.add_subplot(224)
+    w1 = syn_w[0].copy()
+    w2 = syn_w[1].copy()
+    diff = w2 - w1
+    v.visualize_weight(w1, ax=ax1, vmin=min(w1.min(), w2.min()), vmax=max(w1.max(), w2.max()))
+    v.visualize_weight(w2, ax=ax2, vmin=min(w1.min(), w2.min()), vmax=max(w1.max(), w2.max()))
+    v.visualize_weight(diff, ax=ax3)
+    _ = ax4.hist(w1, bins=100, histtype='step')
+    _ = ax4.hist(w2, bins=100, histtype='step')
+    _ = ax4.hist(diff, bins=100, histtype='step')
+    plt.show()
+    return w1, w2, diff
+
+w_mean = np.load('w_mean.npy')
+w_std = np.load('w_std.npy')
+
+w1, w2, diff = process(_GT_syn_z, _GT_syn_z2, sess, model, w_mean, w_std, 7, 0, [0])
+
+# TODO: update z2 by pca components

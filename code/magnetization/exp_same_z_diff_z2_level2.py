@@ -1,4 +1,4 @@
-import random
+import shutil
 import sys
 import datetime
 import copy
@@ -7,16 +7,16 @@ import pickle
 import time
 from collections import defaultdict
 
-import imageio
 import numpy as np
 import scipy.io as sio
 import tensorflow as tf
 import trimesh as tm
 from pyquaternion.quaternion import Quaternion as Q
 
+sys.path.append('..')
+
 from config import flags
 from model import Model
-from utils.vis_util import VisUtil
 
 flags.name = 'dynamic_z2_nobn_unitz2'
 flags.restore_name = 'dynamic_z2_nobn_unitz2'
@@ -27,13 +27,17 @@ flags.batch_size = 16
 flags.adaptive_langevin = True
 flags.clip_norm_langevin = True
 flags.prior_type = 'NN'
-flags.langevin_steps = 10000
-flags.step_size = 0.001
+flags.langevin_steps = 90
+flags.step_size = 0.1
 
 for k, v in flags.flag_values_dict().items():
     print(k, v)
 
-project_root = os.path.join(os.path.dirname(__file__), '..')
+f = open('history.txt', 'a')
+f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
+f.close()
+
+project_root = os.path.join(os.path.dirname(__file__), '../..')
 
 # load obj
 cup_id_list = [3]
@@ -90,6 +94,11 @@ stddev = np.std(all_zs, axis=0, keepdims=True)
 mean = np.mean(all_zs, axis=0, keepdims=True)
 z_min = np.min(all_zs, axis=0, keepdims=True)
 z_max = np.max(all_zs, axis=0, keepdims=True)
+gz_avg = pickle.load(open('../figs/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))['g_avg']
+
+data_idxs = {cup_id: np.arange(len(obs_zs[cup_id])) for cup_id in cup_id_list}
+batch_num = int(len(data_idxs[3]) // flags.batch_size)  # Run experiments on 10 batches
+print('Training data loaded.')
 
 # load model
 model = Model(flags, mean, stddev, cup_id_list)
@@ -101,68 +110,65 @@ config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 sess.run(tf.global_variables_initializer())
 
-# restore
+# load directories
+log_dir = os.path.join(os.path.dirname(__file__), '../logs', flags.name)
+model_dir = os.path.join(os.path.dirname(__file__), '../models', flags.name)
+fig_dir = os.path.join(os.path.dirname(__file__), '../figs', flags.name)
+
+# load checkpoint
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), '../models', flags.name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
-# load training result
-data = pickle.load(open('figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
-print(data.keys())
-_GT_syn_e = data['syn_e']
-_GT_syn_z = data['syn_z']
-_GT_syn_z2 = data['syn_z2']
-_GT_syn_w = data['syn_w']
-_GT_syn_p = data['syn_p']
-_GT_g_avg = data['g_avg']
+shuffled_idxs = copy.deepcopy(data_idxs)
+for cup_id in cup_id_list:
+    np.random.shuffle(shuffled_idxs[cup_id])
 
-# prepare local data
+cup_id = 3
+idxs = [0] * flags.batch_size
+obs_z = obs_zs[cup_id][idxs]
+syn_z = np.zeros([flags.batch_size, 31])
+syn_z[:,:22] = 0
+syn_z[:,-9:] = obs_z[:,-9:]
+syn_z[:,-3:] += palm_directions[cup_id][idxs] * 0.1
+
+syn_z2 = pickle.load(open('synthesis/same_z_diff_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))['syn_z2']
+
 update_mask = np.ones([flags.batch_size, 31])
 update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
-syn_z_seq = np.zeros([flags.batch_size, flags.langevin_steps+1, 31])
-syn_z2_seq = np.zeros([flags.batch_size, flags.langevin_steps+1, flags.z2_size])
-syn_e_seq = np.zeros([flags.batch_size, flags.langevin_steps+1, 1])
-syn_w_seq = np.zeros([flags.batch_size, flags.langevin_steps+1, 5871])
-syn_p_seq = np.zeros([flags.batch_size, flags.langevin_steps+1, 1])
-
-syn_z = _GT_syn_z[:,0,:]
-syn_z2 = _GT_syn_z2[:,0,:]
-syn_z_seq[:,0,:] = syn_z.copy()
-syn_z2_seq[:,0,:] = syn_z2.copy()
-
-
-# run local synthesis
+# Step 1. Generate initial synthesis results
 for langevin_step in range(flags.langevin_steps):
-    syn_z, syn_z2, syn_e, syn_w, syn_p = sess.run(model.syn_zzewpg[cup_id], feed_dict={
-        model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: _GT_g_avg})
+    syn_z, _, _, _, _ = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+            model.inp_z: syn_z, 
+            model.inp_z2: syn_z2, 
+            model.update_mask: update_mask, 
+            model.gz_mean: gz_avg,
+            model.is_training: False})
+
     syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
-    syn_z2 /= np.linalg.norm(syn_z2, axis=-1, keepdims=True)
-    assert not np.any(np.isnan(syn_w))
-    assert not np.any(np.isinf(syn_w))
+    # syn_z2 /= np.linalg.norm(syn_z2, axis=-1, keepdims=True)
+
     assert not np.any(np.isnan(syn_z))
     assert not np.any(np.isinf(syn_z))
-    assert not np.any(np.isnan(syn_z2))
-    assert not np.any(np.isinf(syn_z2))
-    assert not np.any(np.isnan(syn_p))
-    assert not np.any(np.isinf(syn_p))
 
-    syn_z_seq[:, langevin_step+1, :] = syn_z
-    syn_z2_seq[:, langevin_step+1, :] = syn_z2
-    syn_e_seq[:, langevin_step, 0] = syn_e.reshape([-1])
-    syn_w_seq[:, langevin_step, :] = syn_w[...,0]
-    syn_p_seq[:, langevin_step, 0] = syn_p.reshape([-1])
+syn_ewp = sess.run(model.inp_ewp[cup_id], feed_dict={
+    model.inp_z: syn_z, 
+    model.inp_z2: syn_z2, 
+    model.gz_mean: gz_avg,
+    model.is_training: True})
+syn_e = syn_ewp[0].reshape([-1,1])
+syn_w = syn_ewp[1][...,0]
+syn_p = syn_ewp[2].reshape([-1,1])
 
-    # Compare g_avg
-    # relative_diff = np.linalg.norm(g_avg - _GT_g_avg) / np.linalg.norm(_GT_g_avg)
-    print('[%d/%d]'%(langevin_step, flags.langevin_steps))
+os.makedirs('synthesis/same_z_diff_z2_level2', exist_ok=True)
+os.makedirs('synthesis/same_z_diff_z2_level2/%s'%flags.name, exist_ok=True)
 
-# save reproduce results
 pickle.dump({
-    'z': syn_z_seq[:,-10:,:], 
-    'z2': syn_z2_seq[:,-10:,:], 
-    'e': syn_e_seq[:,-10:,:], 
-    'w': syn_w_seq[:,-10:,:],
-    'p': syn_p_seq[:,-10:,:]}, open('reproduce[%dx%f].pkl'%(flags.langevin_steps, flags.step_size), 'wb'))
+    'syn_z': syn_z,
+    'syn_z2': syn_z2,
+    'syn_e': syn_e,
+    'syn_p': syn_p,
+    'syn_w': syn_w
+}, open('synthesis/same_z_diff_z2_level2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'wb'))
 
-print('Done.')

@@ -104,7 +104,7 @@ class Visualizer:
         fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
         fig2.write_image('%s-1.png'%save_path)
 
-    def visualize_weight(self, hand_w, save_path=None, ax=None, c='white', vmin=None, vmax=None):
+    def visualize_weight(self, hand_w, save_path=None, ax=None, c='white'):
         if save_path is not None:
             fig2 = go.Figure(data=[go.Scatter3d(
                 x=self.__zero_pts[:,0], 
@@ -119,11 +119,7 @@ class Visualizer:
             fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
             fig2.write_image('%s.png'%save_path)
         if ax is not None:
-            if vmin is None:
-                vmin = hand_w.min()
-            if vmax is None:
-                vmax = hand_w.max()
-            ax.scatter(-self.__zero_pts[:,2], self.__zero_pts[:,0], -self.__zero_pts[:,1], c=hand_w, s=3, vmin=vmin, vmax=vmax)
+            ax.scatter(-self.__zero_pts[:,2], self.__zero_pts[:,0], -self.__zero_pts[:,1], c=hand_w, s=3)
             ax.view_init(elev=0, azim=0)
             ax.set_xlim(-0.1,0.1)
             ax.set_ylim(-0.05, 0.15)

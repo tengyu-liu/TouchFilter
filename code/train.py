@@ -16,6 +16,7 @@ from pyquaternion.quaternion import Quaternion as Q
 
 from config import flags
 from model import Model
+from utils.EMA import EMA
 
 if flags.tb_render:
     from utils.vis_util import VisUtil
@@ -129,6 +130,8 @@ if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
 
 print('Start training...')
 
+grad_ema = EMA(0.96, [31])
+
 # train
 for epoch in range(flags.epochs):
     if epoch < flags.restore_epoch:
@@ -172,8 +175,11 @@ for epoch in range(flags.epochs):
         update_mask[:,-9:-3] = 0.0    # We disallow grot update
 
         for langevin_step in range(flags.langevin_steps):
-            syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False})
-            _, obs_z2, _, _, _, _ = sess.run(model.syn_zzewpg[cup_id], feed_dict={model.inp_z: obs_z, model.inp_z2: obs_z2, model.update_mask: update_mask, model.is_training: False})
+            syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+                model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: grad_ema.get()})
+            grad_ema.apply(g_avg)
+            _, obs_z2, _, _, _, _ = sess.run(model.syn_zzewpg[cup_id], feed_dict={
+                model.inp_z: obs_z, model.inp_z2: obs_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: grad_ema.get()})
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])
             syn_z2 /= np.linalg.norm(syn_z2, axis=-1, keepdims=True)
             obs_z2 /= np.linalg.norm(obs_z2, axis=-1, keepdims=True)

@@ -14,6 +14,8 @@ import tensorflow as tf
 import trimesh as tm
 from pyquaternion.quaternion import Quaternion as Q
 
+sys.path.append('..')
+
 from config import flags
 from model import Model
 from utils.vis_util import VisUtil
@@ -27,13 +29,15 @@ flags.batch_size = 16
 flags.adaptive_langevin = True
 flags.clip_norm_langevin = True
 flags.prior_type = 'NN'
-flags.langevin_steps = 10000
-flags.step_size = 0.001
+flags.langevin_steps = 250
+flags.step_size = 0.01
 
-for k, v in flags.flag_values_dict().items():
-    print(k, v)
+# for k, v in flags.flag_values_dict().items():
+#     print(k, v)
 
-project_root = os.path.join(os.path.dirname(__file__), '..')
+print('step size: %f'%flags.step_size)
+
+project_root = os.path.join(os.path.dirname(__file__), '../..')
 
 # load obj
 cup_id_list = [3]
@@ -104,10 +108,10 @@ sess.run(tf.global_variables_initializer())
 # restore
 saver = tf.train.Saver(max_to_keep=0)
 if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), '../models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
 
 # load training result
-data = pickle.load(open('figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
+data = pickle.load(open('../figs/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'rb'))
 print(data.keys())
 _GT_syn_e = data['syn_e']
 _GT_syn_z = data['syn_z']
@@ -128,8 +132,8 @@ syn_p_seq = np.zeros([flags.batch_size, flags.langevin_steps+1, 1])
 
 syn_z = _GT_syn_z[:,0,:]
 syn_z2 = _GT_syn_z2[:,0,:]
-syn_z_seq[:,0,:] = syn_z.copy()
-syn_z2_seq[:,0,:] = syn_z2.copy()
+syn_z_seq[:,0,:] = syn_z
+syn_z2_seq[:,0,:] = syn_z2
 
 
 # run local synthesis
@@ -159,10 +163,10 @@ for langevin_step in range(flags.langevin_steps):
 
 # save reproduce results
 pickle.dump({
-    'z': syn_z_seq[:,-10:,:], 
-    'z2': syn_z2_seq[:,-10:,:], 
-    'e': syn_e_seq[:,-10:,:], 
-    'w': syn_w_seq[:,-10:,:],
-    'p': syn_p_seq[:,-10:,:]}, open('reproduce[%dx%f].pkl'%(flags.langevin_steps, flags.step_size), 'wb'))
+    'z': syn_z_seq, 
+    'z2': syn_z2_seq, 
+    'e': syn_e_seq, 
+    'w': syn_w_seq,
+    'p': syn_p_seq}, open('stepwise/reproduce[%dx%f].pkl'%(flags.langevin_steps, flags.step_size), 'wb'))
 
 print('Done.')
