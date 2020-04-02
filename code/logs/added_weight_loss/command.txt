@@ -1,1 +1,1 @@
-[2020-04-01 18:28:21.563102] python train.py --name added_weight_loss
+[2020-04-02 13:26:40.743229] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss

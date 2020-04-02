@@ -122,15 +122,16 @@ f = open(os.path.join(log_dir, 'command.txt'), 'w')
 f.write('[%s] python %s\n'%(str(datetime.datetime.now()), ' '.join(sys.argv)))
 f.close()
 
+grad_ema = EMA(0.96, [31])
+
 # logger and saver
 train_writer = tf.summary.FileWriter(log_dir, sess.graph)
 saver = tf.train.Saver(max_to_keep=0)
-if flags.restore_batch >= 0 and flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d-%d.ckpt'%(flags.restore_epoch, flags.restore_batch)))
+if flags.restore_epoch >= 0:
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d.ckpt'%(flags.restore_epoch)))
+    grad_ema.value = pickle.load(open(os.path.join(os.path.dirname(__file__), 'figs', flags.restore_name, '%04d.pkl'%(flags.restore_epoch)), 'rb'))['g_avg']
 
 print('Start training...')
-
-grad_ema = EMA(0.96, [31])
 
 # train
 for epoch in range(flags.epochs):
@@ -142,9 +143,6 @@ for epoch in range(flags.epochs):
         np.random.shuffle(shuffled_idxs[cup_id])
     
     for batch_id in range(batch_num):
-        if epoch == flags.restore_epoch and batch_id <= flags.restore_batch:
-            continue
-        
         t0 = time.time()
         cup_id = cup_id_list[batch_id % len(cup_id_list)]
         item_id = batch_id // len(cup_id_list)
@@ -178,6 +176,7 @@ for epoch in range(flags.epochs):
             syn_z, syn_z2, syn_e, syn_w, syn_p, g_avg = sess.run(model.syn_zzewpg[cup_id], feed_dict={
                 model.inp_z: syn_z, model.inp_z2: syn_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: grad_ema.get()})
             grad_ema.apply(g_avg.mean(0))
+            print(g_avg.shape)
             _, obs_z2, _, _, _, _ = sess.run(model.syn_zzewpg[cup_id], feed_dict={
                 model.inp_z: obs_z, model.inp_z2: obs_z2, model.update_mask: update_mask, model.is_training: False, model.gz_mean: grad_ema.get()})
             syn_z[:,:22] = np.clip(syn_z[:,:22], z_min[:,:22], z_max[:,:22])

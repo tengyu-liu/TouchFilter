@@ -10,7 +10,7 @@ class EMA:
         if self.value is None:
             self.value is value
         else:
-            self.value = value * (1 - decay) + self.value * decay
+            self.value = value * (1 - self.decay) + self.value * self.decay
         return self.value
     
     def get(self):

@@ -1,0 +1,1 @@
+[2020-04-02 13:27:39.016928] python train.py --name added_weight_loss_2

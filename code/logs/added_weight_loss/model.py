@@ -141,7 +141,7 @@ class Model:
         def langevin_dynamics(z, z2):
             energy, weight, hand_prior = self.descriptor(z,z2,self.cup_models[cup_id], self.syn_penetration_penalty) #+ tf.reduce_mean(z[:,:self.hand_z_size] * z[:,:self.hand_z_size]) + tf.reduce_mean(z[:,self.hand_z_size:] * z[:,self.hand_z_size:])
             gz = tf.gradients(tf.reduce_mean(energy) + tf.reduce_mean(hand_prior * self.prior_weight), z)[0]
-            # gz_abs = tf.reduce_mean(tf.abs(grad_z), axis=0)
+            gz_abs = tf.reduce_mean(tf.abs(gz), axis=0)
             if self.adaptive_langevin:
                 # apply_op = self.EMA.apply([gz_abs])
                 # with tf.control_dependencies([apply_op]):
@@ -157,7 +157,7 @@ class Model:
             grad_z = grad_z * self.z_weight[0]
             z = z - self.step_size * self.step_size * grad_z * self.update_mask + self.step_size * tf.random.normal(z.shape, mean=0.0, stddev=self.z_weight[0]) * self.update_mask * self.random_strength
             z2 = z2 - self.step_size * self.step_size * z2g + self.step_size * tf.random.normal(z2.shape) * self.random_strength
-            return [z, z2, energy, weight, hand_prior, gz]
+            return [z, z2, energy, weight, hand_prior, gz_abs]
             
         return langevin_dynamics
 

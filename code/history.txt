@@ -157,3 +157,10 @@
 [2020-04-01 18:09:57.287342] python train.py --name added_weight_loss
 [2020-04-01 18:27:13.202888] python train.py --name added_weight_loss
 [2020-04-01 18:27:59.950884] python train.py --name added_weight_loss
+[2020-04-02 13:21:10.730158] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
+[2020-04-02 13:22:22.065429] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
+[2020-04-02 13:23:09.273691] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
+[2020-04-02 13:24:26.059852] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
+[2020-04-02 13:26:21.912587] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
+[2020-04-02 13:27:07.182524] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
+[2020-04-02 13:27:19.523060] python train.py --name added_weight_loss_2
