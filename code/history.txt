@@ -164,3 +164,14 @@
 [2020-04-02 13:26:21.912587] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
 [2020-04-02 13:27:07.182524] python train.py --name added_weight_loss --restore_epoch 4 --restore_name added_weight_loss
 [2020-04-02 13:27:19.523060] python train.py --name added_weight_loss_2
+[2020-04-02 15:25:20.963850] python train.py --name added_weight_loss
+[2020-04-02 18:20:21.276727] python train.py --name added_weight_loss
+[2020-04-02 18:27:40.901970] python train.py --name added_weight_loss
+[2020-04-03 13:00:51.941943] python train.py --name wl_prior_weight=0.1 --prior_weight 0.1
+[2020-04-04 13:19:29.996899] python train.py --name weight_loss_and_natural_prior
+[2020-04-04 13:21:55.686694] python train.py --name weight_loss_and_natural_prior
+[2020-04-04 13:22:02.791763] python train.py --name natural_prior
+[2020-04-04 18:12:13.702939] python train.py --name natural_prior --prior_type Natural
+[2020-04-04 18:13:12.171884] python train.py --name natural_prior --prior_type Natural
+[2020-04-05 08:29:28.456402] python train.py --name natural_prior_weight_0.1 --prior_type Natural --prior_weight 0.1
+[2020-04-05 23:40:57.672404] python train.py --name natural_prior_weight_4 --prior_type Natural --prior_weight 1e-4

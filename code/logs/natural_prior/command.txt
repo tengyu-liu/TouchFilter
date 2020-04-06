@@ -1,0 +1,1 @@
+[2020-04-04 18:13:29.099823] python train.py --name natural_prior --prior_type Natural

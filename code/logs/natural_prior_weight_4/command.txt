@@ -1,0 +1,1 @@
+[2020-04-05 23:41:14.679539] python train.py --name natural_prior_weight_4 --prior_type Natural --prior_weight 1e-4

@@ -1,0 +1,1 @@
+[2020-04-04 13:19:47.220502] python train.py --name weight_loss_and_natural_prior

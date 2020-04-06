@@ -77,10 +77,10 @@ class Model:
             self.syn_zzewpg = {i: self.langevin_dynamics[i](self.inp_z, self.inp_z2) for i in self.cup_list}
 
             self.descriptor_loss = {i : (tf.reduce_mean(self.obs_ewp[i][0]) + tf.reduce_mean(self.obs_ewp[i][2]) * self.prior_weight) - (tf.reduce_mean(self.inp_ewp[i][0]) + tf.reduce_mean(self.inp_ewp[i][2]) * self.prior_weight) for i in self.cup_list}
-            # self.weight_loss = {i : tf.reduce_mean(self.obs_ewp[i][1][...,0] * self.obs_ewp[i][1][...,1] + self.inp_ewp[i][1][...,0] * self.inp_ewp[i][1][...,1]) for i in self.cup_list}
+            self.weight_loss = {i : tf.reduce_mean(self.obs_ewp[i][1][...,0] * self.obs_ewp[i][1][...,1] + self.inp_ewp[i][1][...,0] * self.inp_ewp[i][1][...,1]) for i in self.cup_list}
     
     def hand_prior_natural(self, hand_z):
-        return tf.reduce_sum(tf.pow(tf.nn.relu(hand_z[:,:22]), 2), axis=-1) + tf.reduce_sum(tf.pow(tf.nn.relu(-hand_z[:,:22]), 2), axis=-1) * self.neg_jrot_penalty
+        return tf.reduce_sum(tf.pow(tf.nn.relu(hand_z[:,:22], 2), axis=-1)) + tf.reduce_sum(tf.pow(tf.nn.relu(-hand_z[:,:22], 2), axis=-1)) * self.neg_jrot_penalty
 
     def hand_prior_nn(self, hand_z, z2):
         h1 = fully_connected(hand_z, 128, activation_fn=tf.nn.relu, weight_decay=self.l2_reg, scope='hand_prior_1')
@@ -170,7 +170,7 @@ class Model:
     def build_train(self):
         self.des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model')]
         self.des_optim = tf.train.GradientDescentOptimizer(self.d_lr)
-        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
+        des_grads_vars = {i : self.des_optim.compute_gradients(self.descriptor_loss[i] + self.weight_loss[i] + tf.add_n(tf.losses.get_losses()), var_list=self.des_vars) for i in self.cup_list}
         for (g,v) in des_grads_vars[3]:
             if g is None:
                 print(v)

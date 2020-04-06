@@ -1,0 +1,1 @@
+[2020-04-03 13:01:08.481342] python train.py --name wl_prior_weight=0.1 --prior_weight 0.1
