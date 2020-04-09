@@ -175,3 +175,4 @@
 [2020-04-04 18:13:12.171884] python train.py --name natural_prior --prior_type Natural
 [2020-04-05 08:29:28.456402] python train.py --name natural_prior_weight_0.1 --prior_type Natural --prior_weight 0.1
 [2020-04-05 23:40:57.672404] python train.py --name natural_prior_weight_4 --prior_type Natural --prior_weight 1e-4
+[2020-04-08 11:50:20.967096] python train.py

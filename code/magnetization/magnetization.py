@@ -134,12 +134,12 @@ with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
     tf_src_z2 = tf.placeholder(tf.float32, [flags.batch_size, 10], 'source_z2')
     tf_tgt_z = tf.placeholder(tf.float32, [flags.batch_size, 31], 'target_z')
     tf_tgt_z2 = tf.placeholder(tf.float32, [flags.batch_size, 10], 'target_z2')
-    tf_progress = tf.placeholder(tf.float32, [], 'progress')
+    tf_alpha = tf.placeholder(tf.float32, [], 'alpha')
     tf_dist_mult = tf.placeholder(tf.float32, [], 'dist_mult')
     tf_syn_z, tf_syn_z2, tf_curr_energy, tf_curr_weight, tf_curr_prior = model.syn_zzewpg[cup_id]
     tf_src_dist = tf.reduce_mean(tf.reduce_sum(tf.pow(tf_src_z2 - model.inp_z2, 2), axis=-1))
     tf_tgt_dist = tf.reduce_mean(tf.reduce_sum(tf.pow(tf_tgt_z2 - model.inp_z2, 2), axis=-1))
-    tf_mag_loss = (tf_src_dist * (1 - tf_progress) + tf_tgt_dist * tf_progress) * tf_dist_mult + tf.reduce_mean(tf_curr_energy + tf_curr_prior * model.prior_weight)
+    tf_mag_loss = tf_tgt_dist * tf_alpha * tf_dist_mult + tf.reduce_mean(tf_curr_energy + tf_curr_prior * model.prior_weight)
     # tf_mag_loss = tf.reduce_mean(tf_curr_energy + tf_curr_prior * model.prior_weight)
     tf_z_grad, tf_z2_grad = tf.gradients(tf_mag_loss, [model.inp_z, model.inp_z2])
 
