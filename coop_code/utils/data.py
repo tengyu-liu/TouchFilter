@@ -45,12 +45,6 @@ class DataLoader:
                     palm_v = (Q(mat_data[frame, 1 + 28 * 3 + 27 * 4: 1 + 28 * 3 + 28 * 4]).inverse * Q(mat_data[frame, 1 + 28 * 3 + 1 * 4 : 1 + 28 * 3 + 2 * 4])).rotate([0,0,1])
                     palm_directions[cup_id].append(palm_v)
                     obs_zs[cup_id].append(hand_z)
-                    if flags.debug:
-                        break
-                if flags.debug:
-                    break
-            if flags.debug:
-                break
 
     self.obs_zs = {i : np.array(x) for (i,x) in obs_zs.items()}
     self.palm_directions = {i : np.array(x) for (i,x) in palm_directions.items()}
