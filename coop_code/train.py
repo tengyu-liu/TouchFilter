@@ -78,8 +78,9 @@ for epoch in range(flags.epochs):
       break
   print()
   # visualize
-  for item in range(len(syn_hand)):
-    visualizer.visualize_distance(obj_id, gen_hand[item], os.path.join(log_dir, 'epoch-%04d-gen-%d'%(epoch, item)))
-    visualizer.visualize_distance(obj_id, syn_hand[item], os.path.join(log_dir, 'epoch-%04d-syn-%d'%(epoch, item)))
+  if flags.viz:
+    for item in range(len(syn_hand)):
+      visualizer.visualize_distance(obj_id, gen_hand[item], os.path.join(log_dir, 'epoch-%04d-gen-%d'%(epoch, item)))
+      visualizer.visualize_distance(obj_id, syn_hand[item], os.path.join(log_dir, 'epoch-%04d-syn-%d'%(epoch, item)))
   saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
   pickle.dump([obj_id, gen_hand, syn_hand, GE, SE], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
