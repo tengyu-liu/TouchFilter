@@ -61,7 +61,7 @@ class Visualizer:
         return eye
 
     def visualize_distance(self, cup_id, hand_z, save_path):
-        cup_model = tm.load_mesh('../../data/cups/onepiece/3.obj')
+        cup_model = tm.load_mesh(os.path.join(os.path.dirname(__file__), '../../data/cups/onepiece/3.obj'))
         z_ = hand_z
         jrot = z_[:22]
         grot = np.reshape(z_[22:28], [3, 2])

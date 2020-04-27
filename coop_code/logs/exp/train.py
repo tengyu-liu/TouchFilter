@@ -12,7 +12,7 @@ from utils.data import DataLoader
 from utils.viz_util import Visualizer
 
 # create log
-log_dir = os.path.join('logs', flags.name)
+log_dir = os.path.join(os.path.dirname(__file__), 'logs', flags.name)
 os.makedirs('logs', exist_ok=True)
 os.makedirs(os.path.join('logs', flags.name), exist_ok=True)
 for fn in os.listdir('.'):
@@ -74,7 +74,7 @@ for epoch in range(flags.epochs):
     train_writer.add_summary(summary, global_step=global_step)
     global_step += 1
     print('\r%d: %d/%d G:%f D:%f Improved Energy: %f'%(epoch, batch_i, total_len, GL, DL, np.mean(GE-SE)), end='')
-    if global_step % 10 == 9:
+    if flags.debug and global_step % 10 == 9:
       break
   print()
   # visualize

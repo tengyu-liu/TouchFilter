@@ -12,7 +12,7 @@ from utils.data import DataLoader
 from utils.viz_util import Visualizer
 
 # create log
-log_dir = os.path.join('logs', flags.name)
+log_dir = os.path.join(os.path.dirname(__file__), 'logs', flags.name)
 os.makedirs('logs', exist_ok=True)
 os.makedirs(os.path.join('logs', flags.name), exist_ok=True)
 for fn in os.listdir('.'):
