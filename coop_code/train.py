@@ -50,7 +50,7 @@ print('start training ...')
 global_step = 0
 for epoch in range(flags.epochs):
   batch_i = 0
-  total_len = dataloader.min_data_size * len(dataloader.obj_list)
+  total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
   for obj_id, item_id, obs_hand, obs_obj in dataloader.fetch():
     batch_i += 1
     Z = np.random.random([flags.batch_size, flags.n_latent_factor])
