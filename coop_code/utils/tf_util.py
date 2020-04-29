@@ -349,11 +349,11 @@ def fully_connected(inputs,
 def bilinear(inputs, num_outputs, scope, num_hidden=512, is_training=None):
   with tf.variable_scope(scope) as sc:
     l1 = fully_connected(inputs, num_hidden, scope='l1', bn=False)
-    h1 = fully_connected(l1, num_hidden, scope='h1', bn=True, is_training=is_training)
-    h2 = fully_connected(h1, num_hidden, scope='h2', bn=True, is_training=is_training)
+    h1 = fully_connected(l1, num_hidden, scope='h1', bn=False)
+    h2 = fully_connected(h1, num_hidden, scope='h2', bn=False)
     l2 = l1 + h2
-    h3 = fully_connected(l2, num_hidden, scope='h3', bn=True, is_training=is_training)
-    h4 = fully_connected(h3, num_hidden, scope='h4', bn=True, is_training=is_training)
+    h3 = fully_connected(l2, num_hidden, scope='h3', bn=False)
+    h4 = fully_connected(h3, num_hidden, scope='h4', bn=False)
     l3 = l2 + h4
     out = fully_connected(l3, num_outputs, scope='out', activation_fn=None)
     return out

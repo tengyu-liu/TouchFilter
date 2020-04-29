@@ -12,3 +12,4 @@ code/visualization/figs
 *.zip
 *.pkl
 w.npy
+*ckpt*

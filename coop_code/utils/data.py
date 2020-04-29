@@ -52,8 +52,8 @@ class DataLoader:
 
     self.z_stddev = np.std(all_zs, axis=0, keepdims=True)
     self.z_mean = np.mean(all_zs, axis=0, keepdims=True)
-    self.z_min = np.min(all_zs, axis=0, keepdims=True)
-    self.z_max = np.max(all_zs, axis=0, keepdims=True)
+    self.z_min = np.tile(np.min(all_zs, axis=0, keepdims=True), [self.flags.batch_size, 1])
+    self.z_max = np.tile(np.max(all_zs, axis=0, keepdims=True), [self.flags.batch_size, 1])
 
     self.min_data_size = min(len(x) for x in self.obs_zs.values())
 
