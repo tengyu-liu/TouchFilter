@@ -33,7 +33,6 @@ dataloader = DataLoader(flags, data_dir='../data', obj_list=[3])
 if flags.viz:
   from utils.viz_util import Visualizer
   visualizer = Visualizer()
-  import matplotlib.pyplot as plt
 
 # create model
 model = Model(flags, [dataloader.z_min, dataloader.z_max])
@@ -53,11 +52,6 @@ if flags.restore_epoch >= 0:
 print('start training ...')
 
 # train
-plt.ion()
-plt.pause(1e-5)
-plt.pause(1e-5)
-plt.pause(1e-5)
-plt.pause(1e-5)
 global_step = 0
 for epoch in range(flags.epochs):
   batch_i = 0
@@ -80,9 +74,6 @@ for epoch in range(flags.epochs):
       # print()
       # print('g_abs', g_abs)
       # print('g_ema', g_ema)
-    plt.clf()
-    plt.plot(energies)
-    plt.pause(1e-5)
     # Train G and D
     if epoch == 0:
       OE, GE, SE, GL, DL, _, _ = sess.run([
