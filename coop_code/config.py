@@ -18,7 +18,7 @@ tf.flags.DEFINE_float('penetration_penalty', 0.3, '')
 tf.flags.DEFINE_float('langevin_random_size', 0.1, '')
 
 # Train
-tf.flags.DEFINE_integer('epochs', 100, '')
+tf.flags.DEFINE_integer('epochs', 10000, '')
 tf.flags.DEFINE_integer('batch_size', 16, '')
 tf.flags.DEFINE_float('lr_gen', 1e-3, '')
 tf.flags.DEFINE_float('lr_des', 1e-3, '')
