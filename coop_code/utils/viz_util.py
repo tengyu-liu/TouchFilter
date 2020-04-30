@@ -80,14 +80,14 @@ class Visualizer:
             try:
                 p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
                 p.apply_translation(xpos[pid,:])
-                x.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,0])
-                y.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,1])
-                z.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,2])
-                intensity.append(-np.power(-tm.proximity.signed_distance(cup_model, p.vertices), 1/2))
-                i.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,0] + count)
-                j.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,1] + count)
-                k.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,2] + count)
-                count += len(p.vertices)
+                # x.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,0])
+                # y.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,1])
+                # z.append(self.__zero_stl_dict[self.parts[pid - 4]].vertices[:,2])
+                # intensity.append(-np.power(-tm.proximity.signed_distance(cup_model, p.vertices), 1/2))
+                # i.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,0] + count)
+                # j.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,1] + count)
+                # k.append(self.__zero_stl_dict[self.parts[pid - 4]].faces[:,2] + count)
+                # count += len(p.vertices)
                 fig_data.append(go.Mesh3d(x=p.vertices[:,0], y=p.vertices[:,1], z=p.vertices[:,2], \
                                         i=p.faces[:,0], j=p.faces[:,1], k=p.faces[:,2], color='lightblue'))
             except:
@@ -98,11 +98,11 @@ class Visualizer:
         fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
         fig1.write_image('%s-grasp.png'%save_path)
         # Draw figure 2
-        x, y, z, i, j, k, intensity = map(np.hstack, [x, y, z, i, j, k, intensity])
-        fig2 = go.Figure(data=go.Mesh3d(x=x, y=y, z=z, i=i, j=j, k=k, intensity=intensity, showscale=False))
-        camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
-        fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-        fig2.write_image('%s-dist.png'%save_path)
+        # x, y, z, i, j, k, intensity = map(np.hstack, [x, y, z, i, j, k, intensity])
+        # fig2 = go.Figure(data=go.Mesh3d(x=x, y=y, z=z, i=i, j=j, k=k, intensity=intensity, showscale=False))
+        # camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
+        # fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
+        # fig2.write_image('%s-dist.png'%save_path)
 
     def visualize_weight(self, hand_w, save_path=None, ax=None, c='white'):
         if save_path is not None:

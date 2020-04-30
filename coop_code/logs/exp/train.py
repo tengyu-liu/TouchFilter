@@ -33,7 +33,6 @@ dataloader = DataLoader(flags, data_dir='../data', obj_list=[3])
 if flags.viz:
   from utils.viz_util import Visualizer
   visualizer = Visualizer()
-  import matplotlib.pyplot as plt
 
 # create model
 model = Model(flags, [dataloader.z_min, dataloader.z_max])
@@ -53,18 +52,13 @@ if flags.restore_epoch >= 0:
 print('start training ...')
 
 # train
-plt.ion()
-plt.pause(1e-5)
-plt.pause(1e-5)
-plt.pause(1e-5)
-plt.pause(1e-5)
 global_step = 0
 for epoch in range(flags.epochs):
   batch_i = 0
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
   for obj_id, item_id, obs_hand, obs_obj in dataloader.fetch():
     batch_i += 1
-    Z = np.random.random([flags.batch_size, flags.n_latent_factor])
+    Z = np.random.normal(loc=0, scale=1, size=[flags.batch_size, flags.n_latent_factor])
     # Generate proposal with G
     gen_hand = sess.run(model.gen_hand, feed_dict={
       model.obs_obj: obs_obj, model.Z: Z, model.is_training: True
@@ -80,9 +74,6 @@ for epoch in range(flags.epochs):
       # print()
       # print('g_abs', g_abs)
       # print('g_ema', g_ema)
-    plt.clf()
-    plt.plot(energies)
-    plt.pause(1e-5)
     # Train G and D
     if epoch == 0:
       OE, GE, SE, GL, DL, _, _ = sess.run([

@@ -58,7 +58,7 @@ for epoch in range(flags.epochs):
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
   for obj_id, item_id, obs_hand, obs_obj in dataloader.fetch():
     batch_i += 1
-    Z = np.random.random([flags.batch_size, flags.n_latent_factor])
+    Z = np.random.normal(loc=0, scale=1, size=[flags.batch_size, flags.n_latent_factor])
     # Generate proposal with G
     gen_hand = sess.run(model.gen_hand, feed_dict={
       model.obs_obj: obs_obj, model.Z: Z, model.is_training: True

@@ -19,6 +19,7 @@ class Model:
     self.n_obj_pts = config.n_obj_pts
     self.hand_size = config.hand_size
     self.n_latent_factor = config.n_latent_factor
+    self.latent_factor_merge = config.latent_factor_merge
     self.penetration_penalty = config.penetration_penalty
     self.langevin_steps = config.langevin_steps
     self.gradient_decay = config.gradient_decay
@@ -98,8 +99,11 @@ class Model:
 
   def Generator(self):
     with tf.variable_scope('gen'):
-        h = pointnet_cls.get_model(self.obs_obj, is_training=self.is_training)
-        h = tf.concat([h, self.Z], axis=-1)
+        h = pointnet_cls.get_model(self.obs_obj, is_training=self.is_training, n_latent_factor=self.n_latent_factor)
+        if self.latent_factor_merge == 'concat':
+          h = tf.concat([h, self.Z], axis=-1)
+        elif self.latent_factor_merge == 'add':
+          h = h + self.Z
         hand = bilinear(h, self.hand_size, scope='bilinear', num_hidden=512, is_training=self.is_training)
         return hand
   
