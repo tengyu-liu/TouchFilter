@@ -64,7 +64,7 @@ class DataLoader:
     for curr_iter in range(int(self.min_data_size * len(self.obj_list) // self.flags.batch_size)):
       obj_id = self.obj_list[curr_iter % len(self.obj_list)]
       item_id = int(curr_iter // len(self.obj_list))
-      obs_z = self.obs_zs[obj_id][item_id * self.flags.batch_size : (item_id + 1) * self.flags.batch_size]
+      obs_z = self.obs_zs[obj_id][batch_idx[obj_id][item_id * self.flags.batch_size : (item_id + 1) * self.flags.batch_size]]
       obs_obj = self.sample_pts(obj_id, self.flags.n_obj_pts)
       yield obj_id, item_id, obs_z, obs_obj
 
