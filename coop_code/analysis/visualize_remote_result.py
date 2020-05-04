@@ -12,13 +12,15 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = [1, 1, 1, 1]
+epochs = [7,7,7,7,7,7,7,7]
 
-for exp in range(4):
+for exp in range(8):
+    if exp == 4:
+        continue
     name = 'exp%d'%exp
     epoch = epochs[exp]
     data = pickle.load(open(os.path.join('../logs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
-    obj_id, gen_hand, syn_hand, GE, SE, g_ema = data
+    obj_id, gen_hand, syn_hand, obs_hand, GE, SE, g_ema = data
     os.makedirs('%s-%d'%(name, epoch), exist_ok=True)
     diff = np.zeros([len(gen_hand), len(gen_hand)])
     for i in range(len(gen_hand)):
@@ -33,7 +35,8 @@ for exp in range(4):
     for i in range(len(syn_hand)):
         print(name, epoch, GE[i], SE[i])
         try:
-            visualizer.visualize_distance(3, gen_hand[0], '%s-%d/%d-gen'%(name, epoch, i))
-            visualizer.visualize_distance(3, syn_hand[0], '%s-%d/%d-syn'%(name, epoch, i))
+            visualizer.visualize_distance(3, obs_hand[i], '%s-%d/%d-dem'%(name, epoch, i))
+            visualizer.visualize_distance(3, gen_hand[i], '%s-%d/%d-gen'%(name, epoch, i))
+            visualizer.visualize_distance(3, syn_hand[i], '%s-%d/%d-syn'%(name, epoch, i))
         except:
             pass

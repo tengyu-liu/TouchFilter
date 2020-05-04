@@ -14,7 +14,7 @@ tf.flags.DEFINE_integer('hand_size', 31, '')
 # Model
 tf.flags.DEFINE_integer('n_latent_factor', 64, '')
 tf.flags.DEFINE_string('latent_factor_merge', 'concat', 'choose between "concat", "add"')
-tf.flags.DEFINE_float('penetration_penalty', 0.3, '')
+tf.flags.DEFINE_float('penetration_penalty', 0.03, '')
 tf.flags.DEFINE_float('langevin_random_size', 0.1, '')
 
 # Train

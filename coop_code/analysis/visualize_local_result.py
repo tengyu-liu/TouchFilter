@@ -10,7 +10,7 @@ from utils.viz_util import Visualizer
 visualizer = Visualizer()
 
 name = 'exp'
-epochs = range(2,3)
+epochs = range(3,4)
 
 name = 'exp'
 
@@ -33,8 +33,8 @@ for epoch in epochs:
         if os.path.exists('%s-%d/%d-gen.png'%(name, epoch, i)):
             continue
         try:
-            visualizer.visualize_distance(3, gen_hand[0], '%s-%d/%d-gen'%(name, epoch, i))
-            visualizer.visualize_distance(3, syn_hand[0], '%s-%d/%d-syn'%(name, epoch, i))
-            visualizer.visualize_distance(3, obs_hand[0], '%s-%d/%d-dem'%(name, epoch, i))
+            visualizer.visualize_distance(3, gen_hand[i], '%s-%d/%d-gen'%(name, epoch, i))
+            visualizer.visualize_distance(3, syn_hand[i], '%s-%d/%d-syn'%(name, epoch, i))
+            visualizer.visualize_distance(3, obs_hand[i], '%s-%d/%d-dem'%(name, epoch, i))
         except:
             pass
