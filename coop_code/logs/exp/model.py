@@ -106,7 +106,6 @@ class Model:
           h = h + self.Z
         hand = bilinear(h, self.hand_size, scope='bilinear', num_hidden=512, is_training=self.is_training)
         return hand
-  
 
   
   def Descriptor(self, hand, penetration_penalty=0):
@@ -129,13 +128,13 @@ class Model:
       hand_feat = tf.concat([hand_pts, hand_to_obj_dist, angles, self.hand_model.pts_feature], axis=-1)
       assignment = pointnet_seg.get_model(hand_feat, is_training=self.is_training)[0]
       # Compute energy according to contact assignment
-      f0 = tf.nn.relu(-hand_to_obj_dist) + tf.nn.relu(hand_to_obj_dist) * penetration_penalty
-      f1 = tf.nn.relu(hand_to_obj_dist) * penetration_penalty
-      features = tf.concat([f0, f1], axis=-1)  # B x N x 2
+      contact_energy = tf.nn.relu(-hand_to_obj_dist) + tf.nn.relu(hand_to_obj_dist) * tf.reduce_sum(hand_to_obj_grad * hand_normals, axis=-1, keepdims=True)
+      non_contact_energy = tf.nn.relu(hand_to_obj_dist) * penetration_penalty
+      contact_non_contact_energies = tf.concat([contact_energy, non_contact_energy], axis=-1)  # B x N x 2
       assignment = tf.reshape(tf.nn.softmax(tf.reshape(assignment, [-1, 2])), assignment.shape)
-      energies = assignment * features # B x N x 2 
+      energies = assignment * contact_non_contact_energies # B x N x 2 
       return tf.reduce_sum(energies, axis=[1,2]), assignment[:,:,0]
-      
+
 
   def Langevin(self):
     e = self.Descriptor(self.syn_hand)[0]

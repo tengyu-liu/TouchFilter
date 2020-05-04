@@ -1,15 +1,9 @@
 import os
 
 import numpy as np
-import scipy.io as sio
 import tensorflow as tf
-import trimesh as tm
-from pyquaternion.quaternion import Quaternion as Q
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
-from .tf_hand_kinematics import kinematics
+from tf_hand_kinematics import kinematics
 
 class HandModel:
     def __init__(self, batch_size):
@@ -21,8 +15,6 @@ class HandModel:
                     'ring0', 'ring1', 'ring2', 'ring3',
                     'pinky0', 'pinky1', 'pinky2', 'pinky3']
 
-        # self.surface_pts = {p: tf.constant(tm.load(os.path.join(os.path.dirname(__file__), '../data', 'hand', p + '.STL')).vertices, dtype=tf.float32) for p in self.parts}
-        # self.surface_pts = {p: tf.constant(np.mean(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.faces.npy')), axis=1), dtype=tf.float32) for p in self.parts if '0' not in p}
         self.surface_pts = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../../data', p + '.sample_points.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
         self.pts_normals = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../../data', p + '.sample_normal.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
         self.pts_feature = tf.tile(tf.expand_dims(tf.concat([tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../../data', p + '.sample_feat.npy')), dtype=tf.float32) for p in self.parts if '0' not in p], axis=0), axis=0), [batch_size, 1, 1])
@@ -53,6 +45,10 @@ class HandModel:
 # pyplot.show()
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    import scipy.io as sio
+    from pyquaternion.quaternion import Quaternion as Q
 
     glove_data = sio.loadmat('../../data/grasp/cup%d/cup%d_grasping_60s_1.mat'%(1, 1))['glove_data']
 
