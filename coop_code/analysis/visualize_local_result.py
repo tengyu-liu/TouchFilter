@@ -10,7 +10,7 @@ from utils.viz_util import Visualizer
 visualizer = Visualizer()
 
 name = 'exp'
-epochs = range(3,4)
+epochs = range(5,6)
 
 name = 'exp'
 

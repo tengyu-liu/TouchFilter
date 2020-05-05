@@ -13,8 +13,8 @@ from pyquaternion.quaternion import Quaternion as Q
 from . import mat_trans as mt
 from .forward_kinematics import ForwardKinematic
 
-if os.name != 'nt':
-    pio.orca.config.use_xvfb = True
+# if os.name != 'nt':
+#     pio.orca.config.use_xvfb = True
 
 class Visualizer:
     def __init__(self):

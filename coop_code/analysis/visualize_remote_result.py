@@ -12,11 +12,11 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = [4,4,4,4,4,4,4,4]
+epochs = 28
 
 for exp in range(8):
     name = 'exp%d'%exp
-    epoch = epochs[exp]
+    epoch = epochs
     data = pickle.load(open(os.path.join('../logs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
     obj_id, gen_hand, syn_hand, obs_hand, GE, SE, g_ema = data
     os.makedirs('%s-%d'%(name, epoch), exist_ok=True)
