@@ -130,11 +130,10 @@ class Model:
       assignment = pointnet_seg.get_model(hand_feat, is_training=self.is_training)[0]
       # Compute energy according to contact assignment
       contact_energy = tf.nn.relu(-hand_to_obj_dist) + tf.nn.relu(hand_to_obj_dist) * tf.reduce_sum(hand_to_obj_grad * hand_normals, axis=-1, keepdims=True)
-      non_contact_energy = tf.nn.relu(hand_to_obj_dist) * penetration_penalty + 0.1
-      contact_non_contact_energies = tf.concat([contact_energy, non_contact_energy], axis=-1)  # B x N x 2
-      assignment = tf.reshape(tf.nn.softmax(tf.reshape(assignment, [-1, 2])), assignment.shape)
-      energies = assignment * contact_non_contact_energies # B x N x 2 
-      return tf.reduce_sum(energies, axis=[1,2]), assignment[:,:,0]
+      # non_contact_energy = tf.nn.relu(hand_to_obj_dist) * penetration_penalty + 0.1
+      # contact_non_contact_energies = tf.concat([contact_energy, non_contact_energy], axis=-1)  # B x N x 2
+      energies = assignment + contact_energy # B x N x 2 
+      return tf.reduce_sum(energies, axis=[1,2]), assignment
 
 
   def Langevin(self):
