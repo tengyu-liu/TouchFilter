@@ -12,11 +12,9 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = [7,7,7,7,7,7,7,7]
+epochs = [4,4,4,4,4,4,4,4]
 
 for exp in range(8):
-    if exp == 4:
-        continue
     name = 'exp%d'%exp
     epoch = epochs[exp]
     data = pickle.load(open(os.path.join('../logs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
