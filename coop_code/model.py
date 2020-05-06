@@ -63,9 +63,9 @@ class Model:
       # Computation
       self.gen_hand = self.Generator()
       self.langevin_result = self.Langevin()
-      self.obs_energy, self.obs_contact = self.Descriptor(self.obs_hand, penetration_penalty=0)
-      self.syn_energy, self.syn_contact = self.Descriptor(self.syn_hand, penetration_penalty=self.penetration_penalty)
-      self.gen_energy, self.gen_contact = self.Descriptor(self.gen_hand, penetration_penalty=self.penetration_penalty)
+      self.obs_energy, self.obs_contact = self.Descriptor(self.obs_hand, self.obs_z, penetration_penalty=0)
+      self.syn_energy, self.syn_contact = self.Descriptor(self.syn_hand, self.syn_z, penetration_penalty=self.penetration_penalty)
+      self.gen_energy, self.gen_contact = self.Descriptor(self.gen_hand, self.syn_z, penetration_penalty=self.penetration_penalty)
 
 
   def build_train(self):
@@ -138,7 +138,7 @@ class Model:
 
 
   def Langevin(self):
-    e = self.Descriptor(self.syn_hand)[0]
+    e = self.Descriptor(self.syn_hand, self.syn_z)[0]
     grad_hand, grad_z = tf.gradients(e, [self.syn_hand, self.syn_z])
     g_abs = tf.reduce_mean(tf.abs(grad_hand), axis=0, keepdims=True, name='g_abs')
     apply_op = self.ema.apply([g_abs])
