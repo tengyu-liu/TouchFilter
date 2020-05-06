@@ -59,6 +59,8 @@ for epoch in range(flags.epochs):
   for obj_id, item_id, obs_hand, obs_z, obs_obj, obs_idx  in dataloader.fetch():
     batch_i += 1
     syn_z = np.random.normal(loc=0, scale=1, size=[flags.batch_size, flags.n_latent_factor])
+    syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
+    obs_z /= np.linalg.norm(obs_z, axis=-1, keepdims=True)
     # Generate proposal with G
     gen_hand = sess.run(model.gen_hand, feed_dict={
       model.obs_obj: obs_obj, model.syn_z: syn_z, model.is_training: True
@@ -73,6 +75,8 @@ for epoch in range(flags.epochs):
       _, obs_z, _, _, _ = sess.run(model.langevin_result, feed_dict={
         model.syn_hand: obs_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: obs_z
       })
+      syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
+      obs_z /= np.linalg.norm(obs_z, axis=-1, keepdims=True)
       energies.append(np.mean(syn_energy))
       # print()
       # print('g_abs', g_abs)
