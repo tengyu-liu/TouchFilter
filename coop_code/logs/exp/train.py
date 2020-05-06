@@ -66,7 +66,7 @@ for epoch in range(flags.epochs):
     syn_hand = gen_hand.copy()
     energies = []
     # Update proposal with D
-    for langevin_step in range(min(epoch * 5, flags.langevin_steps)):
+    for langevin_step in range(min((epoch+1) * 5, flags.langevin_steps)):
       syn_hand, syn_energy, g_abs, g_ema = sess.run(model.langevin_result, feed_dict={
         model.syn_hand: syn_hand, model.obj_id: obj_id, model.is_training: True
       })
@@ -75,23 +75,14 @@ for epoch in range(flags.epochs):
       # print('g_abs', g_abs)
       # print('g_ema', g_ema)
     # Train G and D
-    if epoch == 0:
-      OE, GE, SE, GL, DL, _, _ = sess.run([
-        model.obs_energy, model.gen_energy, model.syn_energy, 
-        model.gen_loss, model.des_loss, model.train_gen, model.train_des
-      ], feed_dict={
-        model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, model.obj_id: obj_id, model.Z: Z, model.is_training:True
-      })
-      global_step += 1    
-    else:
-      OE, GE, SE, GL, DL, _, _, summary = sess.run([
-        model.obs_energy, model.gen_energy, model.syn_energy, 
-        model.gen_loss, model.des_loss, model.train_gen, model.train_des, model.summaries
-      ], feed_dict={
-        model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, model.obj_id: obj_id, model.Z: Z, model.is_training:True
-      })
-      train_writer.add_summary(summary, global_step=global_step)
-      global_step += 1
+    OE, OC, GE, GC, SE, SC, GL, DL, _, _, summary = sess.run([
+      model.obs_energy, model.obs_contact, model.gen_energy, model.gen_contact, model.syn_energy, model.syn_contact, 
+      model.gen_loss, model.des_loss, model.train_gen, model.train_des, model.summaries
+    ], feed_dict={
+      model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, model.obj_id: obj_id, model.Z: Z, model.is_training:True
+    })
+    train_writer.add_summary(summary, global_step=global_step)
+    global_step += 1
     print('\r%d: %d/%d G:%f D:%f Improved Energy: %f'%(epoch, batch_i, total_len, GL, DL, np.mean(GE-SE)), end='')
     if flags.debug and global_step % 10 == 9:
       break
@@ -103,4 +94,4 @@ for epoch in range(flags.epochs):
   #     visualizer.visualize_distance(obj_id, syn_hand[item], os.path.join(log_dir, 'epoch-%04d-syn-%d'%(epoch, item)))
   if epoch > 0:
     saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
-    pickle.dump([obj_id, gen_hand, syn_hand, obs_hand, GE, SE, g_ema], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
+    pickle.dump([obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))

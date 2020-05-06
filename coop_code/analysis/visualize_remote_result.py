@@ -12,13 +12,13 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = 28
+epochs = 21
 
 for exp in range(8):
     name = 'exp%d'%exp
     epoch = epochs
     data = pickle.load(open(os.path.join('../logs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
-    obj_id, gen_hand, syn_hand, obs_hand, GE, SE, g_ema = data
+    obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema = data
     os.makedirs('%s-%d'%(name, epoch), exist_ok=True)
     diff = np.zeros([len(gen_hand), len(gen_hand)])
     for i in range(len(gen_hand)):
@@ -31,10 +31,18 @@ for exp in range(8):
     # plt.show()
     plt.savefig('%s-%d/gen-diff.png'%(name, epoch))
     for i in range(len(syn_hand)):
-        print(name, epoch, GE[i], SE[i])
+        # print(name, epoch, GE[i], SE[i])
+        # print(OC.shape, GC.shape, SC.shape)
+        # plt.subplot(311)
+        # plt.hist(OC[i])
+        # plt.subplot(312)
+        # plt.hist(GC[i])
+        # plt.subplot(313)
+        # plt.hist(SC[i])
+        # plt.show()
         try:
-            visualizer.visualize_distance(3, obs_hand[i], '%s-%d/%d-dem'%(name, epoch, i))
-            visualizer.visualize_distance(3, gen_hand[i], '%s-%d/%d-gen'%(name, epoch, i))
-            visualizer.visualize_distance(3, syn_hand[i], '%s-%d/%d-syn'%(name, epoch, i))
+            visualizer.visualize_weight(obs_hand[i], OC[i,:,0], '%s-%d/%d-dem'%(name, epoch, i))
+            visualizer.visualize_weight(gen_hand[i], GC[i,:,0], '%s-%d/%d-gen'%(name, epoch, i))
+            visualizer.visualize_weight(syn_hand[i], SC[i,:,0], '%s-%d/%d-syn'%(name, epoch, i))
         except:
             pass

@@ -3,7 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from tf_hand_kinematics import kinematics
+from .tf_hand_kinematics import kinematics
 
 class HandModel:
     def __init__(self, batch_size):

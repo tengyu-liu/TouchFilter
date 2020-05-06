@@ -59,10 +59,10 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
                             scope='conv5', bn_decay=bn_decay)
         global_feat = tf_util.max_pool2d(net, [num_point,1],
                                         padding='VALID', scope='maxpool')
-        # z_feat = tf_util.fully_connected(z, 1024, 'z_feat')
-        # z_feat = tf.reshape(z_feat, global_feat.shape)
-        # # global_feat = tf.concat([global_feat, tf.reshape(z, [z.shape[0], 1, 1, -1])], axis=3)
-        # global_feat = global_feat + z_feat
+        z_feat = tf_util.fully_connected(z, 1024, 'z_feat')
+        z_feat = tf.reshape(z_feat, global_feat.shape)
+        # global_feat = tf.concat([global_feat, tf.reshape(z, [z.shape[0], 1, 1, -1])], axis=3)
+        global_feat = global_feat + z_feat
 
         global_feat_expand = tf.tile(global_feat, [1, num_point, 1, 1])
         concat_feat = tf.concat([point_feat, global_feat_expand], axis=3)

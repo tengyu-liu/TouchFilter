@@ -104,28 +104,64 @@ class Visualizer:
         # fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
         # fig2.write_image('%s-dist.png'%save_path)
 
-    def visualize_weight(self, hand_w, save_path=None, ax=None, c='white'):
-        if save_path is not None:
-            fig2 = go.Figure(data=[go.Scatter3d(
-                x=self.__zero_pts[:,0], 
-                y=self.__zero_pts[:,1], 
-                z=self.__zero_pts[:,2], 
-                mode='markers',
-                marker=dict(
-                    color=hand_w, 
-                    colorscale='Viridis'
-                ))])
-            camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
-            fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-            fig2.write_image('%s.png'%save_path)
-        if ax is not None:
-            ax.scatter(-self.__zero_pts[:,2], self.__zero_pts[:,0], -self.__zero_pts[:,1], c=hand_w, s=3)
-            ax.view_init(elev=0, azim=0)
-            ax.set_xlim(-0.1,0.1)
-            ax.set_ylim(-0.05, 0.15)
-            ax.set_zlim(0.05, 0.25)
-            ax.plot([-0.1,-0.1,-0.1,-0.1,-0.1], [-0.05,-0.05,0.15,0.15,-0.05], [0.05,0.25,0.25,0.05,0.05], c=c)
-            ax.axis('off')
+    def visualize_weight(self, hand_z, hand_w, save_path=None, ax=None, c='white'):
+        cup_model = tm.load_mesh(os.path.join(os.path.dirname(__file__), '../../data/cups/onepiece/3.obj'))
+        z_ = hand_z
+        jrot = z_[:22]
+        grot = np.reshape(z_[22:28], [3, 2])
+        gpos = z_[28:]
+        grot = mt.quaternion_from_matrix(self.rotation_matrix(grot))
+        qpos = np.concatenate([gpos, grot, jrot])
+        xpos, xquat = ForwardKinematic(qpos)
+        stl_dict = {obj: tm.load_mesh(os.path.join(self.obj_base, '%s.STL'%obj)) for obj in self.parts}
+        fig_data = []
+        fig_data = [go.Mesh3d(x=cup_model.vertices[:,0], y=cup_model.vertices[:,1], z=cup_model.vertices[:,2], \
+                                i=cup_model.faces[:,0], j=cup_model.faces[:,1], k=cup_model.faces[:,2], color='lightpink')]
+
+        for pid in range(4, 25):
+            p = copy.deepcopy(stl_dict[self.parts[pid - 4]])
+            try:
+                p.apply_transform(tm.transformations.quaternion_matrix(xquat[pid,:]))
+                p.apply_translation(xpos[pid,:])
+                fig_data.append(go.Mesh3d(x=p.vertices[:,0], y=p.vertices[:,1], z=p.vertices[:,2], \
+                                        i=p.faces[:,0], j=p.faces[:,1], k=p.faces[:,2], color='lightblue'))
+            except:
+                raise
+
+
+        fig1 = go.Figure(data=fig_data)
+        camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
+        fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
+
+        hand_w -= np.min(hand_w)
+        hand_w /= np.max(hand_w)
+        print(hand_w)
+
+        fig2 = go.Figure(data=[go.Scatter3d(
+            x=self.__zero_pts[:,0], 
+            y=self.__zero_pts[:,1], 
+            z=self.__zero_pts[:,2], 
+            mode='markers',
+            marker=dict(
+                color=hand_w, 
+                colorscale='Viridis'
+            ))])
+        camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
+        fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
+        if save_path is None:
+            fig1.show()
+            fig2.show()
+        else:
+            fig1.write_image('%s-grasp.png'%save_path)
+            fig2.write_image('%s-weight.png'%save_path)
+        # if ax is not None:
+        #     ax.scatter(-self.__zero_pts[:,2], self.__zero_pts[:,0], -self.__zero_pts[:,1], c=hand_w, s=3)
+        #     ax.view_init(elev=0, azim=0)
+        #     ax.set_xlim(-0.1,0.1)
+        #     ax.set_ylim(-0.05, 0.15)
+        #     ax.set_zlim(0.05, 0.25)
+        #     ax.plot([-0.1,-0.1,-0.1,-0.1,-0.1], [-0.05,-0.05,0.15,0.15,-0.05], [0.05,0.25,0.25,0.05,0.05], c=c)
+        #     ax.axis('off')
 
 if __name__ == '__main__':
     v = Visualizer()
