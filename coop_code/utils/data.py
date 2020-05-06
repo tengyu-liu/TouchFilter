@@ -56,6 +56,7 @@ class DataLoader:
     self.z_max = np.tile(np.max(all_zs, axis=0, keepdims=True), [self.flags.batch_size, 1])
 
     self.min_data_size = min(len(x) for x in self.obs_zs.values())
+    self.obs_z2s = {i: np.random.normal(0, 1, [self.obs_zs.shape[0], self.flags.n_latent_factor])}
 
 
   def fetch(self):
@@ -64,10 +65,14 @@ class DataLoader:
     for curr_iter in range(int(self.min_data_size * len(self.obj_list) // self.flags.batch_size)):
       obj_id = self.obj_list[curr_iter % len(self.obj_list)]
       item_id = int(curr_iter // len(self.obj_list))
-      obs_z = self.obs_zs[obj_id][batch_idx[obj_id][item_id * self.flags.batch_size : (item_id + 1) * self.flags.batch_size]]
+      idx = batch_idx[obj_id][item_id * self.flags.batch_size : (item_id + 1) * self.flags.batch_size]
+      obs_z = self.obs_zs[obj_id][idx]
       obs_obj = self.sample_pts(obj_id, self.flags.n_obj_pts)
-      yield obj_id, item_id, obs_z, obs_obj
+      obs_z2 = self.obs_z2s[obj_id][idx]
+      yield obj_id, item_id, obs_z, obs_z2, obs_obj, idx
 
+  def update_z(self, obj_id, z, idx):
+      self.obs_z2s[obj_id][idx] = z
 
   def sample_pts(self, obj_id, n_pts):
     rand_id = np.random.randint(0, len(self.obj_pts[obj_id])-1, size=(self.flags.batch_size, n_pts)) 

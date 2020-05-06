@@ -47,7 +47,8 @@ class Model:
     self.obs_obj = tf.placeholder(tf.float32, [self.batch_size,self.n_obj_pts,3], 'obs_obj')
     self.obs_hand = tf.placeholder(tf.float32, [self.batch_size,self.hand_size], 'obs_hand')
     self.syn_hand = tf.placeholder(tf.float32, [self.batch_size,self.hand_size], 'syn_hand')
-    self.Z = tf.placeholder(tf.float32, [self.batch_size, self.n_latent_factor], 'Z')
+    self.syn_z = tf.placeholder(tf.float32, [self.batch_size, self.n_latent_factor], 'Z')
+    self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.n_latent_factor], 'Z')
     self.obj_id = tf.placeholder(tf.int32, [], 'obj_id')
     self.is_training = tf.placeholder(tf.bool, [], 'is_training')
 
@@ -102,14 +103,14 @@ class Model:
     with tf.variable_scope('gen'):
         h = pointnet_cls.get_model(self.obs_obj, is_training=self.is_training, n_latent_factor=self.n_latent_factor)
         if self.latent_factor_merge == 'concat':
-          h = tf.concat([h, self.Z], axis=-1)
+          h = tf.concat([h, self.syn_z], axis=-1)
         elif self.latent_factor_merge == 'add':
-          h = h + self.Z
+          h = h + self.syn_z
         hand = bilinear(h, self.hand_size, scope='bilinear', num_hidden=512, is_training=self.is_training)
         return hand
 
   
-  def Descriptor(self, hand, penetration_penalty=0):
+  def Descriptor(self, hand, z, penetration_penalty=0):
     with tf.variable_scope('des'):
       # Compute hand surface point and normal
       jrot = hand[:,:22]
@@ -127,7 +128,7 @@ class Model:
       angles = tf.reduce_sum(hand_normals * hand_to_obj_grad, axis=-1, keepdims=True)
       # Compute contact/non-contact assignment
       hand_feat = tf.concat([hand_pts, hand_to_obj_dist, angles, self.hand_model.pts_feature], axis=-1)
-      assignment = pointnet_seg.get_model(hand_feat, is_training=self.is_training)[0]
+      assignment = pointnet_seg.get_model(hand_feat, z_feat=z, is_training=self.is_training)[0]
       # Compute energy according to contact assignment
       contact_energy = tf.nn.relu(-hand_to_obj_dist) + tf.nn.relu(hand_to_obj_dist) * tf.reduce_sum(hand_to_obj_grad * hand_normals, axis=-1, keepdims=True)
       # non_contact_energy = tf.nn.relu(hand_to_obj_dist) * penetration_penalty + 0.1
@@ -138,14 +139,15 @@ class Model:
 
   def Langevin(self):
     e = self.Descriptor(self.syn_hand)[0]
-    grad = tf.gradients(e, self.syn_hand)[0]
-    g_abs = tf.reduce_mean(tf.abs(grad), axis=0, keepdims=True, name='g_abs')
+    grad_hand, grad_z = tf.gradients(e, [self.syn_hand, self.syn_z])
+    g_abs = tf.reduce_mean(tf.abs(grad_hand), axis=0, keepdims=True, name='g_abs')
     apply_op = self.ema.apply([g_abs])
     with tf.control_dependencies([apply_op]):
       g_ema = self.ema.average(g_abs)
-      grad /= g_ema
-      grad = tf.clip_by_norm(grad, 31, axes=-1)
-      hand = self.syn_hand - self.step_size_square * grad + self.step_size * tf.random_normal(self.syn_hand.shape, mean=0, stddev=self.langevin_random_size)
+      grad_hand /= g_ema
+      grad_hand = tf.clip_by_norm(grad_hand, 31, axes=-1)
+      hand = self.syn_hand - self.step_size_square * grad_hand + self.step_size * tf.random_normal(self.syn_hand.shape, mean=0, stddev=self.langevin_random_size)
       jrot = tf.clip_by_value(hand[:,:22], self.z_min, self.z_max)
       hand = tf.concat([jrot, hand[:,22:]], axis=-1)
-      return hand, e , g_abs, g_ema
+      z = self.syn_z - self.step_size_square * grad_z + self.step_size * tf.random_normal(self.syn_z.shape, mean=0, stddev=self.langevin_random_size)
+      return hand, z, e , g_abs, g_ema
