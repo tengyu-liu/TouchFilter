@@ -84,7 +84,7 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
                             bn=False, is_training=is_training,
                             scope='conv9', bn_decay=bn_decay)
 
-        net = tf_util.conv2d(net, 2, [1,1],
+        net = tf_util.conv2d(net, 1, [1,1],
                             padding='VALID', stride=[1,1], activation_fn=None,
                             scope='conv10')
         net = tf.squeeze(net, [2]) # BxNxC
