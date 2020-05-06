@@ -67,10 +67,10 @@ for epoch in range(flags.epochs):
     energies = []
     # Update proposal with D
     for langevin_step in range(min((epoch+1) * 5, flags.langevin_steps)):
-      syn_hand, syn_energy, syn_z, g_abs, g_ema = sess.run(model.langevin_result, feed_dict={
+      syn_hand, syn_z, syn_energy, g_abs, g_ema = sess.run(model.langevin_result, feed_dict={
         model.syn_hand: syn_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: syn_z
       })
-      _, _, obs_z, _, _ = sess.run(model.langevin_result, feed_dict={
+      _, obs_z, _, _, _ = sess.run(model.langevin_result, feed_dict={
         model.syn_hand: obs_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: obs_z
       })
       energies.append(np.mean(syn_energy))
