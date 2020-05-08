@@ -144,7 +144,7 @@ class Model:
     g_abs = tf.reduce_mean(tf.abs(grad_hand), axis=0, keepdims=True, name='g_abs')
     apply_op = self.ema.apply([g_abs])
     with tf.control_dependencies([apply_op]):
-      g_ema = self.ema.average(g_abs)
+      g_ema = self.ema.average(g_abs) + 1e-6
       grad_hand /= g_ema
       grad_hand = tf.clip_by_norm(grad_hand, 31, axes=-1)
       hand = self.syn_hand - self.step_size_square * grad_hand + self.step_size * tf.random_normal(self.syn_hand.shape, mean=0, stddev=self.langevin_random_size)
