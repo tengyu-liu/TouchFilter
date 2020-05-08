@@ -128,7 +128,7 @@ class Model:
       angles = tf.reduce_sum(hand_normals * hand_to_obj_grad, axis=-1, keepdims=True)
       # Compute contact/non-contact assignment
       hand_feat = tf.concat([hand_pts, hand_to_obj_dist, angles, self.hand_model.pts_feature], axis=-1)
-      assignment = tf.nn.relu(pointnet_seg.get_model(hand_feat, z_feat=z, is_training=self.is_training)[0])
+      assignment = tf.nn.leaky_relu(pointnet_seg.get_model(hand_feat, z_feat=z, is_training=self.is_training)[0])
       # Compute energy according to contact assignment
       contact_energy = tf.nn.relu(-hand_to_obj_dist) + tf.nn.relu(hand_to_obj_dist) * tf.reduce_sum(hand_to_obj_grad * hand_normals, axis=-1, keepdims=True)
       # non_contact_energy = tf.nn.relu(hand_to_obj_dist) * penetration_penalty + 0.1

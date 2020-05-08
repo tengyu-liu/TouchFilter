@@ -13,3 +13,4 @@ code/visualization/figs
 *.pkl
 w.npy
 *ckpt*
+logs
