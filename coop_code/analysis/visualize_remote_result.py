@@ -12,13 +12,15 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = 21
+epochs = [23,23,23,23,15,15,14,15]
 
-for exp in range(8):
+for exp in range(6,8):
+    if exp == 2:
+        continue
     name = 'exp%d'%exp
-    epoch = epochs
-    data = pickle.load(open(os.path.join('../logs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
-    obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema = data
+    epoch = epochs[exp]
+    data = pickle.load(open(os.path.join('../logs/figs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
+    obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema, obs_z = data
     os.makedirs('%s-%d'%(name, epoch), exist_ok=True)
     diff = np.zeros([len(gen_hand), len(gen_hand)])
     for i in range(len(gen_hand)):

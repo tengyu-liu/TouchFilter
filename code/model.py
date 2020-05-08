@@ -225,3 +225,5 @@ class Model:
         self.scalar_summ = tf.summary.merge(scalar_summs)
         self.all_summ = tf.summary.merge(img_summs + scalar_summs)
         pass
+        
+        
