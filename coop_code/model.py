@@ -35,8 +35,8 @@ class Model:
     self.step_size_square = self.step_size * self.step_size
     self.z_min = tf.constant(stats[0][:,:22], dtype=self.dtype)
     self.z_max = tf.constant(stats[1][:,:22], dtype=self.dtype)
-    if config.restore_epoch >= 0:
-      log_dir = os.path.join('logs', coonfig.name)
+    # if config.restore_epoch >= 0:
+    #   log_dir = os.path.join('logs', coonfig.name)
     #   restore_ema_path = os.path.join(log_dir, '%04d.ema.np'%(config.restore_epoch))
     #   self.ema_value = tf.constant(np.load(os.path.join(restore_ema_path)), dtype=dtype)
     # else:
