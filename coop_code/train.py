@@ -56,7 +56,7 @@ plt.ion()
 
 # train
 global_step = 0
-for epoch in range(flags.restore_epoch, flags.epochs):
+for epoch in range(flags.restore_epoch+1, flags.epochs):
   batch_i = 0
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
   for obj_id, item_id, obs_hand, obs_z, obs_obj, obs_idx  in dataloader.fetch():
