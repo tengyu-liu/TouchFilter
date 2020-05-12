@@ -47,7 +47,7 @@ saver = tf.train.Saver(max_to_keep=0)
 
 # load from checkpoint
 if flags.restore_epoch >= 0:
-    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'models', flags.restore_name, '%04d.ckpt'%(flags.restore_epoch)))
+    saver.restore(sess, os.path.join(os.path.dirname(__file__), 'logs', flags.restore_name, '%04d.ckpt'%(flags.restore_epoch)))
 
 print('start training ...')
 
