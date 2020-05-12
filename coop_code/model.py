@@ -74,11 +74,13 @@ class Model:
     self.des_loss = tf.reduce_mean(self.obs_energy - self.syn_energy)
     # train Generator
     gen_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/gen')]
+    # gen_optim = tf.train.AdamOptimizer(self.lr_gen, beta1=self.beta1_gen, beta2=self.beta2_gen)
     gen_optim = tf.train.AdamOptimizer(self.lr_gen, beta1=self.beta1_gen, beta2=self.beta2_gen)
     gen_grads_vars = gen_optim.compute_gradients(self.gen_loss, var_list=gen_vars)
     self.train_gen = gen_optim.apply_gradients(gen_grads_vars)
     # train Descriptor
     des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/des')]
+    # des_optimizer = tf.train.AdamOptimizer(self.lr_des, beta1=self.beta1_des, beta2=self.beta2_des)
     des_optimizer = tf.train.AdamOptimizer(self.lr_des, beta1=self.beta1_des, beta2=self.beta2_des)
     des_grads_vars = des_optimizer.compute_gradients(self.des_loss, var_list=des_vars)
     self.train_des = des_optimizer.apply_gradients(des_grads_vars)

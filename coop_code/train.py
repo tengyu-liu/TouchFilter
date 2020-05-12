@@ -51,12 +51,12 @@ if flags.restore_epoch >= 0:
 
 print('start training ...')
 
-# import matplotlib.pyplot as plt
-# plt.ion()
+import matplotlib.pyplot as plt
+plt.ion()
 
 # train
 global_step = 0
-for epoch in range(flags.epochs):
+for epoch in range(flags.restore_epoch, flags.epochs):
   batch_i = 0
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
   for obj_id, item_id, obs_hand, obs_z, obs_obj, obs_idx  in dataloader.fetch():
@@ -71,14 +71,14 @@ for epoch in range(flags.epochs):
     syn_hand = gen_hand.copy()
     energies = []
     # Update proposal with D
-    for langevin_step in range(min((epoch+1) * 5, flags.langevin_steps)):
-      syn_hand, syn_z, syn_energy, g_abs, g_ema = sess.run(model.langevin_result, feed_dict={
+    for langevin_step in range(flags.langevin_steps):
+      syn_hand, _, syn_energy, g_abs, g_ema = sess.run(model.langevin_result, feed_dict={
         model.syn_hand: syn_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: syn_z
       })
       _, obs_z, _, _, _ = sess.run(model.langevin_result, feed_dict={
         model.syn_hand: obs_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: obs_z
       })
-      syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
+      # syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
       obs_z /= np.linalg.norm(obs_z, axis=-1, keepdims=True)
       energies.append(np.mean(syn_energy))
       # print()
@@ -86,9 +86,9 @@ for epoch in range(flags.epochs):
       # print('g_ema', g_ema)
     # Train G and D
     
-    # plt.clf()
-    # plt.plot(energies)
-    # plt.pause(1e-5)
+    plt.clf()
+    plt.plot(energies)
+    plt.pause(1e-5)
 
     dataloader.update_z(obj_id, obs_z, obs_idx)
     OE, OC, GE, GC, SE, SC, GL, DL, _, _, summary = sess.run([
@@ -101,13 +101,14 @@ for epoch in range(flags.epochs):
     global_step += 1
     print('\r%d: %d/%d G:%f D:%f Improved Energy: %f'%(epoch, batch_i, total_len, GL, DL, np.mean(GE-SE)), end='')
     if flags.debug and global_step % 10 == 9:
-      break
+      saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
+      exit()
   print()
   # visualize
   # if flags.viz:
   #   for item in range(len(syn_hand)):
   #     visualizer.visualize_distance(obj_id, gen_hand[item], os.path.join(log_dir, 'epoch-%04d-gen-%d'%(epoch, item)))
   #     visualizer.visualize_distance(obj_id, syn_hand[item], os.path.join(log_dir, 'epoch-%04d-syn-%d'%(epoch, item)))
-  if epoch > 0:
+  if epoch > -1:
     saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
     pickle.dump([obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema, dataloader.obs_z2s], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
