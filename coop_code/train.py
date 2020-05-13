@@ -18,6 +18,7 @@ os.makedirs('logs', exist_ok=True)
 if os.path.exists(log_dir):
   shutil.rmtree(log_dir)
 os.makedirs(os.path.join('logs', flags.name), exist_ok=True)
+shutil.copytree('utils', os.path.join(log_dir, 'utils'))
 for fn in os.listdir('.'):
   if '.py' in fn:
     shutil.copy(fn, os.path.join(log_dir, fn))
@@ -48,6 +49,7 @@ saver = tf.train.Saver(max_to_keep=0)
 # load from checkpoint
 if flags.restore_epoch >= 0:
     saver.restore(sess, os.path.join(os.path.dirname(__file__), 'logs', flags.restore_name, '%04d.ckpt'%(flags.restore_epoch)))
+    dataloader.restore(os.path.join(log_dir, '%04d.pkl'%epoch))
 
 print('start training ...')
 

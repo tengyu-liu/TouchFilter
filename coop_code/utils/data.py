@@ -2,6 +2,7 @@ import os
 import numpy as np
 from pyquaternion.quaternion import Quaternion as Q
 import scipy.io as sio
+import pickle
 import trimesh as tm
 from collections import defaultdict
 
@@ -77,3 +78,6 @@ class DataLoader:
   def sample_pts(self, obj_id, n_pts):
     rand_id = np.random.randint(0, len(self.obj_pts[obj_id])-1, size=(self.flags.batch_size, n_pts)) 
     return self.obj_pts[obj_id][rand_id]
+
+  def restore(self, path):
+    self.obs_z2s = pickle.load(open(path, 'rb'))[-1]
