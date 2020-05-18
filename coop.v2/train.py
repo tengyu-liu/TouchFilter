@@ -53,9 +53,6 @@ if flags.restore_epoch >= 0:
 
 print('start training ...')
 
-import matplotlib.pyplot as plt
-plt.ion()
-
 # train
 global_step = 0
 for epoch in range(flags.restore_epoch+1, flags.epochs):
@@ -88,10 +85,6 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
       # print('g_ema', g_ema)
     # Train G and D
     
-    plt.clf()
-    plt.plot(energies)
-    plt.pause(1e-5)
-
     dataloader.update_z(obj_id, obs_z, obs_idx)
     OE, OC, GE, GC, SE, SC, GL, DL, _, _, summary = sess.run([
       model.obs_energy, model.obs_contact, model.gen_energy, model.gen_contact, model.syn_energy, model.syn_contact, 
