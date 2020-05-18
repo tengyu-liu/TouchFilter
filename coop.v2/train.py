@@ -61,14 +61,14 @@ global_step = 0
 for epoch in range(flags.restore_epoch+1, flags.epochs):
   batch_i = 0
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
-  for obj_id, item_id, obs_hand, obs_z, obs_obj, obs_idx  in dataloader.fetch():
+  for obj_id, item_id, obs_hand, obs_z, obs_obj, obj_trans, obj_rot, obs_idx  in dataloader.fetch():
     batch_i += 1
     syn_z = np.random.normal(loc=0, scale=1, size=[flags.batch_size, flags.n_latent_factor])
     syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
     obs_z /= np.linalg.norm(obs_z, axis=-1, keepdims=True)
     # Generate proposal with G
     gen_hand = sess.run(model.gen_hand, feed_dict={
-      model.obs_obj: obs_obj, model.syn_z: syn_z, model.is_training: True
+      model.obs_obj: obs_obj, model.syn_z: syn_z, model.is_training: True, model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans
     })
     syn_hand = gen_hand.copy()
     energies = []
@@ -97,7 +97,8 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
       model.obs_energy, model.obs_contact, model.gen_energy, model.gen_contact, model.syn_energy, model.syn_contact, 
       model.gen_loss, model.des_loss, model.train_gen, model.train_des, model.summaries
     ], feed_dict={
-      model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, model.obj_id: obj_id, model.syn_z: syn_z, model.obs_z: obs_z, model.is_training:True
+      model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, model.obj_id: obj_id, model.syn_z: syn_z, 
+      model.obs_z: obs_z, model.is_training:True, model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans
     })
     train_writer.add_summary(summary, global_step=global_step)
     global_step += 1
