@@ -75,10 +75,10 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
     # Update proposal with D
     for langevin_step in range(flags.langevin_steps):
       syn_hand, _, syn_energy, g_abs, g_ema = sess.run(model.langevin_result, feed_dict={
-        model.syn_hand: syn_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: syn_z
+        model.syn_hand: syn_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: syn_z, model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans
       })
       _, obs_z, _, _, _ = sess.run(model.langevin_result, feed_dict={
-        model.syn_hand: obs_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: obs_z
+        model.syn_hand: obs_hand, model.obj_id: obj_id, model.is_training: True, model.syn_z: obs_z, model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans
       })
       # syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
       obs_z /= np.linalg.norm(obs_z, axis=-1, keepdims=True)
