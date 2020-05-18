@@ -163,7 +163,7 @@ syn_e = syn_ewp[0].reshape([-1,1])
 syn_w = syn_ewp[1][...,0]
 syn_p = syn_ewp[2].reshape([-1,1])
 
-os.makedirs('synthesis/same_z_diff_z2/%s'%flags.name, exist_ok=True)
+os.makedirs('synthesis/same_z_same_z2/%s'%flags.name, exist_ok=True)
 
 pickle.dump({
     'syn_z': syn_z,
@@ -171,5 +171,5 @@ pickle.dump({
     'syn_e': syn_e,
     'syn_p': syn_p,
     'syn_w': syn_w
-}, open('synthesis/same_z_diff_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'wb'))
+}, open('synthesis/same_z_same_z2/%s/%04d-%d.pkl'%(flags.name, flags.restore_epoch, flags.restore_batch), 'wb'))
 

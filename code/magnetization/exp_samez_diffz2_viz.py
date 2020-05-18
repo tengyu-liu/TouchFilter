@@ -90,13 +90,13 @@ def visualize_distance(cup_id, hand_z, idx):
     fig1 = go.Figure(data=fig_data)
     camera = dict(eye=dict(x=1, y=1, z=1))
     fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-    fig1.write_image('figs/same_z_diff_z2/%04d-0.png'%idx)
+    fig1.write_image('figs/same_z_diff_z2_2/%04d-0.png'%idx)
     # Draw figure 2
     x, y, z, i, j, k, intensity = map(np.hstack, [x, y, z, i, j, k, intensity])
     fig2 = go.Figure(data=go.Mesh3d(x=x, y=y, z=z, i=i, j=j, k=k, intensity=intensity, showscale=False))
     camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
     fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-    fig2.write_image('figs/same_z_diff_z2/%04d-1.png'%idx)
+    fig2.write_image('figs/same_z_diff_z2_2/%04d-1.png'%idx)
 
 data = pickle.load(open('synthesis/same_z_diff_z2/dynamic_z2_nobn_unitz2/0099-300.pkl', 'rb'))
 keep_ids = (data['syn_e'] < 10).reshape([-1])

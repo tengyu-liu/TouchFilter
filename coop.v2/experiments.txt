@@ -10,13 +10,9 @@ CUDA_VISIBLE_DEVICES=5 python train.py --batch_size 24 --lr_des 1e-5 --lr_gen 1e
 CUDA_VISIBLE_DEVICES=6 python train.py --batch_size 24 --lr_des 1e-5 --lr_gen 1e-4 --langevin_random_size 0.1 --step_size 0.1 --langevin_steps 90 --latent_factor_merge add --name exp6 2> logs/STDERR-6
 CUDA_VISIBLE_DEVICES=7 python train.py --batch_size 24 --lr_des 1e-5 --lr_gen 1e-5 --langevin_random_size 0.1 --step_size 0.1 --langevin_steps 90 --latent_factor_merge add --name exp7 2> logs/STDERR-7
 
-CUDA_VISIBLE_DEVICES=7 python train.py --batch_size 24 --lr_des 1e-5 --lr_gen 1e-5 --langevin_random_size 0.0 --step_size 0.1 --langevin_steps 90 --latent_factor_merge concat --restore_name exp5 --restore_epoch 40 --name exp5-restore 2> logs/STDERR-5-restore
-
 
 2020-05-18 experiment plan:
-1. keep running exp5 on gpu5 with params --batch_size 24 --lr_des 1e-5 --lr_gen 1e-5 --langevin_random_size 0.1 --step_size 0.1 --langevin_steps 90 --latent_factor_merge concat --name exp5
-
 2. run exp with new setup
-  2.1. use static z2 instead of dynamic z2
+  2.1. use static z2 instead of dynamic z2  [check]
   2.2. generator also takes obj pointcloud as input
-  2.3. use all object and include rotation
+  2.3. use all object and include rotation  [check]

@@ -73,3 +73,4 @@
 [2020-04-01 16:17:53.367141] python exp_same_z_diff_z2_level2.py
 [2020-04-01 16:20:34.531899] python exp_same_z_diff_z2.py
 [2020-04-01 16:21:13.180559] python exp_same_z_diff_z2.py
+[2020-05-15 12:39:17.884069] python exp_same_z_diff_z2.py

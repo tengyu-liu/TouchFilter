@@ -12,9 +12,9 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = [79,79,78,79,34,34,34,29]
+epochs = [145, 144, 144, 145, 57, 83, 57]
 
-for exp in range(8):
+for exp in [5]:
     name = 'exp%d'%exp
     epoch = epochs[exp]
     data = pickle.load(open(os.path.join('../logs/figs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
@@ -41,8 +41,8 @@ for exp in range(8):
         # plt.hist(SC[i])
         # plt.show()
         try:
-            visualizer.visualize_weight(obs_hand[i], OC[i,:,0], '%s-%d/%d-dem'%(name, epoch, i))
-            visualizer.visualize_weight(gen_hand[i], GC[i,:,0], '%s-%d/%d-gen'%(name, epoch, i))
-            visualizer.visualize_weight(syn_hand[i], SC[i,:,0], '%s-%d/%d-syn'%(name, epoch, i))
+            visualizer.visualize_weight(obs_hand[i], OC[i,:,0], '%s-%d/%d-dem-%f'%(name, epoch, i, OE[i]))
+            visualizer.visualize_weight(gen_hand[i], GC[i,:,0], '%s-%d/%d-gen-%f'%(name, epoch, i, GE[i]))
+            visualizer.visualize_weight(syn_hand[i], SC[i,:,0], '%s-%d/%d-syn-%f'%(name, epoch, i, SE[i]))
         except:
             pass

@@ -39,6 +39,11 @@ class Simulator:
         pb.stepSimulation()
         pass
     
+    def get_penetration(self):
+        contact_points = pb.getContactPoints(self.cup_body)
+        total = sum(min(0, p[-2]) for p in contact_points)
+        return total
+
     def get_cup_position_orientation(self):
         return pb.getBasePositionAndOrientation(self.cup_body)
     
