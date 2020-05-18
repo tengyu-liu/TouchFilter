@@ -48,7 +48,7 @@ class Model:
     self.obs_hand = tf.placeholder(tf.float32, [self.batch_size,self.hand_size], 'obs_hand')
     self.syn_hand = tf.placeholder(tf.float32, [self.batch_size,self.hand_size], 'syn_hand')
     self.obs_obj_rot = tf.placeholder(tf.float32, [self.batch_size, 3, 3], 'obs_obj_rot')
-    self.obs_obj_trans = tf.placeholder(tf.float32, [self.batch_size, 1, 3], 'obs_obj_trans')
+    self.obs_obj_trans = tf.placeholder(tf.float32, [self.batch_size, 3], 'obs_obj_trans')
     self.syn_z = tf.placeholder(tf.float32, [self.batch_size, self.n_latent_factor], 'syn_Z')
     self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.n_latent_factor], 'obs_Z')
     self.obj_id = tf.placeholder(tf.int32, [], 'obj_id')
