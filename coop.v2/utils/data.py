@@ -75,7 +75,7 @@ class DataLoader:
       item_id = int(curr_iter // len(self.obj_list))
       idx = batch_idx[obj_id][item_id * self.flags.batch_size : (item_id + 1) * self.flags.batch_size]
       obs_z = self.obs_zs[obj_id][idx]
-      obs_obj = self.sample_pts(obj_id, self.flags.n_obj_pts)
+      obs_obj = self.sample_pts(obj_id, self.flags.n_obj_pts, len(idx))
       obs_z2 = self.obs_z2s[obj_id][idx]
       obj_trans = self.obj_trans[obj_id][idx]
       obj_rot = self.obj_rot[obj_id][idx]
@@ -87,8 +87,8 @@ class DataLoader:
   def update_z(self, obj_id, z, idx):
       self.obs_z2s[obj_id][idx] = z
 
-  def sample_pts(self, obj_id, n_pts):
-    rand_id = np.random.randint(0, len(self.obj_pts[obj_id])-1, size=(self.flags.batch_size, n_pts)) 
+  def sample_pts(self, obj_id, n_pts, size):
+    rand_id = np.random.randint(0, len(self.obj_pts[obj_id])-1, size=(size, n_pts)) 
     return self.obj_pts[obj_id][rand_id]
 
   def restore(self, path):
