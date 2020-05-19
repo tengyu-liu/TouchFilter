@@ -84,17 +84,18 @@ class Model:
     print('[creating model] building train...')
     self.gen_loss = tf.reduce_mean(tf.square(self.gen_hand - self.syn_hand))
     self.des_loss = tf.reduce_mean(self.obs_energy - self.syn_energy)
+    self.reg_loss = tf.add_n(tf.get_collection('weight_decay'))
     # train Generator
     gen_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/gen')]
     # gen_optim = tf.train.AdamOptimizer(self.lr_gen, beta1=self.beta1_gen, beta2=self.beta2_gen)
     gen_optim = tf.train.AdamOptimizer(self.lr_gen, beta1=self.beta1_gen, beta2=self.beta2_gen)
-    gen_grads_vars = gen_optim.compute_gradients(self.gen_loss, var_list=gen_vars)
+    gen_grads_vars = gen_optim.compute_gradients(self.gen_loss + self.reg_loss, var_list=gen_vars)
     self.train_gen = gen_optim.apply_gradients(gen_grads_vars)
     # train Descriptor
     des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/des')]
     # des_optimizer = tf.train.AdamOptimizer(self.lr_des, beta1=self.beta1_des, beta2=self.beta2_des)
     des_optimizer = tf.train.AdamOptimizer(self.lr_des, beta1=self.beta1_des, beta2=self.beta2_des)
-    des_grads_vars = des_optimizer.compute_gradients(self.des_loss, var_list=des_vars)
+    des_grads_vars = des_optimizer.compute_gradients(self.des_loss + self.reg_loss, var_list=des_vars)
     self.train_des = des_optimizer.apply_gradients(des_grads_vars)
 
 
@@ -106,6 +107,7 @@ class Model:
     tf.summary.scalar('energy/improve', tf.reduce_mean(self.gen_energy - self.syn_energy))
     tf.summary.scalar('loss/gen', self.gen_loss)
     tf.summary.scalar('loss/des', self.des_loss)
+    tf.summary.scalar('loss/reg', self.des_loss)
     tf.summary.histogram('contact/obs', self.obs_contact)
     tf.summary.histogram('contact/syn', self.syn_contact)
     tf.summary.histogram('contact/gen', self.gen_contact)
