@@ -131,21 +131,29 @@ sess.run(tf.global_variables_initializer())
 
 for obj_id, item_id, obs_z, obs_z2, obs_obj, obj_trans, obj_rot, idx in dl.fetch():
     print(obj_id, item_id)
-    cup_model = tm.load(os.path.join(os.path.dirname(__file__), '../data/cups/onepiece/%d.obj'%obj_id))
     hand_pts, hand_normals, hand_to_obj_dist, hand_to_obj_grad, hand_pts_for_obj = sess.run(model.output, feed_dict={
       model.obj_id: obj_id, model.obs_hand: obs_z, model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans})
     for i in range(len(obs_z)):
-        vis.visualize_weight(obj_id, obs_z[i], obj_rot[i], obj_trans[i], 0)
-        input()
+        # vis.visualize_weight(obj_id, obs_z[i], obj_rot[i], obj_trans[i], 0)
+        # input()
         # break
         # # draw hand_to_obj_dist
         # input()
-        # hand_to_obj_dist[i] -= np.min(hand_to_obj_dist[i])
-        # hand_to_obj_dist[i] /= np.max(hand_to_obj_dist[i])
-        # print(hand_to_obj_dist[i])
-        # fig = go.Figure(data=fig_data)
-        # fig.show()
-        # input()
+        cup_model = tm.load(os.path.join(os.path.dirname(__file__), '../data/cups/onepiece/%d.obj'%obj_id))
+        obj_rot4 = np.eye(4)
+        obj_rot4[:3,:3] = obj_rot[i]
+        cup_model.apply_transform(obj_rot4)
+        cup_model.apply_translation(obj_trans[i])
+        hand_to_obj_dist[i] -= np.min(hand_to_obj_dist[i])
+        hand_to_obj_dist[i] /= np.max(hand_to_obj_dist[i])
+        fig_data = [go.Scatter3d(x=hand_pts[i,:,0], y=hand_pts[i,:,1], z=hand_pts[i,:,2], mode='markers', marker=dict(size=5, color=hand_to_obj_dist[i])), 
+                  go.Mesh3d(x=cup_model.vertices[:,0], y=cup_model.vertices[:,1], z=cup_model.vertices[:,2], \
+                                i=cup_model.faces[:,0], j=cup_model.faces[:,1], k=cup_model.faces[:,2], color='lightpink')
+        ]
+        fig = go.Figure(data=fig_data)
+        fig.show()
+        input()
+        break
         # # draw hand normal
         # print(hand_normals[i])
         # fig_data = [go.Scatter3d(x=hand_pts[i,:,0], y=hand_pts[i,:,1], z=hand_pts[i,:,2], mode='markers'), 
