@@ -35,6 +35,7 @@ class Model:
     self.step_size_square = self.step_size * self.step_size
     self.z_min = tf.constant(stats[0][:,:22], dtype=self.dtype)
     self.z_max = tf.constant(stats[1][:,:22], dtype=self.dtype)
+    self.weight_decay = config.weight_decay
     # if config.restore_epoch >= 0:
     #   log_dir = os.path.join('logs', coonfig.name)
     #   restore_ema_path = os.path.join(log_dir, '%04d.ema.np'%(config.restore_epoch))
@@ -114,12 +115,12 @@ class Model:
 
   def Generator(self):
     with tf.variable_scope('gen'):
-        h = pointnet_cls.get_model(self.obs_obj, is_training=self.is_training, n_latent_factor=self.n_latent_factor)
+        h = pointnet_cls.get_model(self.obs_obj, is_training=self.is_training, n_latent_factor=self.n_latent_factor, weight_decay=self.weight_decay)
         if self.latent_factor_merge == 'concat':
           h = tf.concat([h, self.syn_z], axis=-1)
         elif self.latent_factor_merge == 'add':
           h = h + self.syn_z
-        hand = bilinear(h, self.hand_size, scope='bilinear', num_hidden=512, is_training=self.is_training)
+        hand = bilinear(h, self.hand_size, scope='bilinear', num_hidden=512, is_training=self.is_training, weight_decay=self.weight_decay)
         return hand
 
   
@@ -158,7 +159,7 @@ class Model:
       angles = tf.reduce_sum(hand_normals * hand_to_obj_grad, axis=-1, keepdims=True)
       # Compute contact/non-contact assignment
       hand_feat = tf.concat([hand_pts, hand_to_obj_dist, angles, self.hand_model.pts_feature], axis=-1)
-      assignment = tf.nn.leaky_relu(pointnet_seg.get_model(hand_feat, z_feat=z, is_training=self.is_training)[0])
+      assignment = tf.nn.leaky_relu(pointnet_seg.get_model(hand_feat, z_feat=z, is_training=self.is_training, weight_decay=self.weight_decay)[0])
       # Compute energy according to contact assignment
       contact_energy = tf.nn.relu(-hand_to_obj_dist) + tf.nn.relu(hand_to_obj_dist) * tf.reduce_sum(hand_to_obj_grad * hand_normals, axis=-1, keepdims=True)
       # non_contact_energy = tf.nn.relu(hand_to_obj_dist) * penetration_penalty + 0.1

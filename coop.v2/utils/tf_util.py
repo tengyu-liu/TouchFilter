@@ -346,16 +346,16 @@ def fully_connected(inputs,
       outputs = activation_fn(outputs)
     return outputs
 
-def bilinear(inputs, num_outputs, scope, num_hidden=512, is_training=None):
+def bilinear(inputs, num_outputs, scope, num_hidden=512, is_training=None, weight_decay=0.0):
   with tf.variable_scope(scope) as sc:
-    l1 = fully_connected(inputs, num_hidden, scope='l1', bn=False)
-    h1 = fully_connected(l1, num_hidden, scope='h1', bn=False)
-    h2 = fully_connected(h1, num_hidden, scope='h2', bn=False)
+    l1 = fully_connected(inputs, num_hidden, scope='l1', bn=False, weight_decay=weight_decay)
+    h1 = fully_connected(l1, num_hidden, scope='h1', bn=False, weight_decay=weight_decay)
+    h2 = fully_connected(h1, num_hidden, scope='h2', bn=False, weight_decay=weight_decay)
     l2 = l1 + h2
-    h3 = fully_connected(l2, num_hidden, scope='h3', bn=False)
-    h4 = fully_connected(h3, num_hidden, scope='h4', bn=False)
+    h3 = fully_connected(l2, num_hidden, scope='h3', bn=False, weight_decay=weight_decay)
+    h4 = fully_connected(h3, num_hidden, scope='h4', bn=False, weight_decay=weight_decay)
     l3 = l2 + h4
-    out = fully_connected(l3, num_outputs, scope='out', activation_fn=None)
+    out = fully_connected(l3, num_outputs, scope='out', activation_fn=None, weight_decay=weight_decay)
     return out
 
 def max_pool2d(inputs,

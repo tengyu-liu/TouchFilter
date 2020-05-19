@@ -17,14 +17,15 @@ def placeholder_inputs(batch_size, num_point):
     return pointclouds_pl, labels_pl
 
 
-def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
+def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None, weight_decay=0.0):
     """ Classification PointNet, input is BxNx3, output BxNx2 """
     with tf.variable_scope('PointNet', reuse=tf.AUTO_REUSE):
         num_point = point_cloud.get_shape()[1].value
         end_points = {}
 
         with tf.variable_scope('transform_net1') as sc:
-            transform = feature_transform_net(tf.expand_dims(point_cloud[...,:3], axis=2), is_training, bn_decay, K=3)
+            transform = feature_transform_net(tf.expand_dims(point_cloud[...,:3], axis=2), is_training, bn_decay, K=3, 
+                                  weight_decay=weight_decay)
         point_cloud_transformed = tf.matmul(point_cloud[...,:3], transform)
         point_cloud_transformed = tf.concat([point_cloud, point_cloud_transformed], axis=-1)
         input_image = tf.expand_dims(point_cloud_transformed, -1)
@@ -32,14 +33,17 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
         net = tf_util.conv2d(input_image, 64, [1,134],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv1', bn_decay=bn_decay)
+                            scope='conv1', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         net = tf_util.conv2d(net, 64, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv2', bn_decay=bn_decay)
+                            scope='conv2', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
 
         with tf.variable_scope('transform_net2') as sc:
-            transform = feature_transform_net(net, is_training, bn_decay, K=64)
+            transform = feature_transform_net(net, is_training, bn_decay, K=64, 
+                                  weight_decay=weight_decay)
         end_points['transform'] = transform
 
         net_transformed = tf.matmul(tf.squeeze(net, axis=[2]), transform)
@@ -48,18 +52,22 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
         net = tf_util.conv2d(point_feat, 64, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv3', bn_decay=bn_decay)
+                            scope='conv3', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         net = tf_util.conv2d(net, 128, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv4', bn_decay=bn_decay)
+                            scope='conv4', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         net = tf_util.conv2d(net, 1024, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv5', bn_decay=bn_decay)
+                            scope='conv5', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         global_feat = tf_util.max_pool2d(net, [num_point,1],
                                         padding='VALID', scope='maxpool')
-        z_feat = tf_util.fully_connected(z_feat, 1024, 'z_feat')
+        z_feat = tf_util.fully_connected(z_feat, 1024, 'z_feat', 
+                                  weight_decay=weight_decay)
         z_feat = tf.reshape(z_feat, global_feat.shape)
         # global_feat = tf.concat([global_feat, tf.reshape(z, [z.shape[0], 1, 1, -1])], axis=3)
         global_feat = global_feat + z_feat
@@ -70,23 +78,27 @@ def get_model(point_cloud, is_training=False, z_feat=None, bn_decay=None):
         net = tf_util.conv2d(concat_feat, 512, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv6', bn_decay=bn_decay)
+                            scope='conv6', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         net = tf_util.conv2d(net, 256, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv7', bn_decay=bn_decay)
+                            scope='conv7', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         net = tf_util.conv2d(net, 128, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv8', bn_decay=bn_decay)
+                            scope='conv8', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
         net = tf_util.conv2d(net, 128, [1,1],
                             padding='VALID', stride=[1,1],
                             bn=False, is_training=is_training,
-                            scope='conv9', bn_decay=bn_decay)
+                            scope='conv9', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
 
         net = tf_util.conv2d(net, 1, [1,1],
                             padding='VALID', stride=[1,1], activation_fn=None,
-                            scope='conv10')
+                            scope='conv10', weight_decay=weight_decay)
         net = tf.squeeze(net, [2]) # BxNxC
 
         return net, end_points

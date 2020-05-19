@@ -17,6 +17,7 @@ tf.flags.DEFINE_string('latent_factor_merge', 'concat', 'choose between "concat"
 tf.flags.DEFINE_float('penetration_penalty', 0.03, '')
 tf.flags.DEFINE_float('langevin_random_size', 0.1, '')
 tf.flags.DEFINE_float('balancing_weight', 1e-4, '')
+tf.flags.DEFINE_float('weight_decay', 1e-3, '')
 
 # Train
 tf.flags.DEFINE_integer('epochs', 10000, '')

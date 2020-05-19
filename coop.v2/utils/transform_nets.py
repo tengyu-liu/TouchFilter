@@ -52,7 +52,7 @@ def input_transform_net(point_cloud, is_training, bn_decay=None, K=3):
     return transform
 
 
-def feature_transform_net(inputs, is_training, bn_decay=None, K=64, reuse=False):
+def feature_transform_net(inputs, is_training, bn_decay=None, K=64, reuse=False, weight_decay=0.0):
     """ Feature Transform Net, input is BxNx1xK
         Return:
             Transformation matrix of size KxK """
@@ -62,23 +62,28 @@ def feature_transform_net(inputs, is_training, bn_decay=None, K=64, reuse=False)
     net = tf_util.conv2d(inputs, 64, [1,1],
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
-                         scope='tconv1', bn_decay=bn_decay)
+                         scope='tconv1', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
     net = tf_util.conv2d(net, 128, [1,1],
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
-                         scope='tconv2', bn_decay=bn_decay)
+                         scope='tconv2', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
     net = tf_util.conv2d(net, 1024, [1,1],
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
-                         scope='tconv3', bn_decay=bn_decay)
+                         scope='tconv3', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
     net = tf_util.max_pool2d(net, [num_point,1],
                              padding='VALID', scope='tmaxpool')
 
     net = tf.reshape(net, [batch_size, -1])
     net = tf_util.fully_connected(net, 512, bn=True, is_training=is_training,
-                                  scope='tfc1', bn_decay=bn_decay)
+                                  scope='tfc1', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
     net = tf_util.fully_connected(net, 256, bn=True, is_training=is_training,
-                                  scope='tfc2', bn_decay=bn_decay)
+                                  scope='tfc2', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
 
     with tf.variable_scope('transform_feat', reuse=reuse) as sc:
         weights = tf.get_variable('weights', [256, K*K],
@@ -90,6 +95,8 @@ def feature_transform_net(inputs, is_training, bn_decay=None, K=64, reuse=False)
         biases += tf.constant(np.eye(K).flatten(), dtype=tf.float32)
         transform = tf.matmul(net, weights)
         transform = tf.nn.bias_add(transform, biases)
+        l2_loss = tf.multiply(tf.nn.l2_loss(weights), weight_decay, name='weight_loss')
+        tf.add_to_collection('losses', l2_loss)
 
     transform = tf.reshape(transform, [batch_size, K, K])
     return transform
