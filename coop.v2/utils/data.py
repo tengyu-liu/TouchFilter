@@ -70,7 +70,7 @@ class DataLoader:
   def fetch(self):
     batch_idx = {i: np.random.permutation(len(self.obs_zs[i])) for i in self.obs_zs}
     
-    for curr_iter in range(int(self.min_data_size * len(self.obj_list) // self.flags.batch_size) - 1):
+    for curr_iter in range(int(self.min_data_size * len(self.obj_list) // self.flags.batch_size) - len(self.obj_list)):
       obj_id = self.obj_list[curr_iter % len(self.obj_list)]
       item_id = int(curr_iter // len(self.obj_list))
       idx = batch_idx[obj_id][item_id * self.flags.batch_size : (item_id + 1) * self.flags.batch_size]
