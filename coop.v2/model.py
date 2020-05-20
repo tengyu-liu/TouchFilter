@@ -107,7 +107,7 @@ class Model:
     tf.summary.scalar('energy/improve', tf.reduce_mean(self.gen_energy - self.syn_energy))
     tf.summary.scalar('loss/gen', self.gen_loss)
     tf.summary.scalar('loss/des', self.des_loss)
-    tf.summary.scalar('loss/reg', self.des_loss)
+    tf.summary.scalar('loss/reg', self.reg_loss)
     tf.summary.histogram('contact/obs', self.obs_contact)
     tf.summary.histogram('contact/syn', self.syn_contact)
     tf.summary.histogram('contact/gen', self.gen_contact)
