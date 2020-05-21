@@ -107,4 +107,4 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
   #     visualizer.visualize_distance(obj_id, syn_hand[item], os.path.join(log_dir, 'epoch-%04d-syn-%d'%(epoch, item)))
   if epoch > -1:
     saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
-    pickle.dump([obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema, dataloader.obs_z2s], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
+    pickle.dump([obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema, dataloader.obs_z2s, obj_rot, obj_trans], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
