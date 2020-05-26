@@ -22,11 +22,11 @@ for epoch in range(200):
     xs = []
 
     sim = Simulator()
-    sim.connect(with_gui=False)
+    sim.connect(with_gui=True)
 
     def trial(i):
         delta_xs = []
-        for g in [[10,0,0],[-10,0,0],[0,10,0],[0,-10,0],[0,0,10],[0,0,-10]]:
+        for g in [[0,-10,0]]:
             sim.reset()
             sim.generate_world(syn_z[i])
             sim.set_gravity(g)

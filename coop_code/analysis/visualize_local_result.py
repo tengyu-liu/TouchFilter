@@ -9,8 +9,8 @@ sys.path.append('..')
 from utils.viz_util import Visualizer
 visualizer = Visualizer()
 
-name = 'exp0'
-epochs = range(1,2)
+name = 'exp5'
+epochs = [1]
 
 for epoch in epochs:
     data = pickle.load(open(os.path.join('../logs/%s/%04d.pkl'%(name, epoch)), 'rb'))

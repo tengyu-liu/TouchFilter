@@ -12,13 +12,13 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = [145, 144, 144, 145, 57, 83, 57]
+epochs = [8,4,4,4]
 
-for exp in [5]:
+for exp in [0,1,2,3]:
     name = 'exp%d'%exp
     epoch = epochs[exp]
     data = pickle.load(open(os.path.join('../logs/figs/logs/%s/%04d.pkl'%(name, epoch)), 'rb'))
-    obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema, obs_z = data
+    obj_id, gen_hand, GC, syn_hand, SC, obs_hand, OC, GE, SE, OE, g_ema, obs_z2s, obj_rot, obj_trans = data
     os.makedirs('%s-%d'%(name, epoch), exist_ok=True)
     diff = np.zeros([len(gen_hand), len(gen_hand)])
     for i in range(len(gen_hand)):
@@ -41,8 +41,8 @@ for exp in [5]:
         # plt.hist(SC[i])
         # plt.show()
         try:
-            visualizer.visualize_weight(obs_hand[i], OC[i,:,0], '%s-%d/%d-dem-%f'%(name, epoch, i, OE[i]))
-            visualizer.visualize_weight(gen_hand[i], GC[i,:,0], '%s-%d/%d-gen-%f'%(name, epoch, i, GE[i]))
-            visualizer.visualize_weight(syn_hand[i], SC[i,:,0], '%s-%d/%d-syn-%f'%(name, epoch, i, SE[i]))
+            visualizer.visualize_weight(obj_id, obs_hand[i], obj_rot[i], obj_trans[i], OC[i,:,0], '%s-%d/%d-dem'%(name, epoch, i))
+            visualizer.visualize_weight(obj_id, gen_hand[i], obj_rot[i], obj_trans[i], GC[i,:,0], '%s-%d/%d-gen'%(name, epoch, i))
+            visualizer.visualize_weight(obj_id, syn_hand[i], obj_rot[i], obj_trans[i], SC[i,:,0], '%s-%d/%d-syn'%(name, epoch, i))
         except:
             pass

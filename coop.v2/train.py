@@ -28,7 +28,7 @@ f.write(' '.join(sys.argv) + '\n')
 f.close()
 
 # load data
-dataloader = DataLoader(flags, data_dir='../data', obj_list=[1,2,3,4,5,6,7,8])
+dataloader = DataLoader(flags, data_dir='../data', obj_list=[1,2,3,4,5,6,7])
 
 # create visualizer
 if flags.viz:
