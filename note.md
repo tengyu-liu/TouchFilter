@@ -15,3 +15,17 @@
    1. Pick two points A and B
    2. run MCMC to minimize [E(x) + d(x,B)] starting from A
 
+# 2020-05-30
+## TODO
+1. Test that for each epoch, what is the best sampling strategy? How to determine the best sampling strategy
+  1. Visualize energy changes at different step size / noise size
+  2. find a pattern between step size / noise size
+2. find out the best way of scheduling regularization
+  1. current problem is that when regularization is small, it cannot regularize the energy explosion. when the regularization is big, the network shrinks to near zero
+  2. why does network shrink to near zero? 
+    1. when the network is too small, the langevin step becomes too big so it no longer produces positive improvement. 
+    2. then, there is nothing for the descriptor to learn. 
+3. find out why the generator falls in mode collapse
+  1. in the case of energy explosion, the stepsize does not grow with energy growth, therefore not able to produce enough improvement due to too small update steps
+  2. in the case of energy deminishing, the stepsize does not shrink with the energy shrinkage, therefore not able to navigate through energy landscape due to too large update steps
+3. What if we don't MCMC? Just generate it.

@@ -33,6 +33,8 @@ dataloader = DataLoader(flags, data_dir='../data', obj_list=[1,2,3,4,5,6,7])
 # create visualizer
 if flags.viz:
   from utils.viz_util import Visualizer
+  import matplotlib.pyplot as plt
+  plt.ion()
   visualizer = Visualizer()
 
 # create model
@@ -53,11 +55,15 @@ if flags.restore_epoch >= 0:
 
 print('start training ...')
 
+
+
 # train
 global_step = 0
 for epoch in range(flags.restore_epoch+1, flags.epochs):
   batch_i = 0
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
+  cumulative_qualification = 0
+  cumulative_total = 0
   for obj_id, item_id, obs_hand, obs_z, obs_obj, obj_trans, obj_rot, obs_idx  in dataloader.fetch():
     batch_i += 1
     syn_z = np.random.normal(loc=0, scale=1, size=[flags.batch_size, flags.n_latent_factor])
@@ -79,26 +85,61 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
       })
       # syn_z /= np.linalg.norm(syn_z, axis=-1, keepdims=True)
       obs_z /= np.linalg.norm(obs_z, axis=-1, keepdims=True)
-      energies.append(np.mean(syn_energy))
+      energies.append(syn_energy)
       # print()
       # print('g_abs', g_abs)
       # print('g_ema', g_ema)
     # Train G and D
     
     dataloader.update_z(obj_id, obs_z, obs_idx)
-    OE, OC, GE, GC, SE, SC, GL, DL, _, _, summary = sess.run([
-      model.obs_energy, model.obs_contact, model.gen_energy, model.gen_contact, model.syn_energy, model.syn_contact, 
-      model.gen_loss, model.des_loss, model.train_gen, model.train_des, model.summaries
-    ], feed_dict={
+
+    OE, OC, GE, GC, SE, SC = sess.run([model.obs_energy, model.obs_contact, model.gen_energy, model.gen_contact, model.syn_energy, model.syn_contact], feed_dict={
       model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, model.obj_id: obj_id, model.syn_z: syn_z, 
       model.obs_z: obs_z, model.is_training:True, model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans
     })
-    train_writer.add_summary(summary, global_step=global_step)
-    global_step += 1
-    print('\r%d: %d/%d G:%f D:%f Improved Energy: %f'%(epoch, batch_i, total_len, GL, DL, np.mean(GE-SE)), end='')
+
+    qualified_candidates = np.expand_dims(SE <= np.mean(OE), axis=-1)
+
+    cumulative_qualification += sum(qualified_candidates)
+    cumulative_total += len(qualified_candidates)
+
+    GL = np.nan
+    DL = np.nan
+
+    if sum(qualified_candidates) > 0:
+      GL, DL, _, _, summary = sess.run([
+        model.gen_loss, model.des_loss, model.train_gen, model.train_des, model.summaries
+      ], feed_dict={
+        model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, 
+        model.obj_id: obj_id, model.syn_z: syn_z, model.obs_z: obs_z, model.is_training:True, 
+        model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans, model.qualified_candidates: qualified_candidates
+      })
+      train_writer.add_summary(summary, global_step=global_step)
+      global_step += 1
+    else:
+      GL, _, summary = sess.run([model.gen_loss, model.train_gen, model.summaries], feed_dict={
+        model.obs_obj: obs_obj, model.obs_hand: obs_hand, model.syn_hand:syn_hand, 
+        model.obj_id: obj_id, model.syn_z: syn_z, model.obs_z: obs_z, model.is_training:True, 
+        model.obs_obj_rot: obj_rot, model.obs_obj_trans: obj_trans, model.qualified_candidates: qualified_candidates
+      })
+    
+    if flags.viz:
+      plt.clf()
+      energies = np.array(energies)
+      plt.scatter(np.zeros_like(OE)-1, OE, c='red', s=2)
+      for i in range(energies.shape[1]):
+        if qualified_candidates[i]:
+          plt.plot(energies[:,i])
+        else:
+          plt.plot(energies[:,i], linestyle='dashed')
+      plt.pause(1e-5)
+
+    print('\r%d: %d/%d qualified:%d cum.qual.:%.2f%% G:%f D:%f Improved Energy: %f'%(epoch, batch_i, total_len, sum(qualified_candidates), 100.*cumulative_qualification/cumulative_total, GL, DL, np.mean(GE-SE)), end='')
+
     if flags.debug and global_step % 10 == 9:
       saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
       exit()
+
   print()
   # visualize
   # if flags.viz:

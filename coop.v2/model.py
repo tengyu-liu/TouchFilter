@@ -54,6 +54,7 @@ class Model:
     self.obs_z = tf.placeholder(tf.float32, [self.batch_size, self.n_latent_factor], 'obs_Z')
     self.obj_id = tf.placeholder(tf.int32, [], 'obj_id')
     self.is_training = tf.placeholder(tf.bool, [], 'is_training')
+    self.qualified_candidates = tf.placeholder(tf.bool, [self.batch_size, 1], 'qualified_candidates')
 
   def build_model(self):
     print('[creating model] building model...')
@@ -75,7 +76,7 @@ class Model:
       # Computation
       self.gen_hand = self.Generator()
       self.langevin_result = self.Langevin()
-      self.obs_energy, self.obs_contact = self.Descriptor(self.obs_hand, self.obs_z, penetration_penalty=0)
+      self.obs_energy, self.obs_contact = self.Descriptor(self.obs_hand, self.obs_z, penetration_penalty=self.penetration_penalty)
       self.syn_energy, self.syn_contact = self.Descriptor(self.syn_hand, self.syn_z, penetration_penalty=self.penetration_penalty)
       self.gen_energy, self.gen_contact = self.Descriptor(self.gen_hand, self.syn_z, penetration_penalty=self.penetration_penalty)
 
@@ -83,7 +84,7 @@ class Model:
   def build_train(self):
     print('[creating model] building train...')
     self.gen_loss = tf.reduce_mean(tf.square(self.gen_hand - self.syn_hand))
-    self.des_loss = tf.reduce_mean(self.obs_energy - self.syn_energy)
+    self.des_loss = tf.reduce_mean(tf.where(self.qualified_candidates[:,0], self.obs_energy - self.syn_energy, tf.zeros([self.batch_size])))
     self.reg_loss = tf.add_n(tf.get_collection('weight_decay'))
     # train Generator
     gen_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/gen')]

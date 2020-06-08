@@ -95,4 +95,4 @@ class DataLoader:
     return self.obj_pts[obj_id][rand_id]
 
   def restore(self, path):
-    self.obs_z2s = pickle.load(open(path, 'rb'))[-1]
+    self.obs_z2s = pickle.load(open(path, 'rb'))[-3]

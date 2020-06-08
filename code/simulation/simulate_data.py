@@ -46,7 +46,7 @@ for epoch in range(200):
     energies.append(es)
     distances.append(xs)
 
-pickle.dump([energies, distances], open('analysis.pkl', 'wb'))
+pickle.dump([energies, distances], open('analysis_1g.pkl', 'wb'))
 
 """
 import pickle

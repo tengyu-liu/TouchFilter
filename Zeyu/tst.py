@@ -26,9 +26,9 @@ class HandModel:
 
         # self.surface_pts = {p: tf.constant(tm.load(os.path.join(os.path.dirname(__file__), '../data', 'hand', p + '.STL')).vertices, dtype=tf.float32) for p in self.parts}
         # self.surface_pts = {p: tf.constant(np.mean(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.faces.npy')), axis=1), dtype=tf.float32) for p in self.parts if '0' not in p}
-        self.surface_pts = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), './data', p + '.sample_points.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
-        self.pts_normals = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), './data', p + '.sample_normal.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
-        self.pts_feature = tf.tile(tf.expand_dims(tf.concat([tf.constant(np.load(os.path.join(os.path.dirname(__file__), './data', p + '.sample_feat.npy')), dtype=tf.float32) for p in self.parts if '0' not in p], axis=0), axis=0), [batch_size, 1, 1])
+        self.surface_pts = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.sample_points.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
+        self.pts_normals = {p: tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.sample_normal.npy')), dtype=tf.float32) for p in self.parts if '0' not in p}
+        self.pts_feature = tf.tile(tf.expand_dims(tf.concat([tf.constant(np.load(os.path.join(os.path.dirname(__file__), '../data', p + '.sample_feat.npy')), dtype=tf.float32) for p in self.parts if '0' not in p], axis=0), axis=0), [batch_size, 1, 1])
         self.n_surf_pts = sum(x.shape[0] for x in self.surface_pts.values())
 
         # Input placeholder
@@ -79,6 +79,8 @@ def generate_graph(thrhd_dist): #thrhd_dist is a temperary number
                     'ring1pts.npy', 'ring2pts.npy', 'ring3pts.npy',
                      'pinky1pts.npy', 'pinky2pts.npy', 'pinky3pts.npy']
     
+    parts = ['../data/' + x.replace('pts', '.sample_points') for x in parts]
+
     parts_len = []
     hd_pts = np.empty([0,3])
     fortest_each_part = []
@@ -425,7 +427,7 @@ if __name__ == "__main__":
 
     adj_mtx = generate_graph(thrhd_dist = 0.0055)
     
-    glove_data = sio.loadmat('./data/grasp/cup%d/cup%d_grasping_60s_1.mat'%(1, 1))['glove_data'] # is this z?
+    glove_data = sio.loadmat('../data/grasp/cup%d/cup%d_grasping_60s_1.mat'%(1, 1))['glove_data'] # is this z?
 
     i = 0
     gpos = glove_data[:,4:7]

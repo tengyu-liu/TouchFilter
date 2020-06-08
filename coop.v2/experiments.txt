@@ -37,3 +37,12 @@ CUDA_VISIBLE_DEVICES=5 python train.py --batch_size 28 --lr_des 1e-5 --lr_gen 1e
 CUDA_VISIBLE_DEVICES=6 python train.py --batch_size 28 --lr_des 1e-5 --lr_gen 1e-4 --langevin_random_size 0.1 --step_size 0.1 --langevin_steps 30 --weight_decay 6 --latent_factor_merge concat --name exp2 2> logs/STDERR-2
 CUDA_VISIBLE_DEVICES=7 python train.py --batch_size 28 --lr_des 1e-5 --lr_gen 1e-4 --langevin_random_size 0.1 --step_size 0.1 --langevin_steps 30 --weight_decay 8 --latent_factor_merge concat --name exp3 2> logs/STDERR-3
 
+2020-06-07 observation
+* For the first few epochs, step_size=10 x langevin_steps=45 is the only one that produces synthesis result with energy lower than gt after epoch 0.
+* This does not happen with step_size=1 x langevin_steps=450. This means that the larger step langevin dynamics goes out of scope of the learned energy landscape.
+* Meaning the learned energy landscape is too spikey. Probably because there is too many parameters than necessary. 
+* FIX: run experiment with a smaller pointnet network. 
+* FIX: train with only syn energies lower than mean obs energy. This would hopefully reduce the energy explosion problem
+
+python train.py --batch_size 28 --lr_des 1e-4 --lr_gen 1e-4 --langevin_random_size 0.01 --step_size 0.1 --langevin_steps 30 
+        --weight_decay 0 --latent_factor_merge concat --name exp0 2> logs/STDERR-0

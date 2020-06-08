@@ -29,11 +29,11 @@ def get_model(point_cloud, is_training, n_latent_factor, bn_decay=None, weight_d
                          bn=False, is_training=is_training,
                          scope='conv1', bn_decay=bn_decay, 
                          weight_decay=weight_decay)
-    net = tf_util.conv2d(net, 64, [1,1],
-                         padding='VALID', stride=[1,1],
-                         bn=False, is_training=is_training,
-                         scope='conv2', bn_decay=bn_decay, 
-                         weight_decay=weight_decay)
+    # net = tf_util.conv2d(net, 64, [1,1],
+    #                      padding='VALID', stride=[1,1],
+    #                      bn=False, is_training=is_training,
+    #                      scope='conv2', bn_decay=bn_decay, 
+    #                      weight_decay=weight_decay)
 
     with tf.variable_scope('transform_net2') as sc:
         transform = feature_transform_net(net, is_training, bn_decay, K=64, weight_decay=weight_decay)
@@ -46,27 +46,27 @@ def get_model(point_cloud, is_training, n_latent_factor, bn_decay=None, weight_d
                          bn=False, is_training=is_training,
                          scope='conv3', bn_decay=bn_decay, 
                          weight_decay=weight_decay)
-    net = tf_util.conv2d(net, 128, [1,1],
+    net = tf_util.conv2d(net, 256, [1,1],
                          padding='VALID', stride=[1,1],
                          bn=False, is_training=is_training,
                          scope='conv4', bn_decay=bn_decay, 
                          weight_decay=weight_decay)
-    net = tf_util.conv2d(net, 1024, [1,1],
-                         padding='VALID', stride=[1,1],
-                         bn=False, is_training=is_training,
-                         scope='conv5', bn_decay=bn_decay, 
-                         weight_decay=weight_decay)
+    # net = tf_util.conv2d(net, 1024, [1,1],
+    #                      padding='VALID', stride=[1,1],
+    #                      bn=False, is_training=is_training,
+    #                      scope='conv5', bn_decay=bn_decay, 
+    #                      weight_decay=weight_decay)
 
     # Symmetric function: max pooling
     net = tf_util.max_pool2d(net, [num_point,1],
                              padding='VALID', scope='maxpool')
 
     net = tf.reshape(net, [batch_size, -1])
-    net = tf_util.fully_connected(net, 512, bn=False, is_training=is_training,
-                                  scope='fc1', bn_decay=bn_decay, 
-                                  weight_decay=weight_decay)
-    net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
-                          scope='dp1')
+    # net = tf_util.fully_connected(net, 256, bn=False, is_training=is_training,
+    #                               scope='fc1', bn_decay=bn_decay, 
+    #                               weight_decay=weight_decay)
+    # net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
+    #                       scope='dp1')
     net = tf_util.fully_connected(net, 256, bn=False, is_training=is_training,
                                   scope='fc2', bn_decay=bn_decay, 
                                   weight_decay=weight_decay)

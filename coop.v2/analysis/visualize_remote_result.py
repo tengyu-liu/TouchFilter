@@ -12,7 +12,7 @@ visualizer = Visualizer()
 # name = 'exp'
 # epoch = 82
 
-epochs = [8,4,4,4]
+epochs = [14,14,14,14]
 
 for exp in [0,1,2,3]:
     name = 'exp%d'%exp
@@ -30,7 +30,25 @@ for exp in [0,1,2,3]:
     plt.colorbar(_)
     # plt.show()
     plt.savefig('%s-%d/gen-diff.png'%(name, epoch))
+    diff = np.zeros([len(syn_hand), len(syn_hand)])
     for i in range(len(syn_hand)):
+        for j in range(len(syn_hand)):
+            diff[i,j] = np.linalg.norm(syn_hand[i] - syn_hand[j]) / np.linalg.norm(syn_hand[i])
+    plt.clf()
+    _ = plt.imshow(diff)
+    plt.axis('off')
+    plt.colorbar(_)
+    plt.savefig('%s-%d/syn-diff.png'%(name, epoch))
+    diff = np.zeros([len(obs_hand), len(obs_hand)])
+    for i in range(len(obs_hand)):
+        for j in range(len(obs_hand)):
+            diff[i,j] = np.linalg.norm(obs_hand[i] - obs_hand[j]) / np.linalg.norm(obs_hand[i])
+    plt.clf()
+    _ = plt.imshow(diff)
+    plt.axis('off')
+    plt.colorbar(_)
+    plt.savefig('%s-%d/obs-diff.png'%(name, epoch))
+    for i in range(4):
         # print(name, epoch, GE[i], SE[i])
         # print(OC.shape, GC.shape, SC.shape)
         # plt.subplot(311)
