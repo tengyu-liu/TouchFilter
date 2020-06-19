@@ -1,0 +1,1 @@
+gan_style_train.py --batch_size 12 --lr_des 1e-4 --lr_gen 1e-4 --langevin_random_size 0.0 --step_size 0.1 --langevin_steps 0 --weight_decay 0 --latent_factor_merge concat --name exp1 --viz

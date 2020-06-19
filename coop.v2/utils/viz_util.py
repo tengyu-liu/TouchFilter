@@ -136,28 +136,30 @@ class Visualizer:
         fig1 = go.Figure(data=fig_data)
         camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
         fig1.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
-
-        # hand_w -= np.min(hand_w)
-        # hand_w /= np.max(hand_w)
-        # print(hand_w)
-
-        fig2 = go.Figure(data=[go.Scatter3d(
-            x=self.__zero_pts[:,0], 
-            y=self.__zero_pts[:,1], 
-            z=self.__zero_pts[:,2], 
-            mode='markers',
-            marker=dict(
-                color=hand_w, 
-                colorscale='Viridis'
-            ))])
-        camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
-        fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
         if save_path is None:
             fig1.show()
-            fig2.show()
         else:
             fig1.write_image('%s-grasp.png'%save_path)
-            fig2.write_image('%s-weight.png'%save_path)
+
+        if hand_w is not None:
+            # hand_w -= np.min(hand_w)
+            # hand_w /= np.max(hand_w)
+            # print(hand_w)
+            fig2 = go.Figure(data=[go.Scatter3d(
+                x=self.__zero_pts[:,0], 
+                y=self.__zero_pts[:,1], 
+                z=self.__zero_pts[:,2], 
+                mode='markers',
+                marker=dict(
+                    color=hand_w, 
+                    colorscale='Viridis'
+                ))])
+            camera = dict(eye=dict(x=0, y=0, z=-2), up=dict(x=0, y=-1, z=0))
+            fig2.update_layout(scene_camera=camera, scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)), margin=dict(l=0,r=0,t=0,b=0))
+            if save_path is None:
+                fig2.show()
+            else:
+                fig2.write_image('%s-grasp.png'%save_path)
         # if ax is not None:
         #     ax.scatter(-self.__zero_pts[:,2], self.__zero_pts[:,0], -self.__zero_pts[:,1], c=hand_w, s=3)
         #     ax.view_init(elev=0, azim=0)

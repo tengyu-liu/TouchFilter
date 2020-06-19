@@ -1,0 +1,1 @@
+debug_model.py --batch_size 8 --langevin_random_size 0 --step_size 1 --langevin_steps 450 --latent_factor_merge concat --restore_name exp0 --restore_epoch 0
