@@ -12,7 +12,7 @@ visualizer = Visualizer()
 from sklearn.manifold import TSNE
 
 name = 'exp5'
-epochs = [6]
+epochs = [23]
 
 for epoch in epochs:
     data = pickle.load(open(os.path.join('../logs/%s/%04d.pkl'%(name, epoch)), 'rb'))

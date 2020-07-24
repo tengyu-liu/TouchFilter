@@ -5,11 +5,27 @@ import sys
 import random
 
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from config import flags
 from gan_style_model import Model
 from utils.data import DataLoader
+
+def floatRgb(mag):
+    """ Return a tuple of floats between 0 and 1 for R, G, and B. """
+    # Normalize to 0-1
+    cmax = np.max(mag)
+    cmin = np.min(mag)
+    x = (mag-cmin)/(cmax-cmin)
+    x[np.isnan(x)] = 0.5
+    x[np.isinf(x)] = 0.5
+    blue  = (np.minimum(np.maximum(4*(0.75-x), 0.), 1.) * 255).astype(np.int32)
+    red   = (np.minimum(np.maximum(4*(x-0.25), 0.), 1.) * 255).astype(np.int32)
+    green = (np.minimum(np.maximum(4*np.fabs(x-0.5)-1., 0.), 1.) * 255).astype(np.int32)
+    return np.stack([red, green, blue], axis=-1)
+  
+colors = floatRgb(np.linspace(0,15,16))
 
 np.set_printoptions(precision=3)
 
@@ -33,7 +49,7 @@ f.write(' '.join(sys.argv) + '\n')
 f.close()
 
 # load data
-dataloader = DataLoader(flags, data_dir='../data', obj_list=[1,2,3,4,5,6,7])
+dataloader = DataLoader(flags, data_dir='../data', obj_list=[1,2,3,4,5,6,7], debug=flags.debug)
 
 # create visualizer
 if flags.viz:
@@ -67,15 +83,23 @@ def get_lr(old_dl, old_gl):
     f = open('config.txt')
     dl, gl = [float(x.strip()) for x in f.read().split(',')]
     if dl != old_dl or gl != old_gl:
-      print('\nUpdating learning rate to (%f, %f)'%(dl, gl))
+      print('\nUpdating learning rate to (%e, %e)'%(dl, gl))
     return dl, gl
   except:
     return old_dl, old_gl
 
 cur_dl, cur_gl = flags.lr_des, flags.lr_gen
+f = open('config.txt', 'w')
+f.write('%e,%e'%(cur_dl, cur_gl))
+f.close()
+
+plt.ion()
 
 # train
-for epoch in range(flags.restore_epoch+1, flags.epochs):
+epoch = -1
+# for epoch in range(flags.restore_epoch+1, flags.epochs):
+while True:
+  epoch += 1
   batch_i = 0
   total_len = int(dataloader.min_data_size * len(dataloader.obj_list) // flags.batch_size)
   for obj_id, item_id, obs_hand, obs_z, obs_obj, obj_trans, obj_rot, obs_idx  in dataloader.fetch():
@@ -90,7 +114,7 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
     DL, OE, GE, _, QC = sess.run([model.des_loss, model.obs_energy, model.gen_energy, model.train_des, model.qualified_candidates], feed_dict={
       model.obs_obj: obs_obj,
       model.syn_z: syn_z,
-      model.is_training: True,
+      model.is_training: False,
       model.obs_obj_rot: obj_rot,
       model.obs_obj_trans: obj_trans,
       model.obj_id: obj_id,
@@ -101,34 +125,57 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
     GL, GE2, _ = sess.run([model.gen_loss, model.gen_energy, model.train_gen], feed_dict={
       model.obs_obj: obs_obj,
       model.syn_z: syn_z,
-      model.is_training: True,
+      model.is_training: False,
       model.obs_obj_rot: obj_rot,
       model.obs_obj_trans: obj_trans,
       model.obj_id: obj_id,
       model.lr_gen: cur_gl
     }) 
-    # check improvement
-    OE2, GE3 = sess.run([model.obs_energy, model.gen_energy], feed_dict={
-      model.obs_obj: obs_obj,
-      model.syn_z: syn_z,
-      model.is_training: True,
-      model.obs_obj_rot: obj_rot,
-      model.obs_obj_trans: obj_trans,
-      model.obj_id: obj_id,
-      model.obs_hand: obs_hand
-    })
-    # write summary
-    summary = sess.run(model.summaries, feed_dict={
-      model.summ_oe: OE, model.summ_oe2: OE2, model.summ_ge: GE, model.summ_ge2: GE2, model.summ_ge3: GE3
-    })
-    train_writer.add_summary(summary, global_step=global_step)
+    if batch_i % 100 == 0:
+      # check improvement
+      OE2, GE3, obs_contact, gen_contact = sess.run([model.obs_energy, model.gen_energy, model.obs_contact, model.gen_contact], feed_dict={
+        model.obs_obj: obs_obj,
+        model.syn_z: syn_z,
+        model.is_training: False,
+        model.obs_obj_rot: obj_rot,
+        model.obs_obj_trans: obj_trans,
+        model.obj_id: obj_id,
+        model.obs_hand: obs_hand
+      })
+      # write summary
+      summary = sess.run(model.summaries, feed_dict={
+        model.summ_oe: OE, model.summ_oe2: OE2, model.summ_ge: GE, model.summ_ge2: GE2, model.summ_ge3: GE3
+      })
+      train_writer.add_summary(summary, global_step=global_step)
 
-    print('\r%d: %d/%d G:%f D:%f'%(
+      obs_colors = np.zeros([obs_contact.shape[0], obs_contact.shape[1], 3]) + 200
+      gen_colors = np.zeros([gen_contact.shape[0], gen_contact.shape[1], 3]) + 200
+      for i in range(16):
+        obs_colors[np.arange(obs_colors.shape[0]), np.argmax(obs_contact[:,:,i], axis=1)] = colors[i]
+        gen_colors[np.arange(gen_colors.shape[0]), np.argmax(gen_contact[:,:,i], axis=1)] = colors[i]
+        
+      plt.clf()
+      # plt.subplot(121)
+      plt.hist(obs_contact.reshape([-1]), label='obs', log=True)
+      # plt.subplot(122)
+      plt.hist(gen_contact.reshape([-1]), label='gen', log=True)
+      plt.legend()
+      plt.pause(1e-5)
+
+      draw_obj = obs_obj - np.mean(obs_obj, axis=1, keepdims=True)
+      summary = sess.run(model.pts_summaries, feed_dict={
+        model.summ_vert:draw_obj, 
+        model.summ_obs_color:obs_colors, 
+        model.summ_gen_color:gen_colors
+      })
+      train_writer.add_summary(summary, global_step=global_step)
+      
+    print('\r%d: %d/%d G:%f D:%f'%(   
       epoch, batch_i, total_len, GL, DL), end='')
 
-    if flags.debug and global_step % 10 == 9:
-      saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
-      exit()
+    # if flags.debug and global_step % 10 == 9:
+    #   saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
+    #   exit()
 
   print()
   # visualize
@@ -136,16 +183,16 @@ for epoch in range(flags.restore_epoch+1, flags.epochs):
   #   for item in range(len(syn_hand)):
   #     visualizer.visualize_distance(obj_id, gen_hand[item], os.path.join(log_dir, 'epoch-%04d-gen-%d'%(epoch, item)))
   #     visualizer.visualize_distance(obj_id, syn_hand[item], os.path.join(log_dir, 'epoch-%04d-syn-%d'%(epoch, item)))
-  if epoch > -1:
+  if epoch > -1 and (not flags.debug or epoch % 100 == 0):
     saver.save(sess, os.path.join(log_dir, '%04d.ckpt'%epoch))
-    gen_hand, GE, OE = sess.run([model.gen_hand, model.gen_energy, model.obs_energy], feed_dict={
+    gen_contact, GE, OE = sess.run([model.gen_contact, model.gen_energy, model.obs_energy], feed_dict={
       model.obs_obj: obs_obj,
       model.syn_z: syn_z,
-      model.is_training: True,
+      model.is_training: False,
       model.obs_obj_rot: obj_rot,
       model.obs_obj_trans: obj_trans,
       model.obj_id: obj_id,
       model.obs_hand: obs_hand,
     })
-    pickle.dump([obj_id, gen_hand, obs_hand, GE, OE, obj_rot, obj_trans], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
+    pickle.dump([obj_id, gen_contact, obs_obj, obs_hand, GE, OE, obj_rot, obj_trans], open(os.path.join(log_dir, '%04d.pkl'%epoch), 'wb'))
 

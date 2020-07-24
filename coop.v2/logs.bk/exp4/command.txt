@@ -1,1 +1,0 @@
-train.py --batch_size 28 --lr_des 1e-5 --lr_gen 1e-3 --langevin_random_size 0.1 --step_size 0.1 --langevin_steps 30 --weight_decay 10 --latent_factor_merge add --name exp4

@@ -22,18 +22,23 @@ def get_model(point_cloud, is_training, n_latent_factor, bn_decay=None, weight_d
     batch_size = point_cloud.get_shape()[0].value
     num_point = point_cloud.get_shape()[1].value
 
-    input_image = tf.expand_dims(point_cloud, -1)
+    with tf.variable_scope('transform_net1') as sc:
+        transform = feature_transform_net(tf.expand_dims(point_cloud[...,:3], axis=2), is_training, bn_decay, K=3, 
+                                weight_decay=weight_decay)
+    point_cloud_transformed = tf.matmul(point_cloud[...,:3], transform)
+    point_cloud_transformed = tf.concat([point_cloud_transformed, point_cloud[...,3:]], axis=-1)
+    input_image = tf.expand_dims(point_cloud_transformed, -1)
 
-    net = tf_util.conv2d(input_image, 64, [1,3],
+    net = tf_util.conv2d(input_image, 64, [1,19],
+                        padding='VALID', stride=[1,1],
+                        bn=False, is_training=is_training,
+                        scope='conv1', bn_decay=bn_decay, 
+                                weight_decay=weight_decay)
+    net = tf_util.conv2d(net, 64, [1,1],
                          padding='VALID', stride=[1,1],
                          bn=False, is_training=is_training,
-                         scope='conv1', bn_decay=bn_decay, 
+                         scope='conv2', bn_decay=bn_decay, 
                          weight_decay=weight_decay)
-    # net = tf_util.conv2d(net, 64, [1,1],
-    #                      padding='VALID', stride=[1,1],
-    #                      bn=False, is_training=is_training,
-    #                      scope='conv2', bn_decay=bn_decay, 
-    #                      weight_decay=weight_decay)
 
     with tf.variable_scope('transform_net2') as sc:
         transform = feature_transform_net(net, is_training, bn_decay, K=64, weight_decay=weight_decay)
@@ -46,33 +51,33 @@ def get_model(point_cloud, is_training, n_latent_factor, bn_decay=None, weight_d
                          bn=False, is_training=is_training,
                          scope='conv3', bn_decay=bn_decay, 
                          weight_decay=weight_decay)
-    net = tf_util.conv2d(net, 256, [1,1],
+    net = tf_util.conv2d(net, 128, [1,1],
                          padding='VALID', stride=[1,1],
                          bn=False, is_training=is_training,
                          scope='conv4', bn_decay=bn_decay, 
                          weight_decay=weight_decay)
-    # net = tf_util.conv2d(net, 1024, [1,1],
-    #                      padding='VALID', stride=[1,1],
-    #                      bn=False, is_training=is_training,
-    #                      scope='conv5', bn_decay=bn_decay, 
-    #                      weight_decay=weight_decay)
+    net = tf_util.conv2d(net, 1024, [1,1],
+                         padding='VALID', stride=[1,1],
+                         bn=False, is_training=is_training,
+                         scope='conv5', bn_decay=bn_decay, 
+                         weight_decay=weight_decay)
 
     # Symmetric function: max pooling
     net = tf_util.max_pool2d(net, [num_point,1],
                              padding='VALID', scope='maxpool')
 
     net = tf.reshape(net, [batch_size, -1])
-    # net = tf_util.fully_connected(net, 256, bn=False, is_training=is_training,
-    #                               scope='fc1', bn_decay=bn_decay, 
-    #                               weight_decay=weight_decay)
-    # net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
-    #                       scope='dp1')
+    net = tf_util.fully_connected(net, 512, bn=False, is_training=is_training,
+                                  scope='fc1', bn_decay=bn_decay, 
+                                  weight_decay=weight_decay)
+    net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
+                          scope='dp1')
     net = tf_util.fully_connected(net, 256, bn=False, is_training=is_training,
                                   scope='fc2', bn_decay=bn_decay, 
                                   weight_decay=weight_decay)
     net = tf_util.dropout(net, keep_prob=0.7, is_training=is_training,
                           scope='dp2')
-    net = tf_util.fully_connected(net, n_latent_factor, activation_fn=tf.nn.sigmoid, scope='fc3', 
+    net = tf_util.fully_connected(net, n_latent_factor, activation_fn=tf.nn.leaky_relu, scope='fc3', 
                                   weight_decay=weight_decay)
 
     return net

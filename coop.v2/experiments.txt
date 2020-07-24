@@ -44,5 +44,4 @@ CUDA_VISIBLE_DEVICES=7 python train.py --batch_size 28 --lr_des 1e-5 --lr_gen 1e
 * FIX: run experiment with a smaller pointnet network. 
 * FIX: train with only syn energies lower than mean obs energy. This would hopefully reduce the energy explosion problem
 
-python train.py --batch_size 28 --lr_des 1e-4 --lr_gen 1e-4 --langevin_random_size 0.01 --step_size 0.1 --langevin_steps 30 
-        --weight_decay 0 --latent_factor_merge concat --name exp0 2> logs/STDERR-0
+python train.py --batch_size 28 --lr_des 1e-4 --lr_gen 1e-4 --langevin_random_size 0.01 --step_size 0.1 --langevin_steps 30 --weight_decay 0 --latent_factor_merge concat --name exp0 --viz 2> logs/STDERR-0

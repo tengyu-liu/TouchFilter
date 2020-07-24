@@ -40,6 +40,8 @@ class DataLoader:
                 start, end = [int(x) for x in start_end.split(':')]
                 for frame in range(start, end):
                     cup_id = i
+                    if debug and len(obs_zs[cup_id]) > flags.batch_size * 2:
+                        break
                     cup_translation = mat_data[frame, 1 + 27 * 3 : 1 + 28 * 3]
                     cup_rotation = Q(mat_data[frame, 1 + 28 * 3 + 27 * 4: 1 + 28 * 3 + 28 * 4]).rotation_matrix
                     hand_jrot = mat_data[frame, 1 + 28 * 7 + 7 : 1 + 28 * 7 + 29]
@@ -96,3 +98,6 @@ class DataLoader:
 
   def restore(self, path):
     self.obs_z2s = pickle.load(open(path, 'rb'))[-3]
+
+
+

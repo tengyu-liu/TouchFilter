@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorboard.plugins.mesh import summary as mesh_summary
 
 from utils import pointnet_cls, pointnet_seg, HandModel, CupModel
 from utils.tf_util import *
@@ -34,6 +35,7 @@ class Model:
     self.z_min = tf.constant(stats[0][:,:22], dtype=self.dtype)
     self.z_max = tf.constant(stats[1][:,:22], dtype=self.dtype)
     self.weight_decay = config.weight_decay
+    self.N_parts = 16
     # if config.restore_epoch >= 0:
     #   log_dir = os.path.join('logs', coonfig.name)
     #   restore_ema_path = os.path.join(log_dir, '%04d.ema.np'%(config.restore_epoch))
@@ -58,40 +60,41 @@ class Model:
     with tf.variable_scope('model', reuse=tf.AUTO_REUSE):
       # Setup
       self.hand_model = HandModel.HandModel(batch_size=self.batch_size)
-      self.obj_models = {0: CupModel.CupModel(1),
-                          1: CupModel.CupModel(2),
-                          2: CupModel.CupModel(3),
-                          3: CupModel.CupModel(4),
-                          4: CupModel.CupModel(5),
-                          5: CupModel.CupModel(6),
-                          6: CupModel.CupModel(7),
-                          7: CupModel.CupModel(8),
-                          8: CupModel.CupModel(9),
-                          9: CupModel.CupModel(10)}
+      # self.obj_models = {0: CupModel.CupModel(1),
+      #                     1: CupModel.CupModel(2),
+      #                     2: CupModel.CupModel(3),
+      #                     3: CupModel.CupModel(4),
+      #                     4: CupModel.CupModel(5),
+      #                     5: CupModel.CupModel(6),
+      #                     6: CupModel.CupModel(7),
+      #                     7: CupModel.CupModel(8),
+      #                     8: CupModel.CupModel(9),
+      #                     9: CupModel.CupModel(10)}
       # self.ema = EMA.EMA(decay=self.gradient_decay, dtype=self.dtype, value=self.ema_value)
-      self.ema = tf.train.ExponentialMovingAverage(decay=0.99)
+      # self.ema = tf.train.ExponentialMovingAverage(decay=0.99)
       # Computation
-      self.gen_hand = self.Generator()
       self.obs_contact = self.ComputeContact()
+      self.gen_contact = self.Generator()
       self.obs_energy = self.Descriptor(self.obs_contact, penetration_penalty=self.penetration_penalty)
-      self.gen_energy = self.Descriptor(self.gen_hand, penetration_penalty=self.penetration_penalty)
+      self.gen_energy = self.Descriptor(self.gen_contact, penetration_penalty=self.penetration_penalty)
       self.qualified_candidates = self.gen_energy < self.obs_energy
 
   def build_train(self):
     print('[creating model] building train...')
     self.gen_loss = tf.reduce_mean(self.gen_energy)
     self.des_loss = tf.reduce_mean(tf.where(self.qualified_candidates, self.obs_energy - self.gen_energy, tf.zeros([self.batch_size])))
+    # self.des_loss = tf.reduce_mean(self.obs_energy - self.gen_energy)
     self.reg_loss = tf.add_n(tf.get_collection('weight_decay'))
     # train Generator
     gen_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/gen')]
     # gen_optim = tf.train.AdamOptimizer(self.lr_gen, beta1=self.beta1_gen, beta2=self.beta2_gen)
-    gen_optim = tf.train.GradientDescentOptimizer(self.lr_gen)
+    gen_optim = tf.train.AdamOptimizer(self.lr_gen, beta1=self.beta1_gen, beta2=self.beta2_gen)
     gen_grads_vars = gen_optim.compute_gradients(self.gen_loss, var_list=gen_vars)
     self.train_gen = gen_optim.apply_gradients(gen_grads_vars)
     # train Descriptor
     des_vars = [var for var in tf.trainable_variables() if var.name.startswith('model/des')]
     # des_optimizer = tf.train.AdamOptimizer(self.lr_des, beta1=self.beta1_des, beta2=self.beta2_des)
-    des_optimizer = tf.train.GradientDescentOptimizer(self.lr_des)
+    des_optimizer = tf.train.AdamOptimizer(self.lr_des, beta1=self.beta1_des, beta2=self.beta2_des)
     des_grads_vars = des_optimizer.compute_gradients(self.des_loss, var_list=des_vars)
     self.train_des = des_optimizer.apply_gradients(des_grads_vars)
 
@@ -114,21 +117,42 @@ class Model:
     tf.summary.scalar('impr/gen_energy_stage1', tf.reduce_mean(self.summ_ge) - tf.reduce_mean(self.summ_ge2))
     tf.summary.scalar('impr/gen_energy_stage2', tf.reduce_mean(self.summ_ge2) - tf.reduce_mean(self.summ_ge3))
     self.summaries = tf.summary.merge_all()
+
+    self.summ_vert = tf.placeholder(tf.float32, [None, self.n_obj_pts, 3], 'vert')
+    self.summ_obs_color = tf.placeholder(tf.float32, [None, self.n_obj_pts, 3], 'obs_color')
+    self.summ_gen_color = tf.placeholder(tf.float32, [None, self.n_obj_pts, 3], 'gen_color')
+    obs_contact_summ = mesh_summary.op('obs_contact', vertices=self.summ_vert, colors=self.summ_obs_color, config_dict={
+      'cls': 'PerspectiveCamera',
+      'near': -10, 'far': 1000, 'fov': 50, 'zoom': 0.1
+    })
+    gen_contact_summ = mesh_summary.op('gen_contact', vertices=self.summ_vert, colors=self.summ_gen_color, config_dict={
+      'cls': 'PerspectiveCamera',
+      'near': -10, 'far': 1000, 'fov': 50, 'zoom': 0.1
+    })
+    self.pts_summaries = tf.summary.merge([obs_contact_summ, gen_contact_summ])
     pass
   
   # TODO: switch to a two-stage effort, where the prediction becomes contact point labling and then finger matching
   def Generator(self):
-    with tf.variable_scope('gen'):
+    with tf.variable_scope('gen', reuse=tf.AUTO_REUSE):
         # predict the contact point assignment
-        contact_point_assignment = pointnet_seg.get_model(self.obs_obj, z_feat=self.syn_z, z_merge=self.latent_factor_merge, is_training=self.is_training, weight_decay=self.weight_decay)
+        contact_point_assignment = pointnet_seg.get_model(self.obs_obj, z_feat=self.syn_z, z_merge=self.latent_factor_merge, is_training=self.is_training, weight_decay=self.weight_decay, n_class=self.N_parts)
         return contact_point_assignment
 
   def Descriptor(self, contact_point_assignment, penetration_penalty=0):
-    with tf.variable_scope('des'):
+    with tf.variable_scope('des', reuse=tf.AUTO_REUSE):
       contact_point_data = tf.concat([self.obs_obj, contact_point_assignment], axis=-1)
       latent = pointnet_cls.get_model(contact_point_data, is_training=self.is_training, n_latent_factor=1024, weight_decay=self.weight_decay)
       energy = bilinear(latent, 1, 'latent', is_training=self.is_training, weight_decay=self.weight_decay)
       return energy[:,0]
 
   def ComputeContact(self):
-    # TODO
+    jrot = self.obs_hand[:,:22]
+    grot = tf.reshape(self.obs_hand[:,22:28], [self.obs_hand.shape[0], 3, 2])
+    gpos = self.obs_hand[:,28:]
+    hand_pts, hand_normals = self.hand_model.tf_forward_kinematics(gpos, grot, jrot)
+    # hand_pts: B x N_hand x 3
+    # obs_obj: B x N_obj x 3
+    min_dist = -tf.stack([tf.reduce_min(tf.norm(tf.expand_dims(self.obs_obj, axis=1) - tf.expand_dims(part_pts, axis=2), axis=-1), axis=1) for part_pts in hand_pts.values()], axis=-1)
+    # min_dist: B x N_obj x N_part
+    return tf.nn.softmax(min_dist, axis=1)
