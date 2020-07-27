@@ -192,4 +192,4 @@ for _iter in range(args.n_iter):
 
   if _iter % 1000 == 0:
     pickle.dump([obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
-
+    print()
