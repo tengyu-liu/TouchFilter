@@ -34,7 +34,7 @@ parser.add_argument('--temperature_decay', default=0.95, type=float)
 parser.add_argument('--stepsize_period', default=10000, type=int)
 parser.add_argument('--update_size', default=0.1, type=float)
 parser.add_argument('--name', default='exp', type=str)
-parser.add_argument('--mano_path', default='/media/tengyu/BC9C613B9C60F0F6/Users/24jas/Desktop/TouchFilter/ForceClosure/third_party/manopth/mano/models', type=str)
+parser.add_argument('--mano_path', default='third_party/manopth/mano/models', type=str)
 parser.add_argument('--viz', action='store_true')
 
 args = parser.parse_args()
