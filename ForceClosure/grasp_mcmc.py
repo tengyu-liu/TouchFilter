@@ -171,23 +171,24 @@ for _iter in range(args.n_iter):
     energy[accept] = new_energy[accept]
 
 
-  if _iter % 100 == 0 and args.viz:
+  if _iter % 100 == 0:
     print('\r%d: %f'%(_iter, energy.mean().detach().cpu().numpy()), end='', flush=True)
     energy_history.append(energy.mean().detach().cpu().numpy())
     temperature_history.append(T(_iter))
     stepsize_history.append(S(_iter))
-    ax1.cla()
-    ax1.plot(energy_history)
-    ax1.set_yscale('log')
-    ax2.cla()
-    ax2.plot(temperature_history)
-    ax2.set_yscale('log')
-    ax3.cla()
-    ax3.plot(stepsize_history)
-    ax3.set_yscale('log')
+    if args.viz:
+      ax1.cla()
+      ax1.plot(energy_history)
+      ax1.set_yscale('log')
+      ax2.cla()
+      ax2.plot(temperature_history)
+      ax2.set_yscale('log')
+      ax3.cla()
+      ax3.plot(stepsize_history)
+      ax3.set_yscale('log')
 
-    plt.title(args.name)
-    plt.pause(1e-5)
+      plt.title(args.name)
+      plt.pause(1e-5)
 
   if _iter % 1000 == 0:
     pickle.dump([obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
