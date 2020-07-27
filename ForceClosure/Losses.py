@@ -17,9 +17,9 @@ class FCLoss:
 
   def l2_norm(self, x):
     if len(x.shape) == 3:
-      return torch.sum(torch.square(x), (1, 2))
+      return torch.sum(x*x, (1, 2))
     if len(x.shape) == 2:
-      return torch.sum(torch.square(x), (1))
+      return torch.sum(x*x, (1))
     raise ValueError
 
   def x_to_G(self, x):
@@ -43,7 +43,8 @@ class FCLoss:
     temp = self.eps * self.eye6
     temp = torch.matmul(G, Gt) - temp
     eigval = torch.symeig(temp, eigenvectors=True)[0]
-    result = torch.sum(torch.square(self.relu(-eigval)), 1)
+    rnev = self.relu(-eigval)
+    result = torch.sum(rnev * rnev, 1)
     return result
   
   def loss_8b(self, f, G):
@@ -69,7 +70,8 @@ class FCLoss:
     return torch.sum(self.relu(-diff), 1)
   
   def dist_loss(self, obj_code, x):
-    return torch.square(self.obj_model.distance(obj_code, x)).squeeze()
+    d = self.obj_model.distance(obj_code, x).squeeze()
+    return d * d
   
   def fc_loss(self, x, normal, obj_code):
     G = self.x_to_G(x)
