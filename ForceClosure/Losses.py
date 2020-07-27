@@ -42,7 +42,7 @@ class FCLoss:
 
     temp = self.eps * self.eye6
     temp = torch.matmul(G, Gt) - temp
-    eigval = torch.symeig(temp, eigenvectors=True)[0]
+    eigval = torch.symeig(temp.cpu(), eigenvectors=True)[0].cuda()
     rnev = self.relu(-eigval)
     result = torch.sum(rnev * rnev, 1)
     return result
