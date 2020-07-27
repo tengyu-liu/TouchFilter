@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import trimesh
 
-code_path = '/media/tengyu/2THDD/DeepSDF/DeepSDF/experiments/DeepSDF_antelope/Reconstructions/2000/Codes/ShapeNetCore.v2/02876657'
-mesh_path = '/media/tengyu/2THDD/DeepSDF/DeepSDF/experiments/DeepSDF_antelope/Reconstructions/2000/Meshes/ShapeNetCore.v2/02876657'
+code_path = 'data/Reconstructions/2000/Codes/ShapeNetCore.v2/02876657'
+mesh_path = 'data/Reconstructions/2000/Meshes/ShapeNetCore.v2/02876657'
 
 codes = []
 meshes = []

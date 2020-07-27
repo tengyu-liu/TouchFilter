@@ -17,18 +17,19 @@ from PenetrationModel import PenetrationModel
 name = sys.argv[1]
 i_iter = int(sys.argv[2])
 
-hand_model = HandModel()
-object_model = ObjectModel()
-fc_loss_model = FCLoss(object_model=object_model)
-grasp_prediction = GraspPrediction(num_cp=3, hand_code_length=hand_model.code_length, num_handpoint=hand_model.num_points).cuda()
-penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
+hand_model = HandModel(flat_hand_mean=False)
+# object_model = ObjectModel()
+# fc_loss_model = FCLoss(object_model=object_model)
+# grasp_prediction = GraspPrediction(num_cp=3, hand_code_length=hand_model.code_length, num_handpoint=hand_model.num_points).cuda()
+# penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
 
-data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
+data = pickle.load(open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'rb'))
+old_data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
 
 obj_code, z, contact_point_indices, energy = data
+old_z = old_data[1]
 
 # i_item = np.argmin(energy.detach().cpu().numpy())
-i_item = int(random.random() * len(z))
 
 def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   hand_verts = hand_model.get_vertices(z)
@@ -53,17 +54,17 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
     else:
       return loss
 
-hand_loss, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
-print('hand_loss', hand_loss[i_item].detach().cpu().numpy())
-print('linear_independence', linear_independence[i_item].detach().cpu().numpy())
-print('force_closure', force_closure[i_item].detach().cpu().numpy())
-print('surface_distance', surface_distance[i_item].detach().cpu().numpy())
-print('penetration', penetration[i_item].detach().cpu().numpy())
-print('z_norm', z_norm[i_item].detach().cpu().numpy())
-print('normal_alignment', normal_alignment[i_item].detach().cpu().numpy())
-# import matplotlib.pyplot as plt
-# energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
-energy_entries = ['hand_loss', 'linear_independence', 'force_closure', 'surface_distance', 'penetration', 'z_norm', 'normal_alignment']
+# hand_loss, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
+# print('hand_loss', hand_loss[i_item].detach().cpu().numpy())
+# print('linear_independence', linear_independence[i_item].detach().cpu().numpy())
+# print('force_closure', force_closure[i_item].detach().cpu().numpy())
+# print('surface_distance', surface_distance[i_item].detach().cpu().numpy())
+# print('penetration', penetration[i_item].detach().cpu().numpy())
+# print('z_norm', z_norm[i_item].detach().cpu().numpy())
+# print('normal_alignment', normal_alignment[i_item].detach().cpu().numpy())
+# # import matplotlib.pyplot as plt
+# # energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
+# energy_entries = ['hand_loss', 'linear_independence', 'force_closure', 'surface_distance', 'penetration', 'z_norm', 'normal_alignment']
 # for i in range(7):
 #   plt.subplot(3,3,i+1)
 #   plt.hist(energy[i].detach().cpu().numpy())
@@ -74,27 +75,56 @@ energy_entries = ['hand_loss', 'linear_independence', 'force_closure', 'surface_
 
 # print(energy[i_item].detach().cpu().numpy())
 
-obj_mesh = get_obj_mesh_by_code(obj_code[i_item])
-hand_verts = hand_model.get_vertices(z).detach().float().cuda()
-contact_point = torch.stack([hand_verts[torch.arange(hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+z = torch.normal(mean=0, std=1, size=[128, 15], requires_grad=True).float().cuda()
 
-hand_verts = hand_verts.detach().cpu().numpy()
-contact_point = contact_point.detach().cpu().numpy()
+for i_item in range(len(obj_code)):
+  obj_mesh = get_obj_mesh_by_code(obj_code[i_item])
+  hand_verts = hand_model.get_vertices(z).detach().float().cuda()
+  # old_hand_verts = hand_model.get_vertices(old_z).detach().float().cuda()
+  contact_point = torch.stack([hand_verts[torch.arange(hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+  # old_contact_point = torch.stack([old_hand_verts[torch.arange(old_hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
 
-fig = plotly.tools.make_subplots(1, 1, specs=[[{'type': 'surface'}]])
+  hand_verts = hand_verts.detach().cpu().numpy()
+  # old_hand_verts = old_hand_verts.detach().cpu().numpy()
+  contact_point = contact_point.detach().cpu().numpy()
+  # old_contact_point = old_contact_point.detach().cpu().numpy()
 
-fig.append_trace(go.Mesh3d(
-  x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
-  color='lightblue', opacity=0.5
-), 1, 1)
+  fig = plotly.tools.make_subplots(1, 1, specs=[[{'type': 'surface'}]])
 
-fig.append_trace(go.Mesh3d(
-  x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-  color='lightpink', opacity=0.5
-), 1, 1)
+  print(z[i_item].detach().cpu().numpy())
+  fig.append_trace(go.Scatter3d(x=[-1,1],y=[0,0],z=[0,0]),1,1)
+  fig.append_trace(go.Scatter3d(y=[-1,1],x=[0,0],z=[0,0]),1,1)
+  fig.append_trace(go.Scatter3d(z=[-1,1],y=[0,0],x=[0,0]),1,1)
 
-fig.append_trace(go.Scatter3d(
-  x=contact_point[i_item,:,0], y=contact_point[i_item,:,1], z=contact_point[i_item,:,2], mode='markers'
-), 1, 1)
+  hx, hy, hz = z[i_item,:3].detach().cpu().numpy()
+  fig.append_trace(go.Scatter3d(x=[hx-1,hx+1],y=[hy,hy],z=[hz,hz]),1,1)
+  fig.append_trace(go.Scatter3d(y=[hy-1,hy+1],x=[hx,hx],z=[hz,hz]),1,1)
+  fig.append_trace(go.Scatter3d(z=[hz-1,hz+1],y=[hy,hy],x=[hx,hx]),1,1)
 
-fig.show()
+
+  fig.append_trace(go.Mesh3d(
+    x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
+    color='lightblue', opacity=1
+  ), 1, 1)
+
+  fig.append_trace(go.Mesh3d(
+    x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
+    color='red', opacity=1
+  ), 1, 1)
+
+  # fig.append_trace(go.Mesh3d(
+  #   x=old_hand_verts[i_item,:,0], y=old_hand_verts[i_item,:,1], z=old_hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
+  #   color='lightpink', opacity=0.5
+  # ), 1, 1)
+
+  # fig.append_trace(go.Scatter3d(
+  #   x=contact_point[i_item,:,0], y=contact_point[i_item,:,1], z=contact_point[i_item,:,2], mode='markers'
+  # ), 1, 1)
+
+  # fig.append_trace(go.Scatter3d(
+  #   x=old_contact_point[i_item,:,0], y=old_contact_point[i_item,:,1], z=old_contact_point[i_item,:,2], mode='markers'
+  # ), 1, 1)
+
+  print(i_item, sum(energy)[i_item].detach().cpu().numpy())
+  fig.show()
+  input()

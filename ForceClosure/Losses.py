@@ -8,9 +8,9 @@ class FCLoss:
     self.eye3 = torch.tensor(np.eye(3).reshape(1, 1, 3, 3)).float().cuda()
     self.eye6 = torch.tensor(np.eye(6).reshape(1,6,6)).float().cuda()
     
-    self.eps = 0.01
-    self.mu = 0.1
-    self.sqrt_sq_mu_1 = np.sqrt(self.mu*self.mu+1)
+    self.eps = torch.tensor(0.01).float().cuda()
+    self.mu = torch.tensor(0.1).float().cuda()
+    self.sqrt_sq_mu_1 = torch.sqrt(self.mu*self.mu+1)
     self.relu = torch.nn.ReLU()
 
     self.obj_model = object_model

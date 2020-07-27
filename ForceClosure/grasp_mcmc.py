@@ -7,15 +7,11 @@ import sys
 import time
 from collections import defaultdict
 
-import matplotlib.pyplot as plt
 import numpy as np
-import plotly
-import plotly.graph_objects as go
 import tensorboard
 import torch
 import torch.nn as nn
 import torch.utils.tensorboard
-from mpl_toolkits.mplot3d import Axes3D
 
 from CodeUtil import *
 from EMA import EMA
@@ -33,11 +29,27 @@ parser.add_argument('--batch_size', default=1, type=int)
 parser.add_argument('--n_handcode', default=6, type=int)
 parser.add_argument('--n_iter', default=1000000, type=int)
 parser.add_argument('--annealing_period', default=100, type=int)
-parser.add_argument('--stepsize_period', default=1000, type=int)
-parser.add_argument('--update_size', default=0.01, type=float)
+parser.add_argument('--starting_temperature', default=1, type=float)
+parser.add_argument('--temperature_decay', default=0.95, type=float)
+parser.add_argument('--stepsize_period', default=10000, type=int)
+parser.add_argument('--update_size', default=0.1, type=float)
 parser.add_argument('--name', default='exp', type=str)
+parser.add_argument('--mano_path', default='/media/tengyu/BC9C613B9C60F0F6/Users/24jas/Desktop/TouchFilter/ForceClosure/third_party/manopth/mano/models', type=str)
+parser.add_argument('--viz', action='store_true')
 
 args = parser.parse_args()
+
+if args.viz:
+  import matplotlib.pyplot as plt
+  import plotly
+  import plotly.graph_objects as go
+  from mpl_toolkits.mplot3d import Axes3D
+
+  plt.ion()
+  plt.title(args.name)
+  ax1 = plt.subplot(131)
+  ax2 = plt.subplot(132)
+  ax3 = plt.subplot(133)
 
 log_dir = os.path.join('logs', args.name)
 shutil.rmtree(log_dir, ignore_errors=True)
@@ -56,12 +68,13 @@ hand_model = HandModel(
   n_handcode=args.n_handcode,
   root_rot_mode='ortho6d', 
   robust_rot=False,
-  mano_path='/media/tengyu/BC9C613B9C60F0F6/Users/24jas/Desktop/TouchFilter/ForceClosure/third_party/manopth/mano/models')
+  flat_hand_mean=False,
+  mano_path=args.mano_path)
 
 hand_verts_eye = torch.tensor(np.eye(hand_model.num_points)).float().cuda() # 778 x 778
 
 object_model = ObjectModel(
-  state_dict_path="/media/tengyu/2THDD/DeepSDF/DeepSDF/experiments/DeepSDF_antelope/ModelParameters/2000.pth"
+  state_dict_path="data/ModelParameters/2000.pth"
 )
 
 fc_loss_model = FCLoss(object_model=object_model)
@@ -96,7 +109,7 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
 
 def T(t):
   # annealing schedule
-  return 1 * 0.95 ** (t // args.annealing_period)
+  return args.starting_temperature * args.temperature_decay ** (t // args.annealing_period)
 
 def S(t):
   return args.update_size * 0.95 ** (t // args.stepsize_period)
@@ -109,22 +122,28 @@ energy_history = []
 temperature_history = []
 stepsize_history = []
 
-plt.ion()
-plt.title(args.name)
-ax1 = plt.subplot(131)
-ax2 = plt.subplot(132)
-ax3 = plt.subplot(133)
+# align palm facing direction
+for align_iter in range(3):
+  hand_verts = hand_model.get_vertices(z)
+  back_direction = hand_model.back_direction(verts=hand_verts)
+  palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
+  palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
+  z = hand_model.align(z, back_direction, palm_normal)
+
+with torch.no_grad():
+# backup from penetration
+  back_direction = hand_model.back_direction(z)
+  for penetration_iter in range(3):
+    max_penetration = penetration_model.get_max_penetration(obj_code, z).unsqueeze(1)
+    z = torch.cat([z[:,:3] + back_direction * max_penetration, z[:,3:]], dim=-1)
+
+z.requires_grad_()
 
 # mcmc
 for _iter in range(args.n_iter):
   # 50/50 chance of updating z or contact point
   rand = random.random()
-  if rand < 0.1:
-    # reset rotation matrix
-    new_z = z.clone()
-    new_z[:,3:9] = torch.normal(mean=0, std=1, size=[args.batch_size, 6]).float().cuda()
-    new_contact_point_indices = contact_point_indices
-  elif rand < 0.55:
+  if rand < 0.5:
     # update z
     z_update = torch.normal(mean=0, std=1, size=z.shape).float().cuda() * S(_iter) * torch.randint(0, 2, size=z.shape).float().cuda()
     new_z = z + z_update
@@ -146,12 +165,12 @@ for _iter in range(args.n_iter):
     contact_point_indices[accept] = new_contact_point_indices[accept]
     energy[accept] = new_energy[accept]
 
-  if _iter % 10 == 0:
-    print('\r%d'%_iter, end='', flush=True)
-    energy_history.append(energy.mean().detach().cpu().numpy())
-    temperature_history.append(T(_iter))
-    stepsize_history.append(S(_iter))
+  print('\r%d: %f'%(_iter, energy.mean().detach().cpu().numpy()), end='', flush=True)
+  energy_history.append(energy.mean().detach().cpu().numpy())
+  temperature_history.append(T(_iter))
+  stepsize_history.append(S(_iter))
 
+  if _iter % 10 == 0 and args.viz:
     ax1.cla()
     ax1.plot(energy_history)
     ax1.set_yscale('log')
@@ -165,6 +184,6 @@ for _iter in range(args.n_iter):
     plt.title(args.name)
     plt.pause(1e-5)
 
-    if _iter % 1000 == 0:
-      pickle.dump([obj_code, z, contact_point_indices, energy], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
+  if _iter % 1000 == 0:
+    pickle.dump([obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
 
