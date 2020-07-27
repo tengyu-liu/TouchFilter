@@ -16,7 +16,6 @@ import torch.utils.tensorboard
 from CodeUtil import *
 from EMA import EMA
 from HandModel import HandModel
-from HCGraspPrediction import GraspPrediction
 from Losses import FCLoss
 from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
@@ -78,7 +77,6 @@ object_model = ObjectModel(
 )
 
 fc_loss_model = FCLoss(object_model=object_model)
-grasp_prediction = GraspPrediction(num_cp=3, hand_code_length=hand_model.code_length, num_handpoint=hand_model.num_points).cuda()
 penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
 
 # get obj_code
@@ -107,15 +105,22 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
     else:
       return loss
 
+starting_temperature = torch.tensor(args.starting_temperature).float().cuda()
+temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
+annealing_period = torch.tensor(args.annealing_period).float().cuda()
+update_size = torch.tensor(args.update_size).float().cuda()
+temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
+stepsize_period = torch.tensor(args.stepsize_period).float().cuda()
+
 def T(t):
   # annealing schedule
-  return args.starting_temperature * args.temperature_decay ** (t // args.annealing_period)
+  return starting_temperature * temperature_decay ** (t // annealing_period)
 
 def S(t):
-  return args.update_size * 0.95 ** (t // args.stepsize_period)
+  return update_size * temperature_decay ** (t // stepsize_period)
 
 # initialize z and contact point
-contact_point_indices = torch.randint(0, hand_model.num_points, size=[args.batch_size, 3]).cuda()
+contact_point_indices = torch.randint(0, hand_model.num_points, size=[args.batch_size, 3], device='cuda')
 z = torch.normal(mean=0, std=1, size=[args.batch_size, hand_model.code_length], requires_grad=True).float().cuda()
 energy = compute_energy(obj_code, z, contact_point_indices)
 energy_history = []
@@ -145,13 +150,13 @@ for _iter in range(args.n_iter):
   rand = random.random()
   if rand < 0.5:
     # update z
-    z_update = torch.normal(mean=0, std=1, size=z.shape).float().cuda() * S(_iter) * torch.randint(0, 2, size=z.shape).float().cuda()
+    z_update = torch.normal(mean=0, std=1, size=z.shape, device='cuda').float() * S(_iter) * torch.randint(0, 2, size=z.shape, device='cuda').float()
     new_z = z + z_update
     new_contact_point_indices = contact_point_indices
   else:
     # update contact point
-    update_indices = torch.randint(0, 3, size=[args.batch_size]).cuda()
-    update_to = torch.randint(0, hand_model.num_points, size=[args.batch_size]).cuda()
+    update_indices = torch.randint(0, 3, size=[args.batch_size], device='cuda')
+    update_to = torch.randint(0, hand_model.num_points, size=[args.batch_size], device='cuda')
     new_contact_point_indices = contact_point_indices.clone()
     new_contact_point_indices[torch.arange(args.batch_size), update_indices] = update_to
     new_z = z
@@ -159,18 +164,18 @@ for _iter in range(args.n_iter):
   new_energy = compute_energy(obj_code, new_z, new_contact_point_indices)
   with torch.no_grad():
     # metropolis-hasting
-    alpha = torch.rand(args.batch_size).float().cuda()
+    alpha = torch.rand(args.batch_size, device='cuda').float()
     accept = alpha < torch.exp((energy - new_energy) / T(_iter))
     z[accept] = new_z[accept]
     contact_point_indices[accept] = new_contact_point_indices[accept]
     energy[accept] = new_energy[accept]
 
-  print('\r%d: %f'%(_iter, energy.mean().detach().cpu().numpy()), end='', flush=True)
-  energy_history.append(energy.mean().detach().cpu().numpy())
-  temperature_history.append(T(_iter))
-  stepsize_history.append(S(_iter))
 
-  if _iter % 10 == 0 and args.viz:
+  if _iter % 100 == 0 and args.viz:
+    print('\r%d: %f'%(_iter, energy.mean().detach().cpu().numpy()), end='', flush=True)
+    energy_history.append(energy.mean().detach().cpu().numpy())
+    temperature_history.append(T(_iter))
+    stepsize_history.append(S(_iter))
     ax1.cla()
     ax1.plot(energy_history)
     ax1.set_yscale('log')

@@ -18,7 +18,7 @@ codes = torch.stack(codes, 0)
 
 def get_obj_code_random(batch_size, code_length=256):
   # code = torch.normal(mean=0, std=0.1, size=[batch_size, code_length]).float().cuda()
-  idx = torch.randint(0, len(codes), size=[batch_size]).cuda()
+  idx = torch.randint(0, len(codes), size=[batch_size], device='cuda')
   return codes[idx], idx
 
 def get_obj_mesh(idx) -> trimesh.Trimesh:
@@ -30,6 +30,6 @@ def get_obj_mesh_by_code(code) -> trimesh.Trimesh:
       return meshes[i]
 
 def get_grasp_code_random(batch_size, code_length):
-  code = torch.normal(mean=0, std=1, size=[batch_size, code_length]).float().cuda()
+  code = torch.normal(mean=0, std=1, size=[batch_size, code_length], device='cuda').float()
   return code
 
