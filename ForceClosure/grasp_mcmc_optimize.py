@@ -27,9 +27,9 @@ data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
 obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history = data
 
 # i_item = np.argmin(energy.detach().cpu().numpy())
-i_item = int(random.random() * len(z))
-i_item = 53
-print(i_item)
+# i_item = int(random.random() * len(z))
+# i_item = 53
+# print(i_item)
 
 def compute_energy(obj_code, z, contact_point_indices, verbose=False, no_grad=False):
   hand_verts = hand_model.get_vertices(z)
@@ -133,6 +133,7 @@ for _iter in range(5000):
   #     ax[i].plot(energy_history[i])
   #     ax[i].set_title(energy_entries[i])
   #   plt.pause(1e-5)
+  print(_iter)
 
 # print(energy[i_item].detach().cpu().numpy())
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
@@ -142,7 +143,7 @@ for i in range(6):
   # plt.subplot(3,3,i+1)
   # plt.hist(energy[i].detach().cpu().numpy())
   # plt.title(energy_entries[i])
-  print(_iter, energy_entries[i], energy[i][0].detach().cpu().numpy())
+  print(energy_entries[i], energy[i][0].detach().cpu().numpy())
 
 pickle.dump([obj_code, z, contact_point_indices, energy], open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'wb'))
 # visualize(obj_code, contact_point_indices, z, 0)
