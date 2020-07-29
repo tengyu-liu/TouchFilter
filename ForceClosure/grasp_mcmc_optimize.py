@@ -134,8 +134,8 @@ for _iter in range(5000):
   #     ax[i].set_title(energy_entries[i])
   #   plt.pause(1e-5)
   print(_iter, linear_independence.detach().cpu().numpy().mean(), force_closure.detach().cpu().numpy().mean(), surface_distance.detach().cpu().numpy().mean(), penetration.detach().cpu().numpy().mean(), z_norm.detach().cpu().numpy().mean(), normal_alignment.detach().cpu().numpy().mean())
-  print(grad)
-  print(z)
+  print(grad[164])
+  print(z[164])
 
 # print(energy[i_item].detach().cpu().numpy())
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
