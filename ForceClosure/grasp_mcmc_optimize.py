@@ -13,8 +13,6 @@ from Losses import FCLoss
 from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
 
-import matplotlib.pyplot as plt
-
 name = sys.argv[1]
 i_iter = int(sys.argv[2])
 
@@ -60,36 +58,36 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, no_grad=Fa
     else:
       return loss
 
-def visualize(obj_code, contact_point_indices, z, i_item):
-  obj_mesh = get_obj_mesh_by_code(obj_code[i_item])
-  hand_verts = hand_model.get_vertices(z).detach().float().cuda()
-  contact_point = torch.stack([hand_verts[torch.arange(hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
-  hand_verts = hand_verts.detach().cpu().numpy()
-  contact_point = contact_point.detach().cpu().numpy()
-  fig = plotly.tools.make_subplots(1, 1, specs=[[{'type': 'surface'}]])
-  fig.append_trace(go.Mesh3d(
-    x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
-    color='lightblue', opacity=0.5
-  ), 1, 1)
-  fig.append_trace(go.Mesh3d(
-    x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-    color='lightpink', opacity=0.5
-  ), 1, 1)
-  fig.append_trace(go.Scatter3d(
-    x=contact_point[i_item,:,0], y=contact_point[i_item,:,1], z=contact_point[i_item,:,2], mode='markers'
-  ), 1, 1)
-  fig.show()
+# def visualize(obj_code, contact_point_indices, z, i_item):
+#   obj_mesh = get_obj_mesh_by_code(obj_code[i_item])
+#   hand_verts = hand_model.get_vertices(z).detach().float().cuda()
+#   contact_point = torch.stack([hand_verts[torch.arange(hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+#   hand_verts = hand_verts.detach().cpu().numpy()
+#   contact_point = contact_point.detach().cpu().numpy()
+#   fig = plotly.tools.make_subplots(1, 1, specs=[[{'type': 'surface'}]])
+#   fig.append_trace(go.Mesh3d(
+#     x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
+#     color='lightblue', opacity=0.5
+#   ), 1, 1)
+#   fig.append_trace(go.Mesh3d(
+#     x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
+#     color='lightpink', opacity=0.5
+#   ), 1, 1)
+#   fig.append_trace(go.Scatter3d(
+#     x=contact_point[i_item,:,0], y=contact_point[i_item,:,1], z=contact_point[i_item,:,2], mode='markers'
+#   ), 1, 1)
+#   fig.show()
 
-visualize(obj_code, contact_point_indices, z, i_item)
+# visualize(obj_code, contact_point_indices, z, i_item)
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
 energy_entries = ['linear_independence', 'force_closure', 'surface_distance', 'penetration', 'z_norm', 'normal_alignment']
-for i in range(6):
-  # plt.subplot(3,3,i+1)
-  # plt.hist(energy[i].detach().cpu().numpy())
-  # plt.title(energy_entries[i])
-  print(energy_entries[i], energy[i][i_item].detach().cpu().numpy())
+# for i in range(6):
+#   # plt.subplot(3,3,i+1)
+#   # plt.hist(energy[i].detach().cpu().numpy())
+#   # plt.title(energy_entries[i])
+#   print(energy_entries[i], energy[i][i_item].detach().cpu().numpy())
 
 # plt.show()
 
@@ -103,18 +101,18 @@ for i in range(6):
 
 # plt.show()
 
-energy_history = [[] for _ in range(6)]
+# energy_history = [[] for _ in range(6)]
 
-plt.ion()
+# plt.ion()
 
 # obj_code = obj_code[[i_item, i_item-1]]
 # z = z[[i_item, i_item]]
 # contact_point_indices = contact_point_indices[[i_item, i_item-1]]
 
-print(z[0,-6:])
+# print(z[0,-6:])
 
 ema = EMA(0.05)
-ax = [plt.subplot(2,3,i+1) for i in range(6)]
+# ax = [plt.subplot(2,3,i+1) for i in range(6)]
 
 for _iter in range(5000):
   linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
@@ -123,18 +121,18 @@ for _iter in range(5000):
   # ema.apply(grad)
   # grad = grad / ema.average
   # z = z - grad * 1e-5
-  energy_history[0].append(linear_independence[0].detach().cpu().numpy())
-  energy_history[1].append(force_closure[0].detach().cpu().numpy())
-  energy_history[2].append(surface_distance[0].detach().cpu().numpy())
-  energy_history[3].append(penetration[0].detach().cpu().numpy())
-  energy_history[4].append(z_norm[0].detach().cpu().numpy())
-  energy_history[5].append(normal_alignment[0].detach().cpu().numpy())
-  if _iter % 100 == 0 or _iter == 4999:
-    for i in range(6):
-      ax[i].cla()
-      ax[i].plot(energy_history[i])
-      ax[i].set_title(energy_entries[i])
-    plt.pause(1e-5)
+  # energy_history[0].append(linear_independence[0].detach().cpu().numpy())
+  # energy_history[1].append(force_closure[0].detach().cpu().numpy())
+  # energy_history[2].append(surface_distance[0].detach().cpu().numpy())
+  # energy_history[3].append(penetration[0].detach().cpu().numpy())
+  # energy_history[4].append(z_norm[0].detach().cpu().numpy())
+  # energy_history[5].append(normal_alignment[0].detach().cpu().numpy())
+  # if _iter % 100 == 0 or _iter == 4999:
+  #   for i in range(6):
+  #     ax[i].cla()
+  #     ax[i].plot(energy_history[i])
+  #     ax[i].set_title(energy_entries[i])
+  #   plt.pause(1e-5)
 
 # print(energy[i_item].detach().cpu().numpy())
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
@@ -146,5 +144,5 @@ for i in range(6):
   print(energy_entries[i], energy[i][0].detach().cpu().numpy())
 
 pickle.dump([obj_code, z, contact_point_indices, energy], open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'wb'))
-visualize(obj_code, contact_point_indices, z, 0)
-input()
+# visualize(obj_code, contact_point_indices, z, 0)
+# input()
