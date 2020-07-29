@@ -5,7 +5,7 @@ import third_party.DeepSDF.deep_sdf as deep_sdf
 import third_party.DeepSDF.networks.deep_sdf_decoder as arch
 
 class ObjectModel:
-  def __init__(self, state_dict_path="/media/tengyu/2THDD/DeepSDF/DeepSDF/experiments/DeepSDF_antelope/ModelParameters/2000.pth"):
+  def __init__(self, state_dict_path="data/ModelParameters/2000.pth"):
     self.decoder = arch.Decoder(
       latent_size=256, 
       dims=[ 512, 512, 512, 512, 512, 512, 512, 512 ],
