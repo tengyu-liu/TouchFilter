@@ -37,6 +37,10 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, no_grad=Fa
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
 
+  print('contact_point', contact_point[164])
+  print('contact_distance', contact_distance[164])
+  print('contact_normal', contact_normal[164])
+
   grad_op = torch.enable_grad
   if no_grad:
     grad_op = torch.no_grad
