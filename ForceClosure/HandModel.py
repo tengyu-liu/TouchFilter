@@ -1,16 +1,20 @@
+import os
+import pickle
 from collections import defaultdict
-from manopth.manolayer import ManoLayer
-from manopth.rot6d import robust_compute_rotation_matrix_from_ortho6d
-from manopth.rodrigues_layer import batch_rodrigues
-import torch
+
 import numpy as np
+import torch
 import trimesh
+from manopth.manolayer import ManoLayer
+from manopth.rodrigues_layer import batch_rodrigues
+from manopth.rot6d import robust_compute_rotation_matrix_from_ortho6d
+
 
 class HandModel:
   def __init__(
     self, 
     n_handcode=6, root_rot_mode='ortho6d', robust_rot=False, flat_hand_mean=True,
-    mano_path='/media/tengyu/BC9C613B9C60F0F6/Users/24jas/Desktop/TouchFilter/ForceClosure/third_party/manopth/mano/models'):
+    mano_path='third_party/manopth/mano/models'):
     if n_handcode == 45:
       self.layer = ManoLayer(root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, use_pca=False).cuda()
     else:
@@ -19,7 +23,6 @@ class HandModel:
     if root_rot_mode != 'axisang':
       self.code_length += 3
 
-    # FIXME: find the three vectors by locating vertices on palm
     self.forward_base_ids = [34,268]
     self.sideway_base_ids = [96,115]
     self.facedir_base_ids = [218,95]
@@ -44,6 +47,27 @@ class HandModel:
       self.neighbors[v3].add(v2)
       self.neighbors[v3].add(v3)
     self.neighbors = np.array([list(self.neighbors[i]) for i in range(self.num_points)])
+
+    if os.path.exists('mano_manifold_distances.pkl'):
+      self.mano_manifold_distances = pickle.load(open('mano_manifold_distances.pkl', 'rb'))
+    else:
+      self.mano_manifold_distances = self.compute_manifold_distances()
+      pickle.dump(self.mano_manifold_distances, open('mano_manifold_distances.pkl', 'wb'))
+
+  def compute_manifold_distances(self):
+    distances = np.zeros([self.num_points, self.num_points])
+    zero_verts = self.get_vertices(torch.normal(0,1,size=[1,15], device='cuda') * 0.001)[0].detach().cpu().numpy()
+    for i,js in enumerate(self.neighbors):
+      for j in js:
+        if i > j:
+          d = np.linalg.norm(zero_verts[i] - zero_verts[j])
+          distances[i][j] = d
+          distances[j][i] = d
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import floyd_warshall
+    graph = csr_matrix(distances)
+    dist_matrix = floyd_warshall(csgraph=graph, directed=False, return_predecessors=False)
+    return torch.tensor(dist_matrix).float().cuda()
 
   def load_obj(self, path):
     f = open(path)
@@ -212,119 +236,162 @@ class HandModel:
     normals = (torch.einsum('bfn,fv->bvn', vn1, self.n1_mat) + torch.einsum('bfn,fv->bvn', vn2, self.n2_mat) + torch.einsum('bfn,fv->bvn', vn3, self.n3_mat)) / self.fv_total.unsqueeze(0).unsqueeze(-1)
     normals = normals / torch.norm(normals, dim=-1, keepdim=True)
     return normals
+  
+  def manifold_distance(self, ptsA, ptsB):
+    # ptsA: B x 3
+    # ptsB: B x 3
+    # return: shortest distance on graph between ptsA and ptsB
+    distances = torch.stack([
+      self._manifold_distance(ptsA, ptsB[:,[0,1,2]]), 
+      self._manifold_distance(ptsA, ptsB[:,[0,2,1]]), 
+      self._manifold_distance(ptsA, ptsB[:,[1,0,2]]), 
+      self._manifold_distance(ptsA, ptsB[:,[1,2,0]]), 
+      self._manifold_distance(ptsA, ptsB[:,[2,0,1]]), 
+      self._manifold_distance(ptsA, ptsB[:,[2,1,0]])], dim=-1).min(-1)[0]
+    return distances
+  
+  def _manifold_distance(self, ptsA, ptsB):
+    # TODO: Run optimization on antelope
+    return self.mano_manifold_distances[ptsA, ptsB].sum(-1)
 
 if __name__ == "__main__":
   import numpy as np
-  from ObjectModel import ObjectModel
-  from CodeUtil import *
-  from PenetrationModel import PenetrationModel
+  import random
+  hand_model = HandModel()
+  z = torch.normal(0,1,size=[1,15]).float().cuda()
+  verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
 
-  obj_code, obj_idx = get_obj_code_random(1)
-  obj_mesh = get_obj_mesh(obj_idx[0])
+  import plotly
+  from plotly import graph_objects as go
+  fig = plotly.tools.make_subplots(1, 1, specs=[[{'type':'surface'}]])
 
-  hand_model = HandModel(root_rot_mode='rot6d')
+  pid = 329
 
-  object_model = ObjectModel()
-  penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
+  distances = hand_model.mano_manifold_distances[pid].detach().cpu().numpy()
+  distances[distances > 0.05] = 1
 
-  while True:
-    z = torch.normal(mean=0, std=1, size=[1, hand_model.code_length], requires_grad=True).float().cuda() * 0.5
-    hand_verts = hand_model.get_vertices(z)
-    hand_verts_bak = hand_verts.clone()
-    back_direction = hand_model.back_direction(z)
-    palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-    palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-    palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-    print(torch.dot(palm_normal[0], back_direction[0]))
-    z2 = hand_model.align(z, back_direction, palm_normal)
-    hand_verts = hand_model.get_vertices(z2)
-    back_direction = hand_model.back_direction(z2)
-    palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-    palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-    palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-    print(torch.dot(palm_normal[0], back_direction[0]))
-    z2 = hand_model.align(z2, back_direction, palm_normal)
-    hand_verts = hand_model.get_vertices(z2)
-    back_direction = hand_model.back_direction(z2)
-    palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-    palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-    palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-    print(torch.dot(palm_normal[0], back_direction[0]))
-    z2 = hand_model.align(z2, back_direction, palm_normal)
-    hand_verts = hand_model.get_vertices(z2)
-    back_direction = hand_model.back_direction(z2)
-    palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-    palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-    palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-    print(torch.dot(palm_normal[0], back_direction[0]))
-
-
-
-    max_penetration = penetration_model.get_max_penetration(obj_code, z2)
-    print(max_penetration)
-    z3 = z2.clone()
-    z2[:,:3] += back_direction * max_penetration
-
-    print(penetration_model.get_max_penetration(obj_code, z2))
-
-    hand_verts = hand_verts_bak.detach().cpu().numpy()
-    hand_verts2 = hand_model.get_vertices(z2).detach().cpu().numpy()
-    hand_verts3 = hand_model.get_vertices(z3).detach().cpu().numpy()
-
-    import plotly 
-    import plotly.graph_objects as go
-
-    fig = plotly.tools.make_subplots(specs=[[{'type':'surface'}]])
-
-    i_item = 0
-
-    # px = torch.tensor([0,1, 0,0, 0,0, 0]).float().cuda()
-    # py = torch.tensor([0,0, 0,1, 0,0, 0]).float().cuda()
-    # pz = torch.tensor([0,0, 0,0, 0,1, 0]).float().cuda()
-
-    # xyz = torch.stack([px,py,pz], dim=-1)
-    # rot1 = robust_compute_rotation_matrix_from_ortho6d(z[:,3:9])[0]
-    # rot2 = robust_compute_rotation_matrix_from_ortho6d(z2[:,3:9])[0]
-    # r1p = torch.matmul(rot1, xyz.transpose(0,1)).transpose(0,1).detach().cpu().numpy()
-    # r2p = torch.matmul(rot2, xyz.transpose(0,1)).transpose(0,1).detach().cpu().numpy()
-    # axis = forward_direction[0]
-
-    # fig.append_trace(go.Scatter3d(
-    #   x=r1p[:,0], y=r1p[:,1], z=r1p[:,2], marker=dict(color='red')
-    # ), 1, 1)
-
-    # fig.append_trace(go.Scatter3d(
-    #   x=r2p[:,0], y=r2p[:,1], z=r2p[:,2], marker=dict(color='blue')
-    # ), 1, 1)
-
-    # fig.append_trace(go.Scatter3d(
-    #   x=[-axis[0],axis[0]], y=[-axis[1], axis[1]], z=[-axis[2], axis[2]]
-    # ), 1, 1)
-
-    fig.append_trace(go.Mesh3d(
-      x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-      color='lightpink', opacity=1
+  fig.append_trace(go.Mesh3d(
+    x=verts[:,0], y=verts[:,1], z=verts[:,2], 
+    i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2],
+    intensity=distances
     ), 1, 1)
+  fig.append_trace(go.Scatter3d(
+    x=(verts[pid,0],), y=(verts[pid,1],), z=(verts[pid,2],), marker=dict(color='red', size=5)
+  ), 1, 1)
+  fig.show()
 
-    fig.append_trace(go.Mesh3d(
-      x=hand_verts2[i_item,:,0], y=hand_verts2[i_item,:,1], z=hand_verts2[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-      color='red', opacity=1
-    ), 1, 1)
 
-    fig.append_trace(go.Mesh3d(
-      x=hand_verts3[i_item,:,0], y=hand_verts3[i_item,:,1], z=hand_verts3[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-      color='brown', opacity=1
-    ), 1, 1)
+  # import numpy as np
+  # from ObjectModel import ObjectModel
+  # from CodeUtil import *
+  # from PenetrationModel import PenetrationModel
 
-    fig.append_trace(go.Mesh3d(
-      x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], 
-      i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
-      color='blue', opacity=1
-    ), 1, 1)
-    fig.update_layout(dict(scene=dict(aspectmode='data')), showlegend=False)
+  # obj_code, obj_idx = get_obj_code_random(1)
+  # obj_mesh = get_obj_mesh(obj_idx[0])
 
-    fig.show()
-    input()
+  # hand_model = HandModel(root_rot_mode='rot6d')
+
+  # object_model = ObjectModel()
+  # penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
+
+  # while True:
+  #   z = torch.normal(mean=0, std=1, size=[1, hand_model.code_length], requires_grad=True).float().cuda() * 0.5
+  #   hand_verts = hand_model.get_vertices(z)
+  #   hand_verts_bak = hand_verts.clone()
+  #   back_direction = hand_model.back_direction(z)
+  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
+  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
+  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
+  #   print(torch.dot(palm_normal[0], back_direction[0]))
+  #   z2 = hand_model.align(z, back_direction, palm_normal)
+  #   hand_verts = hand_model.get_vertices(z2)
+  #   back_direction = hand_model.back_direction(z2)
+  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
+  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
+  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
+  #   print(torch.dot(palm_normal[0], back_direction[0]))
+  #   z2 = hand_model.align(z2, back_direction, palm_normal)
+  #   hand_verts = hand_model.get_vertices(z2)
+  #   back_direction = hand_model.back_direction(z2)
+  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
+  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
+  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
+  #   print(torch.dot(palm_normal[0], back_direction[0]))
+  #   z2 = hand_model.align(z2, back_direction, palm_normal)
+  #   hand_verts = hand_model.get_vertices(z2)
+  #   back_direction = hand_model.back_direction(z2)
+  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
+  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
+  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
+  #   print(torch.dot(palm_normal[0], back_direction[0]))
+
+
+
+  #   max_penetration = penetration_model.get_max_penetration(obj_code, z2)
+  #   print(max_penetration)
+  #   z3 = z2.clone()
+  #   z2[:,:3] += back_direction * max_penetration
+
+  #   print(penetration_model.get_max_penetration(obj_code, z2))
+
+  #   hand_verts = hand_verts_bak.detach().cpu().numpy()
+  #   hand_verts2 = hand_model.get_vertices(z2).detach().cpu().numpy()
+  #   hand_verts3 = hand_model.get_vertices(z3).detach().cpu().numpy()
+
+  #   import plotly 
+  #   import plotly.graph_objects as go
+
+  #   fig = plotly.tools.make_subplots(specs=[[{'type':'surface'}]])
+
+  #   i_item = 0
+
+  # px = torch.tensor([0,1, 0,0, 0,0, 0]).float().cuda()
+  # py = torch.tensor([0,0, 0,1, 0,0, 0]).float().cuda()
+  # pz = torch.tensor([0,0, 0,0, 0,1, 0]).float().cuda()
+
+  # xyz = torch.stack([px,py,pz], dim=-1)
+  # rot1 = robust_compute_rotation_matrix_from_ortho6d(z[:,3:9])[0]
+  # rot2 = robust_compute_rotation_matrix_from_ortho6d(z2[:,3:9])[0]
+  # r1p = torch.matmul(rot1, xyz.transpose(0,1)).transpose(0,1).detach().cpu().numpy()
+  # r2p = torch.matmul(rot2, xyz.transpose(0,1)).transpose(0,1).detach().cpu().numpy()
+  # axis = forward_direction[0]
+
+  # fig.append_trace(go.Scatter3d(
+  #   x=r1p[:,0], y=r1p[:,1], z=r1p[:,2], marker=dict(color='red')
+  # ), 1, 1)
+
+  # fig.append_trace(go.Scatter3d(
+  #   x=r2p[:,0], y=r2p[:,1], z=r2p[:,2], marker=dict(color='blue')
+  # ), 1, 1)
+
+  # fig.append_trace(go.Scatter3d(
+  #   x=[-axis[0],axis[0]], y=[-axis[1], axis[1]], z=[-axis[2], axis[2]]
+  # ), 1, 1)
+
+  # fig.append_trace(go.Mesh3d(
+  #   x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
+  #   color='lightpink', opacity=1
+  # ), 1, 1)
+
+  # fig.append_trace(go.Mesh3d(
+  #   x=hand_verts2[i_item,:,0], y=hand_verts2[i_item,:,1], z=hand_verts2[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
+  #   color='red', opacity=1
+  # ), 1, 1)
+
+  # fig.append_trace(go.Mesh3d(
+  #   x=hand_verts3[i_item,:,0], y=hand_verts3[i_item,:,1], z=hand_verts3[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
+  #   color='brown', opacity=1
+  # ), 1, 1)
+
+  # fig.append_trace(go.Mesh3d(
+  #   x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], 
+  #   i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
+  #   color='blue', opacity=1
+  # ), 1, 1)
+  # fig.update_layout(dict(scene=dict(aspectmode='data')), showlegend=False)
+
+  # fig.show()
+  # input()
 
   # cx, cy, cz = hand_verts[0].mean(0)
 

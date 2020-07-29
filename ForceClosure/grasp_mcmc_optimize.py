@@ -137,11 +137,12 @@ for _iter in range(5000):
 # print(energy[i_item].detach().cpu().numpy())
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
 energy_entries = ['linear_independence', 'force_closure', 'surface_distance', 'penetration', 'z_norm', 'normal_alignment']
+
 for i in range(6):
   # plt.subplot(3,3,i+1)
   # plt.hist(energy[i].detach().cpu().numpy())
   # plt.title(energy_entries[i])
-  print(energy_entries[i], energy[i][0].detach().cpu().numpy())
+  print(_iter, energy_entries[i], energy[i][0].detach().cpu().numpy())
 
 pickle.dump([obj_code, z, contact_point_indices, energy], open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'wb'))
 # visualize(obj_code, contact_point_indices, z, 0)
