@@ -117,6 +117,9 @@ ema = EMA(0.05)
 for _iter in range(5000):
   linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
   grad = torch.autograd.grad((force_closure + surface_distance + penetration).sum(), z)[0]
+  grad1 = torch.autograd.grad(force_closure.sum(), z)[0]
+  grad2 = torch.autograd.grad(surface_distance.sum(), z)[0]
+  grad3 = torch.autograd.grad(penetration.sum(), z)[0]
   z[:,-6:] = z[:,-6:] - grad[:,-6:] * 2e-2
   # ema.apply(grad)
   # grad = grad / ema.average
@@ -135,12 +138,9 @@ for _iter in range(5000):
   #   plt.pause(1e-5)
   print(_iter, linear_independence.detach().cpu().numpy().mean(), force_closure.detach().cpu().numpy().mean(), surface_distance.detach().cpu().numpy().mean(), penetration.detach().cpu().numpy().mean(), z_norm.detach().cpu().numpy().mean(), normal_alignment.detach().cpu().numpy().mean())
   print(grad[164])
-  grad = torch.autograd.grad(force_closure.sum(), z)[0]
-  print(grad[164])
-  grad = torch.autograd.grad(surface_distance.sum(), z)[0]
-  print(grad[164])
-  grad = torch.autograd.grad(penetration.sum(), z)[0]
-  print(grad[164])
+  print(grad1[164])
+  print(grad2[164])
+  print(grad3[164])
   print(z[164])
 
 # print(energy[i_item].detach().cpu().numpy())
