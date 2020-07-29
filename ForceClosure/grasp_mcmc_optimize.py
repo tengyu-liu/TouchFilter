@@ -37,10 +37,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, no_grad=Fa
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
 
-  print('contact_point', contact_point[164])
-  print('contact_distance', contact_distance[164])
-  print('contact_normal', contact_normal[164])
-
   grad_op = torch.enable_grad
   if no_grad:
     grad_op = torch.no_grad
@@ -53,7 +49,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, no_grad=Fa
     hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
 
     normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
-    print('contact_normal', contact_normal[164])
     linear_independence, force_closure, surface_distance = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
     penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
     z_norm = torch.norm(z[:,-6:], dim=-1)
@@ -139,8 +134,6 @@ for _iter in range(5000):
   #     ax[i].set_title(energy_entries[i])
   #   plt.pause(1e-5)
   print(_iter, linear_independence.detach().cpu().numpy().mean(), force_closure.detach().cpu().numpy().mean(), surface_distance.detach().cpu().numpy().mean(), penetration.detach().cpu().numpy().mean(), z_norm.detach().cpu().numpy().mean(), normal_alignment.detach().cpu().numpy().mean())
-  print(grad[164])
-  print(z[164])
 
 # print(energy[i_item].detach().cpu().numpy())
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
