@@ -135,6 +135,12 @@ for _iter in range(5000):
   #   plt.pause(1e-5)
   print(_iter, linear_independence.detach().cpu().numpy().mean(), force_closure.detach().cpu().numpy().mean(), surface_distance.detach().cpu().numpy().mean(), penetration.detach().cpu().numpy().mean(), z_norm.detach().cpu().numpy().mean(), normal_alignment.detach().cpu().numpy().mean())
   print(grad[164])
+  grad = torch.autograd.grad(force_closure.sum(), z)[0]
+  print(grad[164])
+  grad = torch.autograd.grad(surface_distance.sum(), z)[0]
+  print(grad[164])
+  grad = torch.autograd.grad(penetration.sum(), z)[0]
+  print(grad[164])
   print(z[164])
 
 # print(energy[i_item].detach().cpu().numpy())
