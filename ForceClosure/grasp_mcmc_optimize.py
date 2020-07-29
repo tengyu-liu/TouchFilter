@@ -24,7 +24,7 @@ penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_
 
 data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
 
-obj_code, z, contact_point_indices, energy = data
+obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history = data
 
 # i_item = np.argmin(energy.detach().cpu().numpy())
 i_item = int(random.random() * len(z))
