@@ -3,8 +3,6 @@ import torch.nn as nn
 from HandModel import HandModel
 from ObjectModel import ObjectModel
 
-torch.manual_seed(0)
-
 class PenetrationModel:
   def __init__(self, hand_model: HandModel, object_model: ObjectModel):
     self.hand_model = hand_model

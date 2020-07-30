@@ -1,9 +1,6 @@
 import numpy as np
 import torch
 
-np.random.seed(0)
-torch.manual_seed(0)
-
 class FCLoss:
   def __init__(self, object_model):
     

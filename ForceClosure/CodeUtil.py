@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import trimesh
 
-np.random.seed(0)
-torch.manual_seed(0)
+# np.random.seed(0)
+# torch.manual_seed(0)
 
 code_path = 'data/Reconstructions/2000/Codes/ShapeNetCore.v2/02876657'
 mesh_path = 'data/Reconstructions/2000/Meshes/ShapeNetCore.v2/02876657'

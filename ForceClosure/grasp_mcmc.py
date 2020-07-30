@@ -14,8 +14,8 @@ import torch.nn as nn
 import torch.utils.tensorboard
 
 np.seterr(all='raise')
-np.random.seed(0)
-torch.manual_seed(0)
+# np.random.seed(0)
+# torch.manual_seed(0)
 
 from CodeUtil import *
 from EMA import EMA

@@ -4,8 +4,6 @@ import torch
 import third_party.DeepSDF.deep_sdf as deep_sdf
 import third_party.DeepSDF.networks.deep_sdf_decoder as arch
 
-torch.manual_seed(0)
-
 class ObjectModel:
   def __init__(self, state_dict_path="data/ModelParameters/2000.pth"):
     self.decoder = arch.Decoder(
