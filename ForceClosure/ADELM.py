@@ -32,6 +32,8 @@ parser.add_argument('--T', default=0.1, type=float)
 parser.add_argument('--alpha', default=0.1, type=float)
 parser.add_argument('--delta', default=0.15, type=float) # earth moving distance between contact points
 parser.add_argument('--M', default=1, type=int)
+# - data loading
+parser.add_argument('--data_path', default='logs/sample_0/optimized_998000.pkl', type=str)
 args = parser.parse_args()
 
 # prepare models
@@ -59,24 +61,22 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
 
   with torch.no_grad():
     hand_normal = hand_model.get_surface_normals(verts=hand_verts)
-    closest_distances, closest_indices = torch.norm(hand_verts.unsqueeze(2) - contact_point.unsqueeze(1), dim=-1).min(1)
     closest_normals = torch.stack([hand_normal[torch.arange(args.batch_size), closest_indices[:,i], :] for i in range(3)], dim=1)
     closest_normals = closest_normals / torch.norm(closest_normals, dim=-1, keepdim=True)    
-    hand_loss = closest_distances.sum(1)
     normal_alignment = ((closest_normals * contact_normal).sum(-1) + 1).sum(-1)
     linear_independence, force_closure, surface_distance = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
     penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
     z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
-    loss = hand_loss * 0.1 + linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm * 0.1 + normal_alignment
+    loss = linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm * 0.1 + normal_alignment
     if verbose:
-      return hand_loss * 0.1, linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm * 0.1, normal_alignment
+      return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm * 0.1, normal_alignment
     else:
       return loss
 
 def distance(X, Y):
   object_x, z_x, contact_point_indices_x = X
   object_y, z_y, contact_point_indices_y = Y
-  return hand_model.manifold_distance(contact_point_indices_x, contact_point_indices_y) # FIXME: needs impelmentation
+  return hand_model.manifold_distance(contact_point_indices_x, contact_point_indices_y)
 
 def MCMC(X, Xstar, T, alpha):
   object_x, z_x, contact_point_indices_x = X
@@ -111,7 +111,6 @@ def MCMC(X, Xstar, T, alpha):
   return [object_x, z_x, contact_point_indices_x], d, energy
 
 def attraction_diffusion(C, Xstar, alpha, T, M):
-  # FIXME: update U, m, dstar for batch process
   d = distance(C, Xstar)
   dstar = d
   m = torch.zeros([d.shape[0]], device='cuda').float()
@@ -133,9 +132,14 @@ def attraction_diffusion(C, Xstar, alpha, T, M):
     not_finished = torch.logical_and(d > alpha, m < M)
   return d, B
 
+def load_proposals(path):
+  obj_code, z, contact_point_indices, energy = pickle.load(open(path, 'rb'))
+  Y = zip(obj_code, z, contact_point_indices)
+  linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = energy
+  energy = linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm * 0.1 + normal_alignment
+  return Y, energy
 
-# FIXME: prepare inputs
-Y, UY = load_proposals()  # each proposal is already a local minimum
+Y, UY = load_proposals(args.data_path)  # each proposal is already a local minimum
 
 # ADELM
 l = []

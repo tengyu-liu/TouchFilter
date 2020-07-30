@@ -13,14 +13,16 @@ import torch
 import torch.nn as nn
 import torch.utils.tensorboard
 
+np.seterr(all='raise')
+np.random.seed(0)
+torch.manual_seed(0)
+
 from CodeUtil import *
 from EMA import EMA
 from HandModel import HandModel
 from Losses import FCLoss
 from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
-
-np.seterr(all='raise')
 
 # prepare argument
 parser = argparse.ArgumentParser()
@@ -30,8 +32,8 @@ parser.add_argument('--n_iter', default=1000000, type=int)
 parser.add_argument('--annealing_period', default=100, type=int)
 parser.add_argument('--starting_temperature', default=1, type=float)
 parser.add_argument('--temperature_decay', default=0.95, type=float)
-parser.add_argument('--stepsize_period', default=10000, type=int)
-parser.add_argument('--update_size', default=0.1, type=float)
+parser.add_argument('--stepsize_period', default=100, type=int)
+parser.add_argument('--noise_size', default=0.1, type=float)
 parser.add_argument('--name', default='exp', type=str)
 parser.add_argument('--mano_path', default='third_party/manopth/mano/models', type=str)
 parser.add_argument('--viz', action='store_true')
@@ -87,28 +89,24 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(3)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
-  contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
 
-  with torch.no_grad():
-    hand_normal = hand_model.get_surface_normals(verts=hand_verts)
-    closest_distances, closest_indices = torch.norm(hand_verts.unsqueeze(2) - contact_point.unsqueeze(1), dim=-1).min(1)
-    closest_normals = torch.stack([hand_normal[torch.arange(args.batch_size), closest_indices[:,i], :] for i in range(3)], dim=1)
-    closest_normals = closest_normals / torch.norm(closest_normals, dim=-1, keepdim=True)    
-    hand_loss = closest_distances.sum(1)
-    normal_alignment = ((closest_normals * contact_normal).sum(-1) + 1).sum(-1)
-    linear_independence, force_closure, surface_distance = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
-    penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
-    z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
-    loss = hand_loss * 0.1 + linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm * 0.1 + normal_alignment
-    if verbose:
-      return hand_loss * 0.1, linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm * 0.1, normal_alignment
-    else:
-      return loss
+  contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
+  hand_normal = hand_model.get_surface_normals(verts=hand_verts)
+  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
+  hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
+  normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
+  linear_independence, force_closure, surface_distance = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
+  penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
+  z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
+  if verbose:
+    return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
+  else:
+    return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
 starting_temperature = torch.tensor(args.starting_temperature).float().cuda()
 temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
 annealing_period = torch.tensor(args.annealing_period).float().cuda()
-update_size = torch.tensor(args.update_size).float().cuda()
+noise_size = torch.tensor(args.noise_size).float().cuda()
 temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
 stepsize_period = torch.tensor(args.stepsize_period).float().cuda()
 
@@ -117,15 +115,11 @@ def T(t):
   return starting_temperature * temperature_decay ** (t // annealing_period)
 
 def S(t):
-  return update_size * temperature_decay ** (t // stepsize_period)
+  return noise_size * temperature_decay ** (t // stepsize_period)
 
 # initialize z and contact point
 contact_point_indices = torch.randint(0, hand_model.num_points, size=[args.batch_size, 3], device='cuda')
 z = torch.normal(mean=0, std=1, size=[args.batch_size, hand_model.code_length], requires_grad=True).float().cuda()
-energy = compute_energy(obj_code, z, contact_point_indices)
-energy_history = []
-temperature_history = []
-stepsize_history = []
 
 # align palm facing direction
 for align_iter in range(3):
@@ -144,14 +138,22 @@ with torch.no_grad():
 
 z.requires_grad_()
 
+energy = compute_energy(obj_code, z, contact_point_indices)
+grad = torch.autograd.grad(energy.sum(), z)[0]
+energy_history = []
+temperature_history = []
+stepsize_history = []
+
 # mcmc
 for _iter in range(args.n_iter):
   # 50/50 chance of updating z or contact point
   rand = random.random()
+  step_size = S(_iter)
+  temperature = T(_iter)
   if rand < 0.5:
-    # update z
-    z_update = torch.normal(mean=0, std=1, size=z.shape, device='cuda').float() * S(_iter) * torch.randint(0, 2, size=z.shape, device='cuda').float()
-    new_z = z + z_update
+    # update z using matropolis-hasting langevin
+    noise = torch.normal(mean=0, std=1, size=z.shape, device='cuda').float() * step_size
+    new_z = z - 0.5 * grad * step_size * step_size + noise
     new_contact_point_indices = contact_point_indices
   else:
     # update contact point
@@ -162,20 +164,21 @@ for _iter in range(args.n_iter):
     new_z = z
   # compute new energy
   new_energy = compute_energy(obj_code, new_z, new_contact_point_indices)
+  new_grad = torch.autograd.grad(new_energy.sum(), new_z)[0]
   with torch.no_grad():
     # metropolis-hasting
     alpha = torch.rand(args.batch_size, device='cuda').float()
-    accept = alpha < torch.exp((energy - new_energy) / T(_iter))
+    accept = alpha < torch.exp((energy - new_energy) / temperature)
     z[accept] = new_z[accept]
     contact_point_indices[accept] = new_contact_point_indices[accept]
     energy[accept] = new_energy[accept]
-
+    grad[accept] = new_grad[accept]
 
   if _iter % 100 == 0:
     print('\r%d: %f'%(_iter, energy.mean().detach().cpu().numpy()), end='', flush=True)
     energy_history.append(energy.mean().detach().cpu().numpy())
-    temperature_history.append(T(_iter))
-    stepsize_history.append(S(_iter))
+    temperature_history.append(temperature)
+    stepsize_history.append(step_size)
     if args.viz:
       ax1.cla()
       ax1.plot(energy_history)
