@@ -99,9 +99,9 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
   z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
   if verbose:
-    return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
+    return linear_independence, force_closure, surface_distance.sum(1) * 100, penetration.sum(1) * 100, z_norm, normal_alignment
   else:
-    return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
+    return linear_independence + force_closure + surface_distance.sum(1) * 100 + penetration.sum(1) * 100 + z_norm + normal_alignment
 
 starting_temperature = torch.tensor(args.starting_temperature).float().cuda()
 temperature_decay = torch.tensor(args.temperature_decay).float().cuda()

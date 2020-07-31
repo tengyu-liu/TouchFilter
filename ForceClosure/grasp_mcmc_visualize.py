@@ -15,7 +15,7 @@ from PenetrationModel import PenetrationModel
 
 
 name = sys.argv[1]
-i_iter = int(sys.argv[2])
+# i_iter = int(sys.argv[2])
 
 hand_model = HandModel(flat_hand_mean=False)
 object_model = ObjectModel()
@@ -24,7 +24,7 @@ grasp_prediction = GraspPrediction(num_cp=3, hand_code_length=hand_model.code_le
 penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
 
 # data = pickle.load(open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'rb'))
-old_data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
+old_data = pickle.load(open('logs/%s/last.pkl'%(name), 'rb'))
 
 # obj_code, z, contact_point_indices, energy = data
 obj_code, old_z, contact_point_indices, old_energy = old_data[:4]

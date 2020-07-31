@@ -54,7 +54,7 @@ class FCLoss:
     """
     B = f.shape[0]
     N = f.shape[1]
-    return self.l2_norm(torch.matmul(G, f.reshape(B, 3*N, 1)))
+    return self.relu(self.l2_norm(torch.matmul(G, f.reshape(B, 3*N, 1))) - 0.2)
   
   def loss_8c(self, normal):
     """

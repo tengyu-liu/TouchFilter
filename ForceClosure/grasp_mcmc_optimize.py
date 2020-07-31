@@ -14,7 +14,6 @@ from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
 
 name = sys.argv[1]
-i_iter = int(sys.argv[2])
 
 hand_model = HandModel(flat_hand_mean=False)
 object_model = ObjectModel()
@@ -22,7 +21,7 @@ fc_loss_model = FCLoss(object_model=object_model)
 grasp_prediction = GraspPrediction(num_cp=3, hand_code_length=hand_model.code_length, num_handpoint=hand_model.num_points).cuda()
 penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
 
-data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
+data = pickle.load(open('logs/%s/last.pkl'%(name), 'rb'))
 
 obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history = data
 
@@ -115,25 +114,26 @@ ema = EMA(0.05)
 # ax = [plt.subplot(2,3,i+1) for i in range(6)]
 
 for _iter in range(5000):
-  linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
-  grad = torch.autograd.grad((force_closure + surface_distance + penetration).sum(), z, retain_graph=True)[0]
-  z[:,-6:] = z[:,-6:] - grad[:,-6:] * 2e-2
-  # ema.apply(grad)
-  # grad = grad / ema.average
-  # z = z - grad * 1e-5
-  # energy_history[0].append(linear_independence[0].detach().cpu().numpy())
-  # energy_history[1].append(force_closure[0].detach().cpu().numpy())
-  # energy_history[2].append(surface_distance[0].detach().cpu().numpy())
-  # energy_history[3].append(penetration[0].detach().cpu().numpy())
-  # energy_history[4].append(z_norm[0].detach().cpu().numpy())
-  # energy_history[5].append(normal_alignment[0].detach().cpu().numpy())
-  # if _iter % 100 == 0 or _iter == 4999:
-  #   for i in range(6):
-  #     ax[i].cla()
-  #     ax[i].plot(energy_history[i])
-  #     ax[i].set_title(energy_entries[i])
-  #   plt.pause(1e-5)
-  print(_iter, linear_independence.detach().cpu().numpy().mean(), force_closure.detach().cpu().numpy().mean(), surface_distance.detach().cpu().numpy().mean(), penetration.detach().cpu().numpy().mean(), z_norm.detach().cpu().numpy().mean(), normal_alignment.detach().cpu().numpy().mean())
+  for idx in [np.arange(0,128), np.arange(128,256)]:
+    linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code[idx], z[idx], contact_point_indices[idx], verbose=True)
+    grad = torch.autograd.grad((force_closure + surface_distance + penetration).sum(), z[idx], retain_graph=True)[0]
+    z[idx,-6:] = z[idx,-6:] - grad[:,-6:] * 2e-2
+    # ema.apply(grad)
+    # grad = grad / ema.average
+    # z = z - grad * 1e-5
+    # energy_history[0].append(linear_independence[0].detach().cpu().numpy())
+    # energy_history[1].append(force_closure[0].detach().cpu().numpy())
+    # energy_history[2].append(surface_distance[0].detach().cpu().numpy())
+    # energy_history[3].append(penetration[0].detach().cpu().numpy())
+    # energy_history[4].append(z_norm[0].detach().cpu().numpy())
+    # energy_history[5].append(normal_alignment[0].detach().cpu().numpy())
+    # if _iter % 100 == 0 or _iter == 4999:
+    #   for i in range(6):
+    #     ax[i].cla()
+    #     ax[i].plot(energy_history[i])
+    #     ax[i].set_title(energy_entries[i])
+    #   plt.pause(1e-5)
+    print(_iter, linear_independence.detach().cpu().numpy().mean(), force_closure.detach().cpu().numpy().mean(), surface_distance.detach().cpu().numpy().mean(), penetration.detach().cpu().numpy().mean(), z_norm.detach().cpu().numpy().mean(), normal_alignment.detach().cpu().numpy().mean())
 
 # print(energy[i_item].detach().cpu().numpy())
 energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
@@ -145,6 +145,6 @@ for i in range(6):
   # plt.title(energy_entries[i])
   print(energy_entries[i], energy[i][0].detach().cpu().numpy())
 
-pickle.dump([obj_code, z, contact_point_indices, energy], open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'wb'))
+pickle.dump([obj_code, z, contact_point_indices, energy], open('logs/%s/optimized.pkl'%(name), 'wb'))
 # visualize(obj_code, contact_point_indices, z, 0)
 # input()
