@@ -32,6 +32,7 @@ parser.add_argument('--n_iter', default=1000000, type=int)
 parser.add_argument('--annealing_period', default=100, type=int)
 parser.add_argument('--starting_temperature', default=1, type=float)
 parser.add_argument('--temperature_decay', default=0.95, type=float)
+parser.add_argument('--mu', default=0.98, type=float)
 parser.add_argument('--stepsize_period', default=100, type=int)
 parser.add_argument('--noise_size', default=0.1, type=float)
 parser.add_argument('--name', default='exp', type=str)
@@ -48,9 +49,10 @@ if args.viz:
 
   plt.ion()
   plt.title(args.name)
-  ax1 = plt.subplot(131)
-  ax2 = plt.subplot(132)
-  ax3 = plt.subplot(133)
+  ax1 = plt.subplot(221)
+  ax2 = plt.subplot(222)
+  ax3 = plt.subplot(223)
+  ax4 = plt.subplot(224, projection='3d')
 
 log_dir = os.path.join('logs', args.name)
 shutil.rmtree(log_dir, ignore_errors=True)
@@ -95,13 +97,45 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
   hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
-  linear_independence, force_closure, surface_distance = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
+  linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
+  surface_distance = fc_loss_model.dist_loss(obj_code, contact_point)
   penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
   z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
   if verbose:
-    return linear_independence, force_closure, surface_distance.sum(1) * 100, penetration.sum(1) * 100, z_norm, normal_alignment
+    return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
   else:
-    return linear_independence + force_closure + surface_distance.sum(1) * 100 + penetration.sum(1) * 100 + z_norm + normal_alignment
+    return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
+
+
+def compute_contact_energy(obj_code, z, contact_point_indices, verbose=False):
+  hand_verts = hand_model.get_vertices(z)
+  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+  surface_distance = fc_loss_model.dist_loss(obj_code, contact_point)
+  penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
+  z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
+  if verbose:
+    return surface_distance.sum(1), penetration.sum(1), z_norm
+  else:
+    return surface_distance.sum(1) + penetration.sum(1) + z_norm
+
+
+def compute_closure_energy(obj_code, z, contact_point_indices, verbose=False):
+  hand_verts = hand_model.get_vertices(z)
+  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+  contact_distance = object_model.distance(obj_code, contact_point)
+  contact_normal = object_model.gradient(contact_point, contact_distance)
+
+  contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
+  hand_normal = hand_model.get_surface_normals(verts=hand_verts)
+  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
+  hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
+  normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
+  linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
+  if verbose:
+    return linear_independence, force_closure, normal_alignment
+  else:
+    return linear_independence + force_closure + normal_alignment
+
 
 starting_temperature = torch.tensor(args.starting_temperature).float().cuda()
 temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
@@ -144,6 +178,9 @@ energy_history = []
 temperature_history = []
 stepsize_history = []
 
+grad_ema = EMA(args.mu)
+grad_ema.apply(grad)
+
 # mcmc
 for _iter in range(args.n_iter):
   # 50/50 chance of updating z or contact point
@@ -153,7 +190,7 @@ for _iter in range(args.n_iter):
   if rand < 0.5:
     # update z using matropolis-hasting langevin
     noise = torch.normal(mean=0, std=1, size=z.shape, device='cuda').float() * step_size
-    new_z = z - 0.5 * grad * step_size * step_size + noise
+    new_z = z - 0.5 * grad / grad_ema.average.unsqueeze(0) * step_size * step_size + noise
     new_contact_point_indices = contact_point_indices
   else:
     # update contact point
@@ -173,13 +210,17 @@ for _iter in range(args.n_iter):
     contact_point_indices[accept] = new_contact_point_indices[accept]
     energy[accept] = new_energy[accept]
     grad[accept] = new_grad[accept]
+    grad_ema.apply(grad)
 
   if _iter % 100 == 0:
     print('\r%d: %f'%(_iter, energy.mean().detach().cpu().numpy()), end='', flush=True)
     energy_history.append(energy.mean().detach().cpu().numpy())
     temperature_history.append(temperature)
     stepsize_history.append(step_size)
+    
     if args.viz:
+      i_item = random.randint(0, args.batch_size-1)
+      mesh = get_obj_mesh(obj_idx[i_item])
       ax1.cla()
       ax1.plot(energy_history)
       ax1.set_yscale('log')
@@ -189,6 +230,16 @@ for _iter in range(args.n_iter):
       ax3.cla()
       ax3.plot(stepsize_history)
       ax3.set_yscale('log')
+      ax4.cla()
+      verts = hand_model.get_vertices(z).detach().cpu().numpy()
+      cpi = contact_point_indices[i_item].detach().cpu().numpy()
+      ax4.scatter(verts[i_item, :,0], verts[i_item, :,1], verts[i_item, :,2], color='lightpink', s=2)
+      ax4.scatter(mesh.vertices[:,0], mesh.vertices[:,1], mesh.vertices[:,2], color='lightblue', s=2)
+      ax4.scatter(verts[i_item, cpi, 0], verts[i_item, cpi, 1], verts[i_item, cpi, 2], color='red', s=5)
+      ax4.set_xlim([-1,1])
+      ax4.set_ylim([-1,1])
+      ax4.set_zlim([-1,1])
+      ax4.axis('off')
 
       plt.title(args.name)
       plt.pause(1e-5)

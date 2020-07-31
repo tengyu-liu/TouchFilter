@@ -6,5 +6,5 @@ class EMA:
     self.average = torch.tensor(1.0).float().cuda()
 
   def apply(self, x):
-    for _x in x.abs():
-      self.average = self.mu * _x + (1-self.mu) * self.average
+    _x = x.abs().mean(0)
+    self.average = self.mu * _x + (1-self.mu) * self.average

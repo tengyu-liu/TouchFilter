@@ -15,7 +15,7 @@ from PenetrationModel import PenetrationModel
 
 
 name = sys.argv[1]
-# i_iter = int(sys.argv[2])
+i_iter = int(sys.argv[2])
 
 hand_model = HandModel(flat_hand_mean=False)
 object_model = ObjectModel()
@@ -24,7 +24,7 @@ grasp_prediction = GraspPrediction(num_cp=3, hand_code_length=hand_model.code_le
 penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
 
 # data = pickle.load(open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'rb'))
-old_data = pickle.load(open('logs/%s/last.pkl'%(name), 'rb'))
+old_data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
 
 # obj_code, z, contact_point_indices, energy = data
 obj_code, old_z, contact_point_indices, old_energy = old_data[:4]
@@ -36,25 +36,22 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   contact_point = torch.stack([hand_verts[torch.arange(z.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
+
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
+  hand_normal = hand_model.get_surface_normals(verts=hand_verts)
+  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
+  hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
+  normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
+  linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
+  surface_distance = fc_loss_model.dist_loss(obj_code, contact_point)
+  penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
+  z_norm = torch.norm(z[:,-6:], dim=-1)
+  if verbose:
+    return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
+  else:
+    return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
-  with torch.no_grad():
-    hand_normal = hand_model.get_surface_normals(verts=hand_verts)
-    closest_distances, closest_indices = torch.norm(hand_verts.unsqueeze(2) - contact_point.unsqueeze(1), dim=-1).min(1)
-    closest_normals = torch.stack([hand_normal[torch.arange(z.shape[0]), closest_indices[:,i], :] for i in range(3)], dim=1)
-    closest_normals = closest_normals / torch.norm(closest_normals, dim=-1, keepdim=True)    
-    hand_loss = closest_distances.sum(1)
-    normal_alignment = ((closest_normals * contact_normal).sum(-1) + 1).sum(-1)
-    linear_independence, force_closure, surface_distance = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
-    penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
-    z_norm = torch.norm(z[:,-6:], dim=-1)
-    loss = hand_loss * 0.1 + linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm * 0.1 + normal_alignment
-    if verbose:
-      return hand_loss * 0.1, linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm * 0.1, normal_alignment
-    else:
-      return loss
-
-hand_loss, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, old_z, contact_point_indices, verbose=True)
+linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, old_z, contact_point_indices, verbose=True)
 # # import matplotlib.pyplot as plt
 # energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
 # energy_entries = ['hand_loss', 'linear_independence', 'force_closure', 'surface_distance', 'penetration', 'z_norm', 'normal_alignment']
@@ -121,7 +118,6 @@ for i_item in range(len(obj_code)):
   # print(i_item, sum(energy)[i_item].detach().cpu().numpy())
   fig.show()
   print(i_item, old_energy[i_item].detach().cpu().numpy())
-  print('hand_loss', hand_loss[i_item].detach().cpu().numpy())
   print('linear_independence', linear_independence[i_item].detach().cpu().numpy())
   print('force_closure', force_closure[i_item].detach().cpu().numpy())
   print('surface_distance', surface_distance[i_item].detach().cpu().numpy())

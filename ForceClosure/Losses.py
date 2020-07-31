@@ -78,8 +78,8 @@ class FCLoss:
     l8a = self.loss_8a(G)
     l8b = self.loss_8b(normal, G)
     # l8c = self.loss_8c(normal)
-    l8d = self.dist_loss(obj_code, x)
-    return l8a, l8b, l8d
+    # l8d = self.dist_loss(obj_code, x)
+    return l8a, l8b
 
 if __name__ == "__main__":
   import matplotlib.pyplot as plt
