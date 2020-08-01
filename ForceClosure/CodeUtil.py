@@ -129,8 +129,8 @@ skip = [
   ]
 
 for fn in _fns:
-  # if fn in skip:
-  #   continue
+  if fn in skip:
+    continue
   _codes.append(torch.load(os.path.join(code_path, fn)).squeeze().float().cuda())
   _meshes.append(trimesh.load(os.path.join(mesh_path, fn[:-3] + 'ply')))
 
