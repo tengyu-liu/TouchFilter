@@ -17,7 +17,7 @@ class PenetrationModel:
 
   def get_penetration_from_verts(self, obj_code, hand_vertices):
     h2o_distances = self.object_model.distance(obj_code, hand_vertices) # B x V x 1
-    penetration = self.relu(-h2o_distances).squeeze()
+    penetration = self.relu(-h2o_distances).squeeze(-1)
     return penetration
 
   def get_max_penetration(self, obj_code, hand_code):

@@ -107,36 +107,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
     return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
 
-def compute_contact_energy(obj_code, z, contact_point_indices, verbose=False):
-  hand_verts = hand_model.get_vertices(z)
-  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(3)], dim=1)
-  surface_distance = fc_loss_model.dist_loss(obj_code, contact_point)
-  penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
-  z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
-  if verbose:
-    return surface_distance.sum(1), penetration.sum(1), z_norm
-  else:
-    return surface_distance.sum(1) + penetration.sum(1) + z_norm
-
-
-def compute_closure_energy(obj_code, z, contact_point_indices, verbose=False):
-  hand_verts = hand_model.get_vertices(z)
-  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(3)], dim=1)
-  contact_distance = object_model.distance(obj_code, contact_point)
-  contact_normal = object_model.gradient(contact_point, contact_distance)
-
-  contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
-  hand_normal = hand_model.get_surface_normals(verts=hand_verts)
-  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
-  hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
-  normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
-  linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
-  if verbose:
-    return linear_independence, force_closure, normal_alignment
-  else:
-    return linear_independence + force_closure + normal_alignment
-
-
 starting_temperature = torch.tensor(args.starting_temperature).float().cuda()
 temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
 annealing_period = torch.tensor(args.annealing_period).float().cuda()

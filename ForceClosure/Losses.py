@@ -70,7 +70,7 @@ class FCLoss:
     return torch.sum(self.relu(-diff), 1)
   
   def dist_loss(self, obj_code, x):
-    d = self.obj_model.distance(obj_code, x).squeeze()
+    d = self.obj_model.distance(obj_code, x).squeeze(-1)
     return d * d
   
   def fc_loss(self, x, normal, obj_code):
