@@ -33,6 +33,7 @@ parser.add_argument('--annealing_period', default=100, type=int)
 parser.add_argument('--starting_temperature', default=1, type=float)
 parser.add_argument('--temperature_decay', default=0.95, type=float)
 parser.add_argument('--mu', default=0.98, type=float)
+parser.add_argument('--znorm_weight', default=0.1, type=float)
 parser.add_argument('--stepsize_period', default=100, type=int)
 parser.add_argument('--noise_size', default=0.1, type=float)
 parser.add_argument('--name', default='exp', type=str)
@@ -100,7 +101,7 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
   surface_distance = fc_loss_model.dist_loss(obj_code, contact_point)
   penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
-  z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1)
+  z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1) * args.znorm_weight
   if verbose:
     return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
   else:
