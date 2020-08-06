@@ -260,209 +260,28 @@ if __name__ == "__main__":
   import numpy as np
   import random
   hand_model = HandModel()
-  z = torch.normal(0,1,size=[1,15]).float().cuda()
+  z = torch.normal(0,1,size=[1,15]).float().cuda() * 1e-6
   verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
 
   import plotly
   from plotly import graph_objects as go
   fig = plotly.tools.make_subplots(1, 1, specs=[[{'type':'surface'}]])
 
-  pid = 329
+  src = random.randint(0, 777)
+  tgt = random.randint(0, 777)
 
-  distances = hand_model.mano_manifold_distances[pid].detach().cpu().numpy()
-  distances[distances > 0.05] = 1
+  to_src_distances = hand_model.mano_manifold_distances[src].detach().cpu().numpy()
+  to_tgt_distances = hand_model.mano_manifold_distances[tgt].detach().cpu().numpy()
+
+  value = 1 / (to_src_distances * to_src_distances + to_tgt_distances * to_tgt_distances * 0.1) 
 
   fig.append_trace(go.Mesh3d(
     x=verts[:,0], y=verts[:,1], z=verts[:,2], 
     i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2],
-    intensity=distances
+    intensity=value
     ), 1, 1)
   fig.append_trace(go.Scatter3d(
-    x=(verts[pid,0],), y=(verts[pid,1],), z=(verts[pid,2],), marker=dict(color='red', size=5)
+    x=verts[[src, tgt],0], y=verts[[src, tgt],1], z=verts[[src, tgt],2], marker=dict(color='red', size=5), mode='markers'
   ), 1, 1)
   fig.show()
 
-
-  # import numpy as np
-  # from ObjectModel import ObjectModel
-  # from CodeUtil import *
-  # from PenetrationModel import PenetrationModel
-
-  # obj_code, obj_idx = get_obj_code_random(1)
-  # obj_mesh = get_obj_mesh(obj_idx[0])
-
-  # hand_model = HandModel(root_rot_mode='rot6d')
-
-  # object_model = ObjectModel()
-  # penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
-
-  # while True:
-  #   z = torch.normal(mean=0, std=1, size=[1, hand_model.code_length], requires_grad=True).float().cuda() * 0.5
-  #   hand_verts = hand_model.get_vertices(z)
-  #   hand_verts_bak = hand_verts.clone()
-  #   back_direction = hand_model.back_direction(z)
-  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-  #   print(torch.dot(palm_normal[0], back_direction[0]))
-  #   z2 = hand_model.align(z, back_direction, palm_normal)
-  #   hand_verts = hand_model.get_vertices(z2)
-  #   back_direction = hand_model.back_direction(z2)
-  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-  #   print(torch.dot(palm_normal[0], back_direction[0]))
-  #   z2 = hand_model.align(z2, back_direction, palm_normal)
-  #   hand_verts = hand_model.get_vertices(z2)
-  #   back_direction = hand_model.back_direction(z2)
-  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-  #   print(torch.dot(palm_normal[0], back_direction[0]))
-  #   z2 = hand_model.align(z2, back_direction, palm_normal)
-  #   hand_verts = hand_model.get_vertices(z2)
-  #   back_direction = hand_model.back_direction(z2)
-  #   palm_point = hand_verts[:, [hand_model.facedir_base_ids[1]], :]
-  #   palm_normal = object_model.gradient(palm_point, object_model.distance(obj_code, palm_point))[:,0,:]
-  #   palm_normal = palm_normal / torch.norm(palm_normal, dim=-1, keepdim=True)
-  #   print(torch.dot(palm_normal[0], back_direction[0]))
-
-
-
-  #   max_penetration = penetration_model.get_max_penetration(obj_code, z2)
-  #   print(max_penetration)
-  #   z3 = z2.clone()
-  #   z2[:,:3] += back_direction * max_penetration
-
-  #   print(penetration_model.get_max_penetration(obj_code, z2))
-
-  #   hand_verts = hand_verts_bak.detach().cpu().numpy()
-  #   hand_verts2 = hand_model.get_vertices(z2).detach().cpu().numpy()
-  #   hand_verts3 = hand_model.get_vertices(z3).detach().cpu().numpy()
-
-  #   import plotly 
-  #   import plotly.graph_objects as go
-
-  #   fig = plotly.tools.make_subplots(specs=[[{'type':'surface'}]])
-
-  #   i_item = 0
-
-  # px = torch.tensor([0,1, 0,0, 0,0, 0]).float().cuda()
-  # py = torch.tensor([0,0, 0,1, 0,0, 0]).float().cuda()
-  # pz = torch.tensor([0,0, 0,0, 0,1, 0]).float().cuda()
-
-  # xyz = torch.stack([px,py,pz], dim=-1)
-  # rot1 = robust_compute_rotation_matrix_from_ortho6d(z[:,3:9])[0]
-  # rot2 = robust_compute_rotation_matrix_from_ortho6d(z2[:,3:9])[0]
-  # r1p = torch.matmul(rot1, xyz.transpose(0,1)).transpose(0,1).detach().cpu().numpy()
-  # r2p = torch.matmul(rot2, xyz.transpose(0,1)).transpose(0,1).detach().cpu().numpy()
-  # axis = forward_direction[0]
-
-  # fig.append_trace(go.Scatter3d(
-  #   x=r1p[:,0], y=r1p[:,1], z=r1p[:,2], marker=dict(color='red')
-  # ), 1, 1)
-
-  # fig.append_trace(go.Scatter3d(
-  #   x=r2p[:,0], y=r2p[:,1], z=r2p[:,2], marker=dict(color='blue')
-  # ), 1, 1)
-
-  # fig.append_trace(go.Scatter3d(
-  #   x=[-axis[0],axis[0]], y=[-axis[1], axis[1]], z=[-axis[2], axis[2]]
-  # ), 1, 1)
-
-  # fig.append_trace(go.Mesh3d(
-  #   x=hand_verts[i_item,:,0], y=hand_verts[i_item,:,1], z=hand_verts[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-  #   color='lightpink', opacity=1
-  # ), 1, 1)
-
-  # fig.append_trace(go.Mesh3d(
-  #   x=hand_verts2[i_item,:,0], y=hand_verts2[i_item,:,1], z=hand_verts2[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-  #   color='red', opacity=1
-  # ), 1, 1)
-
-  # fig.append_trace(go.Mesh3d(
-  #   x=hand_verts3[i_item,:,0], y=hand_verts3[i_item,:,1], z=hand_verts3[i_item,:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], 
-  #   color='brown', opacity=1
-  # ), 1, 1)
-
-  # fig.append_trace(go.Mesh3d(
-  #   x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], 
-  #   i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], 
-  #   color='blue', opacity=1
-  # ), 1, 1)
-  # fig.update_layout(dict(scene=dict(aspectmode='data')), showlegend=False)
-
-  # fig.show()
-  # input()
-
-  # cx, cy, cz = hand_verts[0].mean(0)
-
-  # fig.append_trace(go.Cone(
-  #   x=(cx,), y=(cy,), z=(cz,), 
-  #   u=(back_direction[0,0],), 
-  #   v=(back_direction[0,1],), 
-  #   w=(back_direction[0,2],), 
-  #   ), 1, 1)
-
-  # fig.show()
-
-  # for i in range(hand_verts.shape[1]):
-  #   fig.append_trace(go.Cone(
-  #     x=(hand_verts[0,i,0],), y=(hand_verts[0,i,1],), z=(hand_verts[0,i,2],),
-  #     u=(hand_normal[0,i,0],), v=(hand_normal[0,i,1],), w=(hand_normal[0,i,2],),
-  #     showscale=False, sizemode='absolute', sizeref=0.05
-  #   ), 1, 1)
-  # fig.show()
-
-  # for i in range(10):
-  #   x,y,z = hand_verts[i,:,:].mean(0)
-  #   fig = plotly.tools.make_subplots(specs=[[{'type':'surface'}]])
-  #   fig.append_trace(go.Mesh3d(
-  #     x=hand_verts[i,:,0], y=hand_verts[i,:,1], z=hand_verts[i,:,2], 
-  #     i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2],
-  #   ), 1, 1)
-  #   fig.append_trace(go.Scatter3d(
-  #     x=(x,x+palm_vector[i,0]), y=(y,y+palm_vector[i,1]), z=(z,z+palm_vector[i,2])
-  #   ), 1, 1)
-  #   fig.append_trace(go.Scatter3d(
-  #     x=(x,x+back_vector[i,0]), y=(y,y+back_vector[i,1]), z=(z,z+back_vector[i,2])
-  #   ), 1, 1)
-  #   fig.append_trace(go.Scatter3d(
-  #     x=(x,x+side_vector[i,0]), y=(y,y+side_vector[i,1]), z=(z,z+side_vector[i,2])
-  #   ), 1, 1)
-  #   fig.show()
-  #   input()
-
-  # z = torch.normal(mean=0, std=1, size=[1, hand_model.code_length], requires_grad=True).float().cuda()
-  # z[:] = 0
-  # v = hand_model.get_vertices(z).detach().cpu().numpy()
-  # faces = hand_model.layer.th_faces.detach().cpu().numpy() + 1
-  # f = open('mano.obj', 'w')
-  # for x, y, z in v[0]:
-  #   f.write('v %f %f %f\n'%(x,y,z))
-  # for i, j, k in faces:
-  #   f.write('f %d %d %d\n'%(i,j,k))
-  # f.close()
-
-  # rot = robust_compute_rotation_matrix_from_ortho6d(z[:, 3:9])
-  # d1 = torch.tensor(np.array([1,0,0]).reshape([1, 3, 1])).float().cuda()
-  # d1 = torch.bmm(rot, d1).squeeze().detach().cpu().numpy()
-  # d2 = torch.tensor(np.array([0,1,0]).reshape([1, 3, 1])).float().cuda()
-  # d2 = torch.bmm(rot, d2).squeeze().detach().cpu().numpy()
-  # d3 = torch.tensor(np.array([0,0,1]).reshape([1, 3, 1])).float().cuda()
-  # d3 = torch.bmm(rot, d3).squeeze().detach().cpu().numpy()
-
-  # cx, cy, cz = v[0].mean(0)
-
-  # import matplotlib.pyplot as plt
-  # from mpl_toolkits.mplot3d import Axes3D
-  # ax = plt.subplot(111, projection='3d')
-  # ax.scatter(v[0,:,0], v[0,:,1], v[0,:,2], s=2, c='black')
-  # ax.quiver(cx, cy, cz, d1[0], d1[1], d1[2], color='red', length=0.3)
-  # ax.quiver(cx, cy, cz, d2[0], d2[1], d2[2], color='green', length=0.3)
-  # ax.quiver(cx, cy, cz, d3[0], d3[1], d3[2], color='blue', length=0.3)
-  # ax.set_xlim([cx-1,cx+1])
-  # ax.set_ylim([cy-1,cy+1])
-  # ax.set_zlim([cz-1,cz+1])
-  # plt.show()
-  # print(g)
