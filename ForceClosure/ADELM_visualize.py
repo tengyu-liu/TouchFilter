@@ -61,30 +61,35 @@ print(basin_labels)
 print(basin_minima_energies)
 print(energy_barriers)
 
-# from plotly.subplots import make_subplots
+from plotly.subplots import make_subplots
+import random
 
-# pair = [(3,5), (18, 78), (25,27), (32,30)]
-# for i, j in pair:
-#   fig = make_subplots(rows=1, cols=2, specs=[[{'type':'surface'}, {'type':'surface'}]])
-#   obj_code_x, z_x, _ = data[i]
-#   obj_code_y, z_y, _ = data[j]
-#   mesh_x = get_obj_mesh_by_code(obj_code_x)
-#   mesh_y = get_obj_mesh_by_code(obj_code_y)
-#   hand_v_x = hand_model.get_vertices(z_x.unsqueeze(0))
-#   hand_v_y = hand_model.get_vertices(z_y.unsqueeze(0))
-#   sdx = object_model.distance(obj_code_x, hand_v_x)
-#   sdy = object_model.distance(obj_code_y, hand_v_y)
-#   hand_v_x = hand_v_x[0].detach().cpu().numpy()
-#   hand_v_y = hand_v_y[0].detach().cpu().numpy()
-#   fig.append_trace(go.Mesh3d(x=mesh_x.vertices[:,0], y=mesh_x.vertices[:,1], z=mesh_x.vertices[:,2], i=mesh_x.faces[:,0], j=mesh_x.faces[:,1], k=mesh_x.faces[:,2], color='lightblue', opacity=0.3), 1, 1)
-#   fig.append_trace(go.Mesh3d(x=hand_v_x[:,0], y=hand_v_x[:,1], z=hand_v_x[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3), 1, 1)
-#   fig.append_trace(go.Mesh3d(x=mesh_y.vertices[:,0], y=mesh_y.vertices[:,1], z=mesh_y.vertices[:,2], i=mesh_y.faces[:,0], j=mesh_y.faces[:,1], k=mesh_y.faces[:,2], color='lightblue', opacity=0.3), 1, 2)
-#   fig.append_trace(go.Mesh3d(x=hand_v_y[:,0], y=hand_v_y[:,1], z=hand_v_y[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3), 1, 2)
-#   print(torch.square(sdx - sdy).sum(1).squeeze())
-#   fig.show()
-#   input()
+while True:
+  i = random.randint(0, len(data)-1)
+  j = random.randint(0, len(data)-1)
+  fig = make_subplots(rows=1, cols=2, specs=[[{'type':'surface'}, {'type':'surface'}]])
+  obj_code_x, z_x, cp_x = data[i]
+  obj_code_y, z_y, cp_y = data[j]
+  mesh_x = get_obj_mesh_by_code(obj_code_x)
+  mesh_y = get_obj_mesh_by_code(obj_code_y)
+  hand_v_x = hand_model.get_vertices(z_x.unsqueeze(0))
+  hand_v_y = hand_model.get_vertices(z_y.unsqueeze(0))
+  sdx = object_model.distance(obj_code_x, hand_v_x)
+  sdy = object_model.distance(obj_code_y, hand_v_y)
+  distance = torch.square(sdx - sdy).sum(), torch.square(z_x[-6:] - z_y[-6:]).sum(), hand_model.manifold_distance(cp_x.unsqueeze(0), cp_y.unsqueeze(0)) * 100
+  hand_v_x = hand_v_x[0].detach().cpu().numpy()
+  hand_v_y = hand_v_y[0].detach().cpu().numpy()
+  fig.append_trace(go.Mesh3d(x=mesh_x.vertices[:,0], y=mesh_x.vertices[:,1], z=mesh_x.vertices[:,2], i=mesh_x.faces[:,0], j=mesh_x.faces[:,1], k=mesh_x.faces[:,2], color='lightblue', opacity=0.3), 1, 1)
+  fig.append_trace(go.Mesh3d(x=hand_v_x[:,0], y=hand_v_x[:,1], z=hand_v_x[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3), 1, 1)
+  fig.append_trace(go.Scatter3d(x=hand_v_x[cp_x.detach().cpu().numpy(),0], y=hand_v_x[cp_x.detach().cpu().numpy(),1], z=hand_v_x[cp_x.detach().cpu().numpy(),2], mode='markers', marker=dict(size=5,color='red')), 1, 1)
+  fig.append_trace(go.Mesh3d(x=mesh_y.vertices[:,0], y=mesh_y.vertices[:,1], z=mesh_y.vertices[:,2], i=mesh_y.faces[:,0], j=mesh_y.faces[:,1], k=mesh_y.faces[:,2], color='lightblue', opacity=0.3), 1, 2)
+  fig.append_trace(go.Mesh3d(x=hand_v_y[:,0], y=hand_v_y[:,1], z=hand_v_y[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3), 1, 2)
+  fig.append_trace(go.Scatter3d(x=hand_v_y[cp_y.detach().cpu().numpy(),0], y=hand_v_y[cp_y.detach().cpu().numpy(),1], z=hand_v_y[cp_y.detach().cpu().numpy(),2], mode='markers', marker=dict(size=5,color='red')), 1, 2)
+  print(i, j, [x.detach().cpu().numpy() for x in distance])
+  fig.show()
+  input()
 
-# exit()
+exit()
   
 os.makedirs('adelm_result', exist_ok=True)
 
@@ -114,10 +119,6 @@ for i in range(len(data)):
     ])
   fig.write_image('adelm_result/%d/%d.png'%(label, i))
 
-hand_model2 = HandModel(flat_hand_mean=True, root_rot_mode='axisang')
-z = torch.normal(0, 1, [1, 12], device='cuda').float() * 1e-6
-hand_verts = hand_model2.get_vertices(z)[0].detach().cpu().numpy()
-
 for i,j in minimum_barrier_mc_chains.keys():
   if minimum_barrier_mc_chains[(i,j)] is None or len(minimum_barrier_mc_chains[(i,j)]) < 3:
     continue
@@ -128,7 +129,7 @@ for i,j in minimum_barrier_mc_chains.keys():
   for k, state in enumerate(minimum_barrier_mc_chains[(i,j)][::step]):
     print(i,j,k, len(minimum_barrier_mc_chains[(i,j)]))
     obj_code, z, cp_idx = state
-    hand_verts = hand_model2.get_vertices(torch.tensor(z).cuda())[0].detach().cpu().numpy()
+    hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
     # cp_idx = cp_idx.detach().cpu().numpy()
     fig = go.Figure(data=[
       go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=0.3), 
@@ -142,7 +143,7 @@ for i,j in minimum_barrier_mc_chains.keys():
   k += 1
   state = minimum_barrier_mc_chains[(i,j)][-1]
   obj_code, z, cp_idx = state
-  hand_verts = hand_model2.get_vertices(torch.tensor(z).cuda())[0].detach().cpu().numpy()
+  hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
   # cp_idx = cp_idx.detach().cpu().numpy()
   fig = go.Figure(data=[
     go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=0.3), 

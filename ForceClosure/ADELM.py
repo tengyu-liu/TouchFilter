@@ -85,10 +85,11 @@ def distance(X, Y):
   object_y, z_y, contact_point_indices_y = Y
   hand_verts_x = hand_model.get_vertices(z_x)
   hand_verts_y = hand_model.get_vertices(z_y)
-  surf_dist_x = object_model.distance(object_x, hand_verts_x)
-  surf_dist_y = object_model.distance(object_y, hand_verts_y)
-  return torch.square(surf_dist_x - surf_dist_y).sum(1).squeeze() 
-  
+  sdx = object_model.distance(object_x, hand_verts_x)
+  sdy = object_model.distance(object_y, hand_verts_y)
+  distance = torch.square(sdx - sdy).sum(1).squeeze(1) + torch.square(z_x[:,-6:] - z_y[:,-6:]).sum(1) + hand_model.manifold_distance(contact_point_indices_x, contact_point_indices_y) * 100
+  return distance
+
 def MCMC(X, Xstar, T, alpha):
   object_x, z_x, contact_point_indices_x = X
   z_x.requires_grad_()
@@ -96,11 +97,7 @@ def MCMC(X, Xstar, T, alpha):
   d = distance(X, Xstar)
   energy = compute_energy(object_x, z_x, contact_point_indices_x)
   rand = random.random()
-  if rand < 0.1:
-    # update contact point to target
-    new_contact_point_indices = contact_point_indices_star.clone()
-    new_z = z_x
-  elif rand < 0.55:
+  if rand < 0.5:
     # update z
     grad = torch.autograd.grad(energy.sum(), z_x)[0]
     grad_ema.apply(grad)
@@ -170,7 +167,7 @@ def load_proposals(path):
     if force_closure.squeeze().data < 0.1 and surface_distance.squeeze().data < 0.02 and penetration.squeeze().data < 0.02:
       Y.append((obj_code[i], z[i], contact_point_indices[i]))
       energies.append(energy[i])
-  return Y[:10], energies[:10]
+  return Y, energies
   # return Y[:10], energy.detach().cpu().numpy()[:10]
 
 def tile(Y, size):
