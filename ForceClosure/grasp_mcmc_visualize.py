@@ -25,7 +25,7 @@ penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_
 
 # data = pickle.load(open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'rb'))
 # old_data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
-old_data = pickle.load(open('logs/saved_806000.pkl', 'rb'))
+old_data = pickle.load(open('logs/saved_756000.pkl', 'rb'))
 
 # obj_code, z, contact_point_indices, energy = data
 obj_code, old_z, contact_point_indices, old_energy = old_data[:4]
@@ -72,7 +72,7 @@ for i in range(len(obj_code)):
   fltr.append(((_force_closure < 0.1) * (_surface_distance < 0.02) * (_penetration < 0.02)).squeeze().detach().cpu().numpy())
 
 print(sum(fltr))
-exit()
+# exit()
 
 # # import matplotlib.pyplot as plt
 # energy = compute_energy(obj_code, z, contact_point_indices, verbose=True)
@@ -143,10 +143,10 @@ for i_item in range(len(obj_code)):
     # print(i_item, sum(energy)[i_item].detach().cpu().numpy())
     fig.show()
     print(i_item, old_energy[i_item].detach().cpu().numpy())
-    print('linear_independence', linear_independence[i_item].detach().cpu().numpy())
-    print('force_closure', force_closure[i_item].detach().cpu().numpy())
-    print('surface_distance', surface_distance[i_item].detach().cpu().numpy())
-    print('penetration', penetration[i_item].detach().cpu().numpy())
-    print('z_norm', z_norm[i_item].detach().cpu().numpy())
-    print('normal_alignment', normal_alignment[i_item].detach().cpu().numpy())
+    print('linear_independence', linear_independence[i_item])
+    print('force_closure', force_closure[i_item])
+    print('surface_distance', surface_distance[i_item])
+    print('penetration', penetration[i_item])
+    print('z_norm', z_norm[i_item])
+    print('normal_alignment', normal_alignment[i_item])
     input()

@@ -85,10 +85,14 @@ def distance(X, Y):
   object_y, z_y, contact_point_indices_y = Y
   hand_verts_x = hand_model.get_vertices(z_x)
   hand_verts_y = hand_model.get_vertices(z_y)
-  sdx = object_model.distance(object_x, hand_verts_x)
-  sdy = object_model.distance(object_y, hand_verts_y)
-  distance = torch.square(sdx - sdy).sum(1).squeeze(1) + torch.square(z_x[:,-6:] - z_y[:,-6:]).sum(1) + hand_model.manifold_distance(contact_point_indices_x, contact_point_indices_y) * 100
-  return distance
+  sdx = object_model.distance(object_x, hand_verts_x).squeeze()
+  sdy = object_model.distance(object_y, hand_verts_y).squeeze()
+  px = 1 / torch.abs(sdx)
+  py = 1 / torch.abs(sdy)
+  px = px / px.sum(1, keepdim=True)
+  py = py / py.sum(1, keepdim=True)
+  distance = py * (torch.log(py) - torch.log(px))
+  return distance.sum(1)
 
 def MCMC(X, Xstar, T, alpha):
   object_x, z_x, contact_point_indices_x = X
@@ -167,7 +171,7 @@ def load_proposals(path):
     if force_closure.squeeze().data < 0.1 and surface_distance.squeeze().data < 0.02 and penetration.squeeze().data < 0.02:
       Y.append((obj_code[i], z[i], contact_point_indices[i]))
       energies.append(energy[i])
-  return Y, energies
+  return Y[:10], energies[:10]
   # return Y[:10], energy.detach().cpu().numpy()[:10]
 
 def tile(Y, size):
@@ -281,4 +285,4 @@ for n in range(len(examples)):
 
   print('%d-th data falls in basin #%d (total: %d). Time: %f'%(n, basin_labels[n], max(basin_labels) + 1, time.time() - t0))
 
-pickle.dump([basin_labels, basin_minima, basin_minima_energies, energy_barriers, mc_chains], open('ADELM_rerun.pkl', 'wb'))
+pickle.dump([basin_labels, basin_minima, basin_minima_energies, energy_barriers, mc_chains], open('ADELM.pkl', 'wb'))

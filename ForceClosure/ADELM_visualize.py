@@ -49,6 +49,7 @@ def load_proposals(path):
   obj_code, z, contact_point_indices, energy, _, _, _ = pickle.load(open(path, 'rb'))
   linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
   fltr = ((force_closure < 0.1) * (surface_distance < 0.02) * (penetration < 0.02))
+  print(fltr)
   Y = list(zip(obj_code[fltr], z[fltr], contact_point_indices[fltr]))
   return Y, energy.detach().cpu().numpy()
 
@@ -61,64 +62,90 @@ print(basin_labels)
 print(basin_minima_energies)
 print(energy_barriers)
 
-from plotly.subplots import make_subplots
-import random
+# from plotly.subplots import make_subplots
+# import random
 
-while True:
-  i = random.randint(0, len(data)-1)
-  j = random.randint(0, len(data)-1)
-  fig = make_subplots(rows=1, cols=2, specs=[[{'type':'surface'}, {'type':'surface'}]])
-  obj_code_x, z_x, cp_x = data[i]
-  obj_code_y, z_y, cp_y = data[j]
-  mesh_x = get_obj_mesh_by_code(obj_code_x)
-  mesh_y = get_obj_mesh_by_code(obj_code_y)
-  hand_v_x = hand_model.get_vertices(z_x.unsqueeze(0))
-  hand_v_y = hand_model.get_vertices(z_y.unsqueeze(0))
-  sdx = object_model.distance(obj_code_x, hand_v_x)
-  sdy = object_model.distance(obj_code_y, hand_v_y)
-  distance = torch.square(sdx - sdy).sum(), torch.square(z_x[-6:] - z_y[-6:]).sum(), hand_model.manifold_distance(cp_x.unsqueeze(0), cp_y.unsqueeze(0)) * 100
-  hand_v_x = hand_v_x[0].detach().cpu().numpy()
-  hand_v_y = hand_v_y[0].detach().cpu().numpy()
-  fig.append_trace(go.Mesh3d(x=mesh_x.vertices[:,0], y=mesh_x.vertices[:,1], z=mesh_x.vertices[:,2], i=mesh_x.faces[:,0], j=mesh_x.faces[:,1], k=mesh_x.faces[:,2], color='lightblue', opacity=0.3), 1, 1)
-  fig.append_trace(go.Mesh3d(x=hand_v_x[:,0], y=hand_v_x[:,1], z=hand_v_x[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3), 1, 1)
-  fig.append_trace(go.Scatter3d(x=hand_v_x[cp_x.detach().cpu().numpy(),0], y=hand_v_x[cp_x.detach().cpu().numpy(),1], z=hand_v_x[cp_x.detach().cpu().numpy(),2], mode='markers', marker=dict(size=5,color='red')), 1, 1)
-  fig.append_trace(go.Mesh3d(x=mesh_y.vertices[:,0], y=mesh_y.vertices[:,1], z=mesh_y.vertices[:,2], i=mesh_y.faces[:,0], j=mesh_y.faces[:,1], k=mesh_y.faces[:,2], color='lightblue', opacity=0.3), 1, 2)
-  fig.append_trace(go.Mesh3d(x=hand_v_y[:,0], y=hand_v_y[:,1], z=hand_v_y[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3), 1, 2)
-  fig.append_trace(go.Scatter3d(x=hand_v_y[cp_y.detach().cpu().numpy(),0], y=hand_v_y[cp_y.detach().cpu().numpy(),1], z=hand_v_y[cp_y.detach().cpu().numpy(),2], mode='markers', marker=dict(size=5,color='red')), 1, 2)
-  print(i, j, [x.detach().cpu().numpy() for x in distance])
-  fig.show()
-  input()
+# distance = np.zeros([len(data), len(data), 778]) + float('inf')
+# for i in range(len(data)):
+#   obj_code_x, z_x, cp_x = data[i]
+#   mesh_x = get_obj_mesh_by_code(obj_code_x)
+#   hand_v_x = hand_model.get_vertices(z_x.unsqueeze(0))
+#   sdx = object_model.distance(obj_code_x, hand_v_x)
+#   px = 1 / torch.abs(sdx)
+#   px = px / px.sum()
+#   for j in range(len(data)):
+#     if i == j: 
+#       continue
+#     obj_code_y, z_y, cp_y = data[j]
+#     mesh_y = get_obj_mesh_by_code(obj_code_y)
+#     hand_v_y = hand_model.get_vertices(z_y.unsqueeze(0))
+#     sdy = object_model.distance(obj_code_y, hand_v_y)
+#     py = 1 / torch.abs(sdy)
+#     py = py / py.sum()
+#     distance[i,j] = (py * (torch.log(py) - torch.log(px))).squeeze().detach().cpu().numpy()
 
-exit()
+# for i in range(len(data)):
+#   j = np.argmin(distance[i].sum(axis=1))
+#   obj_code_x, z_x, cp_x = data[i]
+#   mesh_x = get_obj_mesh_by_code(obj_code_x)
+#   hand_v_x = hand_model.get_vertices(z_x.unsqueeze(0))
+#   obj_code_y, z_y, cp_y = data[j]
+#   mesh_y = get_obj_mesh_by_code(obj_code_y)
+#   hand_v_y = hand_model.get_vertices(z_y.unsqueeze(0))
+#   hand_v_y = hand_v_y[0].detach().cpu().numpy()
+#   hand_v_x = hand_v_x[0].detach().cpu().numpy()
+#   fig = make_subplots(rows=2, cols=2, specs=[[{'type':'surface'}, {'type':'surface'}], [{'type':'surface'}, {'type':'xy'}]])
+#   fig.append_trace(go.Mesh3d(x=mesh_x.vertices[:,0], y=mesh_x.vertices[:,1], z=mesh_x.vertices[:,2], i=mesh_x.faces[:,0], j=mesh_x.faces[:,1], k=mesh_x.faces[:,2], color='lightblue', opacity=1), 1, 1)
+#   fig.append_trace(go.Mesh3d(x=hand_v_x[:,0], y=hand_v_x[:,1], z=hand_v_x[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1), 1, 1)
+#   fig.append_trace(go.Mesh3d(x=mesh_y.vertices[:,0], y=mesh_y.vertices[:,1], z=mesh_y.vertices[:,2], i=mesh_y.faces[:,0], j=mesh_y.faces[:,1], k=mesh_y.faces[:,2], color='lightblue', opacity=1), 1, 2)
+#   fig.append_trace(go.Mesh3d(x=hand_v_y[:,0], y=hand_v_y[:,1], z=hand_v_y[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1), 1, 2)
+#   fig.append_trace(go.Mesh3d(x=hand_v_x[:,0], y=hand_v_x[:,1], z=hand_v_x[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.5, intensity=distance[i,j]), 2, 1)
+#   fig.append_trace(go.Histogram(x=distance[i,:].sum(axis=-1)), 2, 2)
+#   print(i, j, distance[i,j].sum())
+#   fig.show()
+#   input()
+
+# exit()
   
 os.makedirs('adelm_result', exist_ok=True)
 
-for label, item in enumerate(basin_minima):
-  os.makedirs('adelm_result/%d'%label, exist_ok=True)
-  obj_code, z, cp_idx = item
-  obj_mesh = get_obj_mesh_by_code(obj_code)
-  cp_idx = cp_idx.detach().cpu().numpy()
-  hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
-  fig = go.Figure(data=[
-      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=0.3), 
-      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3),
-      go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-    ])
-  fig.write_image('adelm_result/%d/minima.png'%(label))
+# for label, item in enumerate(basin_minima):
+#   os.makedirs('adelm_result/%d'%label, exist_ok=True)
+#   obj_code, z, cp_idx = item
+#   obj_mesh = get_obj_mesh_by_code(obj_code)
+#   cp_idx = cp_idx.detach().cpu().numpy()
+#   hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
+#   fig = go.Figure(data=[
+#       go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+#       go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+#       go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+#     ])
+#   fig.write_image('adelm_result/%d/minima.png'%(label))
 
 for i in range(len(data)):
-  obj_code, z, cp_idx = data[i]
-  label = basin_labels[i]
-  cp_idx = cp_idx.detach().cpu().numpy()
-  obj_mesh = get_obj_mesh_by_code(obj_code)
-  hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
-  fig = go.Figure(data=[
-      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=0.3), 
-      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3),
-      go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-    ])
-  fig.write_image('adelm_result/%d/%d.png'%(label, i))
+  print(i)
+obj_code, z, cp_idx = data[i]
+# label = basin_labels[i]
+cp_idx = cp_idx.detach().cpu().numpy()
+obj_mesh = get_obj_mesh_by_code(obj_code)
+hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
+fig = go.Figure(data=[
+    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+    go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+  ])
+fig.update_layout(
+  dict1=dict(autosize=True, margin={'l':0, 'r': 0, 't': 0, 'b': 0}), 
+  scene=dict(
+    xaxis=dict(showticklabels=False, title_text=''), 
+    yaxis=dict(showticklabels=False, title_text=''), 
+    zaxis=dict(showticklabels=False, title_text=''), 
+    ))
+fig.show()
+  exit()
+  # fig.write_image('adelm_result/all/%d.png'%(i))
 
+exit()
 for i,j in minimum_barrier_mc_chains.keys():
   if minimum_barrier_mc_chains[(i,j)] is None or len(minimum_barrier_mc_chains[(i,j)]) < 3:
     continue
@@ -132,8 +159,8 @@ for i,j in minimum_barrier_mc_chains.keys():
     hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
     # cp_idx = cp_idx.detach().cpu().numpy()
     fig = go.Figure(data=[
-      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=0.3), 
-      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3),
+      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
       go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
       ])
     # fig.update_layout(scene_camera=dict(
@@ -141,13 +168,27 @@ for i,j in minimum_barrier_mc_chains.keys():
     # ))
     fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
   k += 1
+  state = minimum_barrier_mc_chains[(i,j)][-2]
+  obj_code, z, cp_idx = state
+  hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
+  # cp_idx = cp_idx.detach().cpu().numpy()
+  fig = go.Figure(data=[
+    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+    go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+    ])
+  # fig.update_layout(scene_camera=dict(
+  #   up=dict(x=0, y=1, z=0)
+  # ))
+  fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
+  k += 1
   state = minimum_barrier_mc_chains[(i,j)][-1]
   obj_code, z, cp_idx = state
   hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
   # cp_idx = cp_idx.detach().cpu().numpy()
   fig = go.Figure(data=[
-    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=0.3), 
-    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=0.3),
+    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
     go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
     ])
   # fig.update_layout(scene_camera=dict(
