@@ -13,6 +13,7 @@ from manopth.rot6d import robust_compute_rotation_matrix_from_ortho6d
 # np.random.seed(0)
 # torch.manual_seed(0)
 
+
 class HandModel:
   def __init__(
     self, 
