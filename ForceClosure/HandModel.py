@@ -1,3 +1,4 @@
+from itertools import permutations
 import os
 import pickle
 from collections import defaultdict
@@ -16,7 +17,9 @@ class HandModel:
   def __init__(
     self, 
     n_handcode=6, root_rot_mode='ortho6d', robust_rot=False, flat_hand_mean=True,
-    mano_path='third_party/manopth/mano/models'):
+    mano_path='third_party/manopth/mano/models', n_contact=3):
+    self.n_contact = n_contact
+    self.contact_permutations = permutations(np.arange(self.n_contact))
     if n_handcode == 45:
       self.layer = ManoLayer(root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, use_pca=False).cuda()
     else:
@@ -243,13 +246,7 @@ class HandModel:
     # ptsA: B x 3
     # ptsB: B x 3
     # return: shortest distance on graph between ptsA and ptsB
-    distances = torch.stack([
-      self._manifold_distance(ptsA, ptsB[:,[0,1,2]]), 
-      self._manifold_distance(ptsA, ptsB[:,[0,2,1]]), 
-      self._manifold_distance(ptsA, ptsB[:,[1,0,2]]), 
-      self._manifold_distance(ptsA, ptsB[:,[1,2,0]]), 
-      self._manifold_distance(ptsA, ptsB[:,[2,0,1]]), 
-      self._manifold_distance(ptsA, ptsB[:,[2,1,0]])], dim=-1).min(-1)[0]
+    distances = torch.stack([self._manifold_distance(ptsA, ptsB[:, perm]) for perm in self.contact_permutations], dim=-1).min(-1)[0]
     return distances
   
   def _manifold_distance(self, ptsA, ptsB):
@@ -273,7 +270,7 @@ if __name__ == "__main__":
   to_src_distances = hand_model.mano_manifold_distances[src].detach().cpu().numpy()
   to_tgt_distances = hand_model.mano_manifold_distances[tgt].detach().cpu().numpy()
 
-  value = 1 / (to_src_distances * to_src_distances + to_tgt_distances * to_tgt_distances * 0.1) 
+  value = 1 / (to_src_distances + to_tgt_distances)
 
   fig.append_trace(go.Mesh3d(
     x=verts[:,0], y=verts[:,1], z=verts[:,2], 

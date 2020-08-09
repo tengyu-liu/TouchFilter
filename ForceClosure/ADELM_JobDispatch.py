@@ -42,7 +42,12 @@ parser.add_argument('--T', default=0.1, type=float)
 parser.add_argument('--stepsize', default=0.1, type=float)
 # - data loading
 parser.add_argument('--data_path', default='logs/sample_0/optimized_998000.pkl', type=str)
+parser.add_argument('--log_path', default='adelm', type=str)
 args = parser.parse_args()
+
+os.makedirs(args.log_path, exist_ok=True)
+os.makedirs(os.path.join(args.log_path, 'adelm_result'), exist_ok=True)
+os.makedirs(os.path.join(args.log_path, 'item_basin_barriers'), exist_ok=True)
 
 # prepare models
 hand_model = HandModel(
@@ -67,7 +72,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   contact_point = torch.stack([hand_verts[torch.arange(z.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
-
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
   hand_normal = hand_model.get_surface_normals(verts=hand_verts)
   hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
@@ -102,6 +106,7 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
   object_x, z_x, contact_point_indices_x = X
   z_x.requires_grad_()
   object_star, z_star, contact_point_indices_star = Xstar
+  batch_size = len(z_x)
   d = distance(X, Xstar)
   energy = compute_energy(object_x, z_x, contact_point_indices_x)
   rand = random.random()
@@ -115,24 +120,22 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
     new_z = z_x - 0.5 * grad / grad_ema.average.unsqueeze(0) * args.stepsize * args.stepsize + noise
   else:
     # update contact point
-    directly_update_contact_points = torch.ones(size=[args.batch_size], device='cuda').bool().detach()
-    directly_update_contact_points_flag = torch.zeros(size=[args.batch_size], device='cuda').detach()
+    directly_update_contact_points = torch.ones(size=[batch_size], device='cuda').bool().detach()
+    directly_update_contact_points_flag = torch.zeros(size=[batch_size], device='cuda').detach()
     new_z = z_x.clone()
-
-  update_indices = torch.randint(0, 3, size=[args.batch_size], device='cuda')
+  update_indices = torch.randint(0, 3, size=[batch_size], device='cuda')
   # choose next point smarter
   to_src_dist = hand_model.mano_manifold_distances[contact_point_indices_x]
   to_tgt_dist = hand_model.mano_manifold_distances[contact_point_indices_star]
   prob = 1 / (to_src_dist + to_tgt_dist.sum(1, keepdim=True))  # B x 3 x V
-  prob = prob[torch.arange(args.batch_size), update_indices]  # B x V
-  update_to = torch.cat([torch.multinomial(prob[b], 1) for b in range(args.batch_size)])
-  # update_to = torch.randint(0, hand_model.num_points, size=[args.batch_size], device='cuda')
+  prob = prob[torch.arange(batch_size), update_indices]  # B x V
+  update_to = torch.cat([torch.multinomial(prob[b], 1) for b in range(batch_size)])
+  # update_to = torch.randint(0, hand_model.num_points, size=[batch_size], device='cuda')
   temp_new_contact_point_indices = contact_point_indices_x.clone()
-  temp_new_contact_point_indices[torch.arange(args.batch_size), update_indices] = update_to
+  temp_new_contact_point_indices[torch.arange(batch_size), update_indices] = update_to
   new_contact_point_indices[directly_update_contact_points] = temp_new_contact_point_indices[directly_update_contact_points]
   new_z[directly_update_contact_points] = z_x[directly_update_contact_points]
   directly_update_contact_points_flag[directly_update_contact_points] = 0 # not accepted changes may not be 0
-
   # compute new energy
   new_energy = compute_energy(object_x, new_z, new_contact_point_indices)
   with torch.no_grad():
@@ -146,28 +149,51 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
     energy[accept] = new_energy[accept]
   return [object_x, z_x.detach(), contact_point_indices_x.detach()], d.detach(), energy.detach(), directly_update_contact_points_flag.detach()
 
-def attraction_diffusion(C, Xstar, alpha, delta, T, M):
+def attraction_diffusion(candidates, alpha, delta, T, M):
+  """ 
+  TODO: Update so that it keeps a job queue, and everytime a result is produced, the next job swaps in
+  arguments
+    candidates: list of triplets
+  return
+    d: list of distances 
+    B: list of energy barriers between items
+    states: mc chain between states
+  """
+  # initialize 
   directly_update_contact_points_flag = torch.zeros(size=[args.batch_size], device='cuda')
   d = distance(C, Xstar)
-  dstar = d
+  dstar = d.clone()
   m = torch.zeros([d.shape[0]], device='cuda').float()
-  B = None
-  finished = ((d <= delta).sum() > 0) or ((m < M).sum() == 0)
-  not_finished = torch.logical_and(d > delta, m < M)
+  B = torch.zeros([args.batch_size]) - np.inf
+  success = d <= delta
+  failure = m > M
   states = [[x.detach().cpu().numpy() for x in C]]
+
+  # load job
+  job_queue = [[(i,j) for i in range(len(candidates)) if i != j] for j in range(len(candidates))]
+  current_job = []
+  C = []
+  X = []
+  for _ in range(args.batch_size):
+    i, j = job_queue.pop(0)
+    C.append(candidates[i])
+    X.append(candidates[j])
+    current_job.append((i,j))
+  C = collate(C)
+  X = collate(X)
+
   while not finished:
-    C, d, U, directly_update_contact_points_flag = MCMC(C, Xstar, T, alpha, directly_update_contact_points_flag.detach())
+    C, d, U, directly_update_contact_points_flag = MCMC(C, X, T, alpha, directly_update_contact_points_flag.detach())
     # update energy barrier
-    if B is None:
-      B = U.clone()
-    else:
-      B_update = torch.logical_and(not_finished, B < U)
-      B[B_update] = U[B_update].clone()
-    d_update_1 = torch.logical_and(not_finished, d >= dstar)
-    d_update_2 = torch.logical_and(not_finished, d < dstar)
-    m[d_update_1] = m[d_update_1] + 1
-    m[d_update_2] = 0
-    dstar[d_update_2] = d[d_update_2]
+    B[U > B] = U[U > B].clone()
+    # if min distance is refreshed, reset m. otherwise update m
+    refresh = d < dstar
+    m = m + 1
+    m[refresh] = 0
+    dstar[refresh] = d[refresh]
+    # replace successes and failures
+    success = d <= delta
+    failure = m > M
     finished = ((d <= delta).sum() > 0) or ((m < M).sum() == 0)
     not_finished = torch.logical_and(d > delta, m < M)
     states.append([x.detach().cpu().numpy() for x in C])
@@ -225,111 +251,166 @@ def draw(Y, l, i):
       yaxis=dict(showticklabels=False, title_text=''), 
       zaxis=dict(showticklabels=False, title_text=''), 
       ))
-  os.makedirs('adelm_result/%d'%l, exist_ok=True)
-  fig.write_image('adelm_result/%d/%d.png'%(l, i))
+  os.makedirs(os.path.join(args.log_path, 'adelm_result/%d'%l), exist_ok=True)
+  fig.write_image(os.path.join(args.log_path, 'adelm_result/%d/%d.png'%(l, i)))
+
+def combine(Y, x):
+  return torch.cat([Y[0], x[0].unsqueeze(0)], dim=0), torch.cat([Y[1], x[1].unsqueeze(0)], dim=0), torch.cat([Y[2], x[2].unsqueeze(0)], dim=0)
 
 examples, example_energies = load_proposals(args.data_path)  # each proposal is already a local minimum
 
 # ADELM
-basin_labels = []
-basin_minima = []
-basin_minima_energies = []
+basin_labels = [-1 for i in range(len(examples))]
+basin_labels[0] = 0
+num_basins = 1
+item_basin_barriers = [[float('inf')] for i in range(len(examples))]  # keep track of energy barriers from items to basins
+item_basin_barriers[0][0] = example_energies[0]
+basin_minima = [examples[0]]
+basin_minima_energies = [example_energies[0]]
+job_queue:List[Tuple[int,int,int]] = []
+current_job:List[Tuple[int,int,int]] = []
+Y = []
+Z = []
+YE = []
+ZE = []
+
+draw(examples[0], 0, 0)
+shutil.copy(os.path.join(args.log_path, 'adelm_result', '0', '0.png'), os.path.join(args.log_path, 'adelm_result', '0', 'minima.png'))
+
+job_queue_item_count = np.zeros([len(examples)])
+for i in range(1, len(examples)):
+  job_queue.append((i,0,0))
+  job_queue.append((i,0,1))
+  job_queue_item_count[i] += 2
+
+for _ in range(min(args.batch_size, len(job_queue))):
+  current_job.append(job_queue.pop(0))
+  item, basin, direction = current_job[-1]
+  if direction == 0:
+    Y.append(examples[item])
+    Z.append(basin_minima[basin])
+    YE.append(example_energies[item])
+    ZE.append(basin_minima_energies[basin])
+  else:
+    Y.append(basin_minima[basin])
+    Z.append(examples[item])
+    YE.append(basin_minima_energies[basin])
+    ZE.append(example_energies[item])
+
+Y = collate(Y)
+Z = collate(Z)
+YET = torch.tensor(YE).cuda()
+ZET = torch.tensor(ZE).cuda()
+
 def inf():
   return float('inf')
 
-energy_barriers: DefaultDict[Tuple[int, int], float] = defaultdict(inf)
-mc_chains: Dict[Tuple[int, int], List] = {}
+# initialize variables for attraction-diffusion
+flag = torch.zeros(size=[len(YET)], device='cuda')
+d = distance(Y, Z)
+dstar = d.clone()
+m = torch.zeros([len(d)], device='cuda').float()
+B = torch.max(YET, ZET)
 
-for n in range(len(examples)):
+success_step = 0
+
+while (len(job_queue) + len(current_job)) > 0:
   t0 = time.time()
-  barrier_to_basins = []
-  minima_updated = False
-  if n == 0:
-    basin_minima.append(examples[n])
-    basin_minima_energies.append(example_energies[n])
-    minima_updated = True
-    basin_labels.append(0)
-    number_of_basins = 1
-  else:
-    number_of_basins = max(basin_labels) + 1
-    candidate_labels = []
+  # removal
+  success = d <= args.delta
+  failure = m > args.M
+  if success.sum() > 0:
+    for i in range(len(success)-1, -1, -1):
+      if success[i].item():
+        # if success
+        item_id, basin_label, direction = current_job.pop(i)
+        job_queue_item_count[item_id] -= 1
+        # update basin label
+        if B[i].item() < min(item_basin_barriers[item_id]):
+          if basin_labels[item_id] > -1:
+            os.remove(os.path.join(args.log_path, 'adelm_result', str(basin_labels[item_id]), '%d.png'%item_id))
+          basin_labels[item_id] = basin_label
+          draw(examples[item_id], basin_label, item_id)
+          print('successful AD from item #%d to basin #%d with barrier %f'%(item_id, basin_label, B[i].item()))
+          # if is new basin minima: 
+          if example_energies[item_id] < basin_minima_energies[basin_label]:
+            basin_minima_energies[basin_label] = example_energies[item_id]
+            basin_minima[basin_label] = examples[item_id]
+            print('    item #%d is the new basin minima'%item_id)
+            shutil.copy(os.path.join(args.log_path, 'adelm_result', str(basin_label), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(basin_label), 'minima.png'))
+        # update basin barrier
+        item_basin_barriers[item_id][basin_label] = min(item_basin_barriers[item_id][basin_label], B[i].item())
+    # save basin barrier
+    pickle.dump(item_basin_barriers, open(os.path.join(args.log_path, 'item_basin_barriers/%d.pkl'%success_step), 'wb'))
+    success_step += 1
+  if failure.sum() > 0:
+    for i in range(len(failure)-1, -1, -1):
+      if failure[i].item():
+        # if failure
+        item_id, basin_label, direction = current_job.pop(i)
+        job_queue_item_count[item_id] -= 1
+        print('rejecting AD from item #%d to basin #%d'%(item_id, basin_label))
+        # check to create new minima
+        if job_queue_item_count[item_id] == 0 and all([x == float('inf') for x in item_basin_barriers[item_id]]):
+          basin_labels[item_id] = num_basins
+          basin_minima.append(examples[item_id])
+          basin_minima_energies.append(example_energies[item_id])
+          for _item_id in range(len(examples)):
+            if _item_id != item_id:
+              job_queue.append((_item_id, num_basins, 0))
+              job_queue.append((_item_id, num_basins, 0))
+          job_queue_item_count += 2
+          job_queue_item_count[item_id] -= 2
+          for _item_id in range(len(examples)):
+            if _item_id == item_id:
+              item_basin_barriers[_item_id].append(0)
+            else:             
+              item_basin_barriers[_item_id].append(float('inf'))
+          print('    assign new basin #%d for item #%d'%(num_basins, item_id))
+          os.makedirs(os.path.join(args.log_path, 'adelm_result', str(num_basins)), exist_ok=True)
+          draw(examples[item_id], num_basins, item_id)
+          shutil.copy(os.path.join(args.log_path, 'adelm_result', str(num_basins), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(num_basins), 'minima.png'))
+          num_basins += 1
+  if len(current_job) == 0:
+    continue
+  if success.sum() + failure.sum() > 0:
+    d = d[~(success+failure)]
+    m = m[~(success+failure)]
+    B = B[~(success+failure)]
+    dstar = dstar[~(success+failure)]
+    flag = flag[~(success+failure)]
+    Y = (Y[0][~(success+failure)], Y[1][~(success+failure)], Y[2][~(success+failure)])
+    Z = (Z[0][~(success+failure)], Z[1][~(success+failure)], Z[2][~(success+failure)])
+    # refill
+    refill_count = min(args.batch_size - len(current_job), len(job_queue))
+    YE = []
+    ZE = []
+    for i in range(refill_count):
+      current_job.append(job_queue.pop(0))
+      item, basin, direction = current_job[-1]
+      if direction == 0:
+        Y = combine(Y, examples[item])
+        Z = combine(Z, basin_minima[basin])
+        YE.append(example_energies[item])
+        ZE.append(basin_minima_energies[basin])
+      else:
+        Y = combine(Y, basin_minima[basin])
+        Z = combine(Z, examples[item])
+        YE.append(basin_minima_energies[basin])
+        ZE.append(example_energies[item])
+    if refill_count > 0:
+      m = torch.cat([m, torch.zeros([refill_count], device='cuda')], dim=0)
+      d = torch.cat([d, distance([y[-refill_count:] for y in Y], [z[-refill_count:] for z in Z])], dim=0)
+      dstar = torch.cat([dstar, d[-refill_count:]], dim=0)
+      flag = torch.cat([flag, torch.zeros([refill_count], device='cuda')])
+      YET = torch.tensor(YE, device='cuda')
+      ZET = torch.tensor(ZE, device='cuda')
+      B = torch.cat([B, torch.max(YET, ZET)], dim=0)
+  # run attraction-diffusion between Y and Z
+  Y, d, U, flag = MCMC(Y, Z, args.T, args.alpha, flag)
+  B[U>B] = U[U>B].clone()
+  m[d>=dstar] = m[d>=dstar] + 1
+  m[d<dstar] = 0
+  dstar[d<dstar] = d[d<dstar]
 
-    C = [[] for _ in range(len(basin_minima))]
-    barrier_to_basins = [float('inf') for _ in range(len(basin_minima))]
-
-    for j in range(len(basin_minima)):
-      Yn = tile(examples[n], args.batch_size)
-      Zs = tile(basin_minima[j], args.batch_size)
-
-      d1, B1, C1 = attraction_diffusion(clone(Yn), clone(Zs), args.alpha, args.delta, args.T, args.M)
-      d2, B2, C2 = attraction_diffusion(clone(Zs), clone(Yn), args.alpha, args.delta, args.T, args.M)
-
-      B1 = B1[d1 < args.delta].detach().cpu().numpy()
-      B2 = B2[d2 < args.delta].detach().cpu().numpy()
-
-      d1 = d1.detach().cpu().numpy()
-      d2 = d2.detach().cpu().numpy()
-
-      i1 = np.argmin(d1)
-      i2 = np.argmin(d2)
-
-      d1min = d1[i1]
-      d2min = d2[i2]
-
-      print('item %d to basin %d: distances = %f, %f'%(n, j, d1min, d2min))
-
-      if min(d1min, d2min) < args.delta:
-        candidate_labels.append(j)
-        if d1min > args.delta:
-          c2i1 = d2 < args.delta
-          c2i2 = np.argmin(B2)
-          C2 = [(x[c2i1][c2i2], y[c2i1][c2i2], z[c2i1][c2i2]) for x, y, z in C2]
-          barrier_to_basins[j] = B2.min()
-          mc_chains[(n,j)] = C2
-        elif d2min > args.delta:
-          c1i1 = d1 < args.delta
-          c1i2 = np.argmin(B1)
-          C1 = [(x[c1i1][c1i2], y[c1i1][c1i2], z[c1i1][c1i2]) for x, y, z in C1]
-          barrier_to_basins[j] = B1.min()
-          mc_chains[(n,j)] = C1
-        else:
-          if B1.min() < B2.min():
-            c1i1 = d1 < args.delta
-            c1i2 = np.argmin(B1)
-            C1 = [(x[c1i1][c1i2], y[c1i1][c1i2], z[c1i1][c1i2]) for x, y, z in C1]
-            barrier_to_basins[j] = B1.min()
-            mc_chains[(n,j)] = C1
-          else:
-            c2i1 = d2 < args.delta
-            c2i2 = np.argmin(B2)
-            C2 = [(x[c2i1][c2i2], y[c2i1][c2i2], z[c2i1][c2i2]) for x, y, z in C2]
-            barrier_to_basins[j] = B2.min()
-            mc_chains[(n,j)] = C2
-
-    if len(candidate_labels) == 0:
-      basin_minima.append(examples[n])
-      basin_minima_energies.append(example_energies[n])
-      basin_labels.append(number_of_basins)
-      minima_updated = True
-    else:
-      basin_labels.append(np.argmin(barrier_to_basins))
-      if example_energies[n] < basin_minima_energies[basin_labels[n]]:
-        basin_minima_energies[basin_labels[n]] = example_energies[n]
-        basin_minima[basin_labels[n]] = examples[n]
-        minima_updated = True
-    
-    current_label = basin_labels[-1]
-    for j in range(number_of_basins):
-      if energy_barriers[(current_label, j)] > barrier_to_basins[j]:
-        energy_barriers[(current_label, j)] = barrier_to_basins[j]
-        energy_barriers[(j, current_label)] = barrier_to_basins[j]
-        
-      print('barrier(%d,%d): %f'%(current_label, j, barrier_to_basins[j]))
-
-  print('%d-th data falls in basin #%d (total: %d). Time: %f'%(n, basin_labels[n], max(basin_labels) + 1, time.time() - t0))
-  draw(examples[n], basin_labels[n], n)
-  pickle.dump([basin_labels[n], barrier_to_basins], open('adelm_result/%d/%d.pkl'%(basin_labels[n], n), 'wb'))
-  if minima_updated:
-    pickle.dump([basin_minima[basin_labels[n]], basin_minima_energies[basin_labels[n]]], open('adelm_result/%d/minima.pkl'%(basin_labels[n]), 'wb'))
-
-pickle.dump([basin_labels, basin_minima, basin_minima_energies, energy_barriers, mc_chains], open('ADELM.pkl', 'wb'))
+pickle.dump([basin_labels, basin_minima, basin_minima_energies, item_basin_barriers], open(os.path.join(args.log_path, 'ADELM_dispatch.pkl'), 'wb'))

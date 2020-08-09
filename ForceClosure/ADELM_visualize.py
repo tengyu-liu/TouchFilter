@@ -1,3 +1,4 @@
+import shutil
 import os
 import pickle
 
@@ -46,17 +47,28 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
 
 
 def load_proposals(path):
-  obj_code, z, contact_point_indices, energy, _, _, _ = pickle.load(open(path, 'rb'))
-  linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
-  fltr = ((force_closure < 0.1) * (surface_distance < 0.02) * (penetration < 0.02))
-  print(fltr)
-  Y = list(zip(obj_code[fltr], z[fltr], contact_point_indices[fltr]))
-  return Y, energy.detach().cpu().numpy()
+  if os.path.exists('data/proposals.pkl'):
+    Y, energies = pickle.load(open('data/proposals.pkl', 'rb'))
+  else:
+    Y = []
+    energies = []
+    for fn in os.listdir(path):
+      obj_code, z, contact_point_indices, energy, _, _, _ = pickle.load(open(os.path.join(path, fn), 'rb'))
+      energy = energy.detach().cpu().numpy()
+      for i in range(len(obj_code)):
+        linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code[[i]], z[[i]], contact_point_indices[[i]], verbose=True)
+        total_energy = (linear_independence + force_closure + surface_distance + penetration + z_norm + normal_alignment).squeeze().detach().cpu().numpy()
+        if force_closure.squeeze().data < 0.01 and surface_distance.squeeze().data < 0.02 and penetration.squeeze().data < 0.02 and z_norm.squeeze().data < 5 and total_energy < 1:
+          Y.append((obj_code[i], z[i], contact_point_indices[i]))
+          energies.append(total_energy)
+    energies = np.array(energies)
+    pickle.dump([Y, energies], open('data/proposals.pkl', 'wb'))
+  return Y[:10], energies[:10]
 
 def inf():
   return float('inf')
 
-data, energies = load_proposals('logs/saved_806000.pkl')
+data, energies = load_proposals('logs/sample')
 basin_labels, basin_minima, basin_minima_energies, energy_barriers, minimum_barrier_mc_chains = pickle.load(open('ADELM.pkl', 'rb'))
 print(basin_labels)
 print(basin_minima_energies)
@@ -109,43 +121,42 @@ print(energy_barriers)
   
 os.makedirs('adelm_result', exist_ok=True)
 
-# for label, item in enumerate(basin_minima):
-#   os.makedirs('adelm_result/%d'%label, exist_ok=True)
-#   obj_code, z, cp_idx = item
-#   obj_mesh = get_obj_mesh_by_code(obj_code)
-#   cp_idx = cp_idx.detach().cpu().numpy()
-#   hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
-#   fig = go.Figure(data=[
-#       go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
-#       go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
-#       go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-#     ])
-#   fig.write_image('adelm_result/%d/minima.png'%(label))
+for label, item in enumerate(basin_minima):
+  os.makedirs('adelm_result/%d'%label, exist_ok=True)
+  obj_code, z, cp_idx = item
+  obj_mesh = get_obj_mesh_by_code(obj_code)
+  cp_idx = cp_idx.detach().cpu().numpy()
+  hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
+  fig = go.Figure(data=[
+      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+      go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+    ])
+  fig.write_image('adelm_result/%d/minima.png'%(label))
 
 for i in range(len(data)):
   print(i)
-obj_code, z, cp_idx = data[i]
-# label = basin_labels[i]
-cp_idx = cp_idx.detach().cpu().numpy()
-obj_mesh = get_obj_mesh_by_code(obj_code)
-hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
-fig = go.Figure(data=[
-    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
-    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
-    go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-  ])
-fig.update_layout(
-  dict1=dict(autosize=True, margin={'l':0, 'r': 0, 't': 0, 'b': 0}), 
-  scene=dict(
-    xaxis=dict(showticklabels=False, title_text=''), 
-    yaxis=dict(showticklabels=False, title_text=''), 
-    zaxis=dict(showticklabels=False, title_text=''), 
-    ))
-fig.show()
-  exit()
-  # fig.write_image('adelm_result/all/%d.png'%(i))
+  obj_code, z, cp_idx = data[i]
+  # label = basin_labels[i]
+  cp_idx = cp_idx.detach().cpu().numpy()
+  obj_mesh = get_obj_mesh_by_code(obj_code)
+  hand_verts = hand_model.get_vertices(z.unsqueeze(0))[0].detach().cpu().numpy()
+  fig = go.Figure(data=[
+      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+      go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+    ])
+  fig.update_layout(
+    dict1=dict(autosize=True, margin={'l':0, 'r': 0, 't': 0, 'b': 0}), 
+    scene=dict(
+      xaxis=dict(showticklabels=False, title_text=''), 
+      yaxis=dict(showticklabels=False, title_text=''), 
+      zaxis=dict(showticklabels=False, title_text=''), 
+      ))
+  fig.write_image('adelm_result/all/%d.png'%(i))
+  os.makedirs('adelm_result/%d'%basin_labels[i], exist_ok=True)
+  shutil.copy('adelm_result/all/%d.png'%(i), 'adelm_result/%d/%d.png'%(basin_labels[i], i))
 
-exit()
 for i,j in minimum_barrier_mc_chains.keys():
   if minimum_barrier_mc_chains[(i,j)] is None or len(minimum_barrier_mc_chains[(i,j)]) < 3:
     continue

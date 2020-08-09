@@ -37,7 +37,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--n_handcode', default=6, type=int)
 parser.add_argument('--mano_path', default='third_party/manopth/mano/models', type=str)
 # - ADELM parameters
-parser.add_argument('--data_path', default='logs/sample_0/optimized_998000.pkl', type=str)
+parser.add_argument('--data_path', default='logs/sample', type=str)
 args = parser.parse_args()
 
 # prepare models
@@ -61,7 +61,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   contact_point = torch.stack([hand_verts[torch.arange(z.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
-
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
   hand_normal = hand_model.get_surface_normals(verts=hand_verts)
   hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
@@ -77,15 +76,17 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
     return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
 def load_proposals(path):
-  obj_code, z, contact_point_indices, energy, _, _, _ = pickle.load(open(path, 'rb'))
-  energy = energy.detach().cpu().numpy()
   Y = []
   energies = []
-  for i in range(len(obj_code)):
-    linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code[[i]], z[[i]], contact_point_indices[[i]], verbose=True)
-    if force_closure.squeeze().data < 0.01 and surface_distance.squeeze().data < 0.02 and penetration.squeeze().data < 0.02 and z_norm.squeeze().data < 5:
-      Y.append((obj_code[i], z[i], contact_point_indices[i]))
-      energies.append(energy[i])
+  for fn in os.listdir(path):
+    obj_code, z, contact_point_indices, energy, _, _, _ = pickle.load(open(os.path.join(path, fn), 'rb'))
+    energy = energy.detach().cpu().numpy()
+    for i in range(len(obj_code)):
+      linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code[[i]], z[[i]], contact_point_indices[[i]], verbose=True)
+      total_energy = (linear_independence + force_closure + surface_distance + penetration + z_norm + normal_alignment).squeeze().detach().cpu().numpy()
+      if force_closure.squeeze().data < 0.01 and surface_distance.squeeze().data < 0.02 and penetration.squeeze().data < 0.02 and z_norm.squeeze().data < 5 and total_energy < 1:
+        Y.append((obj_code[i], z[i], contact_point_indices[i]))
+        energies.append(total_energy)
   print(len(Y))
   return Y, np.array(energies)
 
@@ -107,13 +108,20 @@ objs, zs, indices = collate(examples)
 
 barrier = np.zeros([len(examples), len(examples)])
 
+batchsize = 65
+n_batch = len(example_energies) // batchsize
+
 for i in range(len(examples)):
   print('\r', i, len(examples), end='')
-  obj_i, z_i, idx_i = tile(examples[i], len(examples))
-  d1 = compute_energy(obj_i, z_i, indices).detach().cpu().numpy()
-  d2 = compute_energy(objs, zs, idx_i).detach().cpu().numpy()
-  d = np.minimum(d1, d2)
-  barrier[i, :] = d
+  for batch_id in range(n_batch+1):
+    obj_i, z_i, idx_i = tile(examples[i], indices[batch_id * batchsize : (batch_id+1) * batchsize].shape[0])
+    d1 = compute_energy(obj_i, z_i, indices[batch_id * batchsize : (batch_id+1) * batchsize]).detach().cpu().numpy()
+    d2 = compute_energy(objs[batch_id * batchsize : (batch_id+1) * batchsize], zs[batch_id * batchsize : (batch_id+1) * batchsize], idx_i).detach().cpu().numpy()
+    d = np.minimum(d1, d2)
+    e = np.maximum(example_energies[i], example_energies[batch_id * batchsize : (batch_id+1) * batchsize])
+    d = np.maximum(d, e)
+    barrier[i, batch_id * batchsize : (batch_id+1) * batchsize] = d
+    barrier[batch_id * batchsize : (batch_id+1) * batchsize, i] = d
 
 np.save('barrier.npy', barrier)
 
