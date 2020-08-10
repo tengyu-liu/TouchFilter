@@ -28,6 +28,7 @@ from PenetrationModel import PenetrationModel
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=16, type=int)
 parser.add_argument('--n_handcode', default=6, type=int)
+parser.add_argument('--n_contact', default=3, type=int)
 parser.add_argument('--n_iter', default=1000000, type=int)
 parser.add_argument('--annealing_period', default=10000, type=int)
 parser.add_argument('--starting_temperature', default=0.1, type=float)
@@ -75,7 +76,8 @@ hand_model = HandModel(
   root_rot_mode='ortho6d', 
   robust_rot=False,
   flat_hand_mean=False,
-  mano_path=args.mano_path)
+  mano_path=args.mano_path, 
+  n_contact=args.n_contact)
 
 hand_verts_eye = torch.tensor(np.eye(hand_model.num_points)).float().cuda() # 778 x 778
 
@@ -91,13 +93,13 @@ obj_code, obj_idx = get_obj_code_random(args.batch_size)
 
 def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   hand_verts = hand_model.get_vertices(z)
-  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(args.n_contact)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
 
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
   hand_normal = hand_model.get_surface_normals(verts=hand_verts)
-  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
+  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(args.n_contact)], dim=1)
   hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
   linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
@@ -125,7 +127,7 @@ def S(t):
   return noise_size * temperature_decay ** (t // stepsize_period)
 
 # initialize z and contact point
-contact_point_indices = torch.randint(0, hand_model.num_points, size=[args.batch_size, 3], device='cuda')
+contact_point_indices = torch.randint(0, hand_model.num_points, size=[args.batch_size, args.n_contact], device='cuda')
 z = torch.normal(mean=0, std=1, size=[args.batch_size, hand_model.code_length], requires_grad=True).float().cuda()
 
 # align palm facing direction
@@ -187,7 +189,7 @@ for _iter in range(args.n_iter):
     directly_update_contact_points = torch.ones(size=[args.batch_size], device='cuda').bool()
     directly_update_contact_points_flag = torch.zeros(size=[args.batch_size], device='cuda')
   # update contact point
-  update_indices = torch.randint(0, 3, size=[args.batch_size], device='cuda')
+  update_indices = torch.randint(0, args.n_contact, size=[args.batch_size], device='cuda')
   update_to = torch.randint(0, hand_model.num_points, size=[args.batch_size], device='cuda')
   temp_new_contact_point_indices = contact_point_indices.clone()
   temp_new_contact_point_indices[torch.arange(args.batch_size), update_indices] = update_to
