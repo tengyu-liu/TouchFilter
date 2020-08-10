@@ -104,6 +104,7 @@ def distance(X, Y):
 
 def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
   object_x, z_x, contact_point_indices_x = X
+  object_x.requires_grad_()
   z_x.requires_grad_()
   object_star, z_star, contact_point_indices_star = Xstar
   batch_size = len(z_x)
@@ -147,60 +148,8 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
     d[accept] = new_d[accept]
     contact_point_indices_x[accept] = new_contact_point_indices[accept]
     energy[accept] = new_energy[accept]
-  return [object_x, z_x.detach(), contact_point_indices_x.detach()], d.detach(), energy.detach(), directly_update_contact_points_flag.detach()
-
-def attraction_diffusion(candidates, alpha, delta, T, M):
-  """ 
-  TODO: Update so that it keeps a job queue, and everytime a result is produced, the next job swaps in
-  arguments
-    candidates: list of triplets
-  return
-    d: list of distances 
-    B: list of energy barriers between items
-    states: mc chain between states
-  """
-  # initialize 
-  directly_update_contact_points_flag = torch.zeros(size=[args.batch_size], device='cuda')
-  d = distance(C, Xstar)
-  dstar = d.clone()
-  m = torch.zeros([d.shape[0]], device='cuda').float()
-  B = torch.zeros([args.batch_size]) - np.inf
-  success = d <= delta
-  failure = m > M
-  states = [[x.detach().cpu().numpy() for x in C]]
-
-  # load job
-  job_queue = [[(i,j) for i in range(len(candidates)) if i != j] for j in range(len(candidates))]
-  current_job = []
-  C = []
-  X = []
-  for _ in range(args.batch_size):
-    i, j = job_queue.pop(0)
-    C.append(candidates[i])
-    X.append(candidates[j])
-    current_job.append((i,j))
-  C = collate(C)
-  X = collate(X)
-
-  while not finished:
-    C, d, U, directly_update_contact_points_flag = MCMC(C, X, T, alpha, directly_update_contact_points_flag.detach())
-    # update energy barrier
-    B[U > B] = U[U > B].clone()
-    # if min distance is refreshed, reset m. otherwise update m
-    refresh = d < dstar
-    m = m + 1
-    m[refresh] = 0
-    dstar[refresh] = d[refresh]
-    # replace successes and failures
-    success = d <= delta
-    failure = m > M
-    finished = ((d <= delta).sum() > 0) or ((m < M).sum() == 0)
-    not_finished = torch.logical_and(d > delta, m < M)
-    states.append([x.detach().cpu().numpy() for x in C])
-  if B is None:
-    B = torch.zeros([d.shape[0]], device='cuda').float()
-  states.append([x.detach().cpu().numpy() for x in Xstar])
-  return d, B, states
+    directly_update_contact_points_flag[~accept] += 1
+  return [object_x.detach(), z_x.detach(), contact_point_indices_x.detach()], d.detach(), energy.detach(), directly_update_contact_points_flag.detach()
 
 def load_proposals(path):
   if os.path.exists('data/proposals.pkl'):
@@ -307,7 +256,7 @@ def inf():
 
 # initialize variables for attraction-diffusion
 flag = torch.zeros(size=[len(YET)], device='cuda')
-d = distance(Y, Z)
+d = distance(Y, Z).detach()
 dstar = d.clone()
 m = torch.zeros([len(d)], device='cuda').float()
 B = torch.max(YET, ZET)
@@ -320,10 +269,10 @@ while (len(job_queue) + len(current_job)) > 0:
   success = d <= args.delta
   failure = m > args.M
   if success.sum() > 0:
-    for i in range(len(success)-1, -1, -1):
+    for i in range(len(success)):
       if success[i].item():
         # if success
-        item_id, basin_label, direction = current_job.pop(i)
+        item_id, basin_label, direction = current_job[i]
         job_queue_item_count[item_id] -= 1
         # update basin label
         if B[i].item() < min(item_basin_barriers[item_id]):
@@ -344,10 +293,10 @@ while (len(job_queue) + len(current_job)) > 0:
     pickle.dump(item_basin_barriers, open(os.path.join(args.log_path, 'item_basin_barriers/%d.pkl'%success_step), 'wb'))
     success_step += 1
   if failure.sum() > 0:
-    for i in range(len(failure)-1, -1, -1):
+    for i in range(len(failure)):
       if failure[i].item():
         # if failure
-        item_id, basin_label, direction = current_job.pop(i)
+        item_id, basin_label, direction = current_job[i]
         job_queue_item_count[item_id] -= 1
         print('rejecting AD from item #%d to basin #%d'%(item_id, basin_label))
         # check to create new minima
@@ -358,7 +307,7 @@ while (len(job_queue) + len(current_job)) > 0:
           for _item_id in range(len(examples)):
             if _item_id != item_id:
               job_queue.append((_item_id, num_basins, 0))
-              job_queue.append((_item_id, num_basins, 0))
+              job_queue.append((_item_id, num_basins, 1))
           job_queue_item_count += 2
           job_queue_item_count[item_id] -= 2
           for _item_id in range(len(examples)):
@@ -371,16 +320,18 @@ while (len(job_queue) + len(current_job)) > 0:
           draw(examples[item_id], num_basins, item_id)
           shutil.copy(os.path.join(args.log_path, 'adelm_result', str(num_basins), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(num_basins), 'minima.png'))
           num_basins += 1
-  if len(current_job) == 0:
-    continue
   if success.sum() + failure.sum() > 0:
-    d = d[~(success+failure)]
-    m = m[~(success+failure)]
-    B = B[~(success+failure)]
-    dstar = dstar[~(success+failure)]
-    flag = flag[~(success+failure)]
-    Y = (Y[0][~(success+failure)], Y[1][~(success+failure)], Y[2][~(success+failure)])
-    Z = (Z[0][~(success+failure)], Z[1][~(success+failure)], Z[2][~(success+failure)])
+    for i in range(len(success)-1,-1,-1):
+      if success[i].item() or failure[i].item():
+        tmp = current_job.pop(i)
+    fltr = ~(success+failure)
+    d = d[fltr]
+    m = m[fltr]
+    B = B[fltr]
+    dstar = dstar[fltr]
+    flag = flag[fltr]
+    Y = (Y[0][fltr], Y[1][fltr], Y[2][fltr])
+    Z = (Z[0][fltr], Z[1][fltr], Z[2][fltr])
     # refill
     refill_count = min(args.batch_size - len(current_job), len(job_queue))
     YE = []
@@ -406,7 +357,12 @@ while (len(job_queue) + len(current_job)) > 0:
       YET = torch.tensor(YE, device='cuda')
       ZET = torch.tensor(ZE, device='cuda')
       B = torch.cat([B, torch.max(YET, ZET)], dim=0)
+  if len(current_job) == 0:
+    continue
   # run attraction-diffusion between Y and Z
+  assert len(current_job) == len(Y[0])
+  assert len(current_job) == len(list(set(current_job)))
+  print('\rrunning MCMC on %d/%d jobs    '%(len(Y[0]), len(job_queue)), end='')
   Y, d, U, flag = MCMC(Y, Z, args.T, args.alpha, flag)
   B[U>B] = U[U>B].clone()
   m[d>=dstar] = m[d>=dstar] + 1

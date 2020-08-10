@@ -20,7 +20,7 @@ class HandModel:
     n_handcode=6, root_rot_mode='ortho6d', robust_rot=False, flat_hand_mean=True,
     mano_path='third_party/manopth/mano/models', n_contact=3):
     self.n_contact = n_contact
-    self.contact_permutations = permutations(np.arange(self.n_contact))
+    self.contact_permutations = [list(p) for p in permutations(np.arange(self.n_contact))]
     if n_handcode == 45:
       self.layer = ManoLayer(root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, use_pca=False).cuda()
     else:
