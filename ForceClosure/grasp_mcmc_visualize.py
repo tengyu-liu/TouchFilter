@@ -25,7 +25,7 @@ penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_
 
 # data = pickle.load(open('logs/%s/optimized_%d.pkl'%(name, i_iter), 'rb'))
 # old_data = pickle.load(open('logs/%s/saved_%d.pkl'%(name, i_iter), 'rb'))
-old_data = pickle.load(open('logs/saved_756000.pkl', 'rb'))
+old_data = pickle.load(open('logs/zeyu_5p/final_0.pkl', 'rb'))
 
 # obj_code, z, contact_point_indices, energy = data
 obj_code, old_z, contact_point_indices, old_energy = old_data[:4]
@@ -69,7 +69,7 @@ for i in range(len(obj_code)):
   penetration.append(_penetration.detach().cpu().numpy())
   z_norm.append(_z_norm.detach().cpu().numpy())
   normal_alignment.append(_normal_alignment.detach().cpu().numpy())
-  fltr.append(((_force_closure < 0.1) * (_surface_distance < 0.02) * (_penetration < 0.02)).squeeze().detach().cpu().numpy())
+  fltr.append(((_force_closure < 1) * (_surface_distance < 0.02) * (_penetration < 0.02)).squeeze().detach().cpu().numpy())
 
 print(sum(fltr))
 # exit()
@@ -93,16 +93,18 @@ print(sum(fltr))
 
 for i_item in range(len(obj_code)):
   if fltr[i_item]:
+    print(contact_point_indices[i_item])
     obj_mesh = get_obj_mesh_by_code(obj_code[i_item])
     # hand_verts = hand_model.get_vertices(z).detach().float().cuda()
     old_hand_verts = hand_model.get_vertices(old_z).detach().float().cuda()
     # contact_point = torch.stack([hand_verts[torch.arange(hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
-    old_contact_point = torch.stack([old_hand_verts[torch.arange(old_hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+    old_contact_point = torch.stack([old_hand_verts[torch.arange(old_hand_verts.shape[0]), contact_point_indices[:,i],:] for i in range(5)], dim=1)
 
     # hand_verts = hand_verts.detach().cpu().numpy()
     old_hand_verts = old_hand_verts.detach().cpu().numpy()
     # contact_point = contact_point.detach().cpu().numpy()
     old_contact_point = old_contact_point.detach().cpu().numpy()
+    
 
     fig = plotly.tools.make_subplots(1, 1, specs=[[{'type': 'surface'}]])
 

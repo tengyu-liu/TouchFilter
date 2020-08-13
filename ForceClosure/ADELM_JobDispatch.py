@@ -152,22 +152,36 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
   return [object_x.detach(), z_x.detach(), contact_point_indices_x.detach()], d.detach(), energy.detach(), directly_update_contact_points_flag.detach()
 
 def load_proposals(path):
-  if os.path.exists('data/proposals.pkl'):
-    Y, energies = pickle.load(open('data/proposals.pkl', 'rb'))
+  if os.path.exists(os.path.join(args.log_path, 'proposals.pkl')) and False:
+    Y, energies = pickle.load(open(os.path.join(args.log_path, 'proposals.pkl'), 'rb'))
   else:
     Y = []
     energies = []
+    li = []
+    fc = []
+    sd = []
+    pen = []
+    zn = []
+    na = []
+    contact_point_indices_all = []
     for fn in os.listdir(path):
       obj_code, z, contact_point_indices, energy, _, _, _ = pickle.load(open(os.path.join(path, fn), 'rb'))
+      contact_point_indices_all.append(contact_point_indices)
       energy = energy.detach().cpu().numpy()
       for i in range(len(obj_code)):
         linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code[[i]], z[[i]], contact_point_indices[[i]], verbose=True)
+        li.append(linear_independence.squeeze().item())
+        fc.append(force_closure.squeeze().item())
+        sd.append(surface_distance.squeeze().item())
+        pen.append(penetration.squeeze().item())
+        zn.append(z_norm.squeeze().item())
+        na.append(normal_alignment.squeeze().item())
         total_energy = (linear_independence + force_closure + surface_distance + penetration + z_norm + normal_alignment).squeeze().detach().cpu().numpy()
-        if force_closure.squeeze().data < 0.01 and surface_distance.squeeze().data < 0.02 and penetration.squeeze().data < 0.02 and z_norm.squeeze().data < 5 and total_energy < 1:
+        if force_closure.squeeze().data < 1e-3 and surface_distance.squeeze().data < 1e-2 and penetration.squeeze().data < 1e-2 and z_norm.squeeze().data < 5:
           Y.append((obj_code[i], z[i], contact_point_indices[i]))
           energies.append(total_energy)
     energies = np.array(energies)
-    pickle.dump([Y, energies], open('data/proposals.pkl', 'wb'))
+    pickle.dump([Y, energies], open(os.path.join(args.log_path, 'proposals.pkl'), 'wb'))
   return Y, energies
 
 def tile(Y, size):
@@ -207,6 +221,9 @@ def combine(Y, x):
   return torch.cat([Y[0], x[0].unsqueeze(0)], dim=0), torch.cat([Y[1], x[1].unsqueeze(0)], dim=0), torch.cat([Y[2], x[2].unsqueeze(0)], dim=0)
 
 examples, example_energies = load_proposals(args.data_path)  # each proposal is already a local minimum
+
+print(len(example_energies))
+exit()
 
 # ADELM
 basin_labels = [-1 for i in range(len(examples))]
@@ -312,7 +329,7 @@ while (len(job_queue) + len(current_job)) > 0:
           job_queue_item_count[item_id] -= 2
           for _item_id in range(len(examples)):
             if _item_id == item_id:
-              item_basin_barriers[_item_id].append(0)
+              item_basin_barriers[_item_id].append(example_energies[item_id])
             else:             
               item_basin_barriers[_item_id].append(float('inf'))
           print('    assign new basin #%d for item #%d'%(num_basins, item_id))
@@ -370,3 +387,4 @@ while (len(job_queue) + len(current_job)) > 0:
   dstar[d<dstar] = d[d<dstar]
 
 pickle.dump([basin_labels, basin_minima, basin_minima_energies, item_basin_barriers], open(os.path.join(args.log_path, 'ADELM_dispatch.pkl'), 'wb'))
+ 

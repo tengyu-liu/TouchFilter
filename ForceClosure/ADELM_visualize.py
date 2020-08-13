@@ -69,7 +69,7 @@ def inf():
   return float('inf')
 
 data, energies = load_proposals('logs/sample')
-basin_labels, basin_minima, basin_minima_energies, energy_barriers, minimum_barrier_mc_chains = pickle.load(open('ADELM.pkl', 'rb'))
+basin_labels, basin_minima, basin_minima_energies, energy_barriers = pickle.load(open('ADELM.pkl', 'rb'))
 print(basin_labels)
 print(basin_minima_energies)
 print(energy_barriers)
@@ -157,56 +157,56 @@ for i in range(len(data)):
   os.makedirs('adelm_result/%d'%basin_labels[i], exist_ok=True)
   shutil.copy('adelm_result/all/%d.png'%(i), 'adelm_result/%d/%d.png'%(basin_labels[i], i))
 
-for i,j in minimum_barrier_mc_chains.keys():
-  if minimum_barrier_mc_chains[(i,j)] is None or len(minimum_barrier_mc_chains[(i,j)]) < 3:
-    continue
-  os.makedirs('adelm_result/%d-%d'%(i,j), exist_ok=True)
-  obj_mesh = get_obj_mesh_by_code(torch.tensor(minimum_barrier_mc_chains[(i,j)][0][0]).cuda())
-  total = len(minimum_barrier_mc_chains[(i,j)])
-  step = int(max(total // 40, 1))
-  for k, state in enumerate(minimum_barrier_mc_chains[(i,j)][::step]):
-    print(i,j,k, len(minimum_barrier_mc_chains[(i,j)]))
-    obj_code, z, cp_idx = state
-    hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
-    # cp_idx = cp_idx.detach().cpu().numpy()
-    fig = go.Figure(data=[
-      go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
-      go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
-      go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-      ])
-    # fig.update_layout(scene_camera=dict(
-    #   up=dict(x=0, y=1, z=0)
-    # ))
-    fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
-  k += 1
-  state = minimum_barrier_mc_chains[(i,j)][-2]
-  obj_code, z, cp_idx = state
-  hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
-  # cp_idx = cp_idx.detach().cpu().numpy()
-  fig = go.Figure(data=[
-    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
-    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
-    go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-    ])
-  # fig.update_layout(scene_camera=dict(
-  #   up=dict(x=0, y=1, z=0)
-  # ))
-  fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
-  k += 1
-  state = minimum_barrier_mc_chains[(i,j)][-1]
-  obj_code, z, cp_idx = state
-  hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
-  # cp_idx = cp_idx.detach().cpu().numpy()
-  fig = go.Figure(data=[
-    go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
-    go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
-    go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
-    ])
-  # fig.update_layout(scene_camera=dict(
-  #   up=dict(x=0, y=1, z=0)
-  # ))
-  fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
-  os.system('ffmpeg -i adelm_result/%d-%d/%%d.png -y -filter_complex "[0:v] palettegen" adelm_result/%d-%d/palette.png'%(i,j,i,j))
-  os.system('ffmpeg -i adelm_result/%d-%d/%%d.png -i adelm_result/%d-%d/palette.png -y -filter_complex "[0:v][1:v] paletteuse" adelm_result/%d-%d.gif'%(i,j,i,j,i,j))
-  os.system('rm adelm/%d-%d/palette.png'%(i,j))
+# for i,j in minimum_barrier_mc_chains.keys():
+#   if minimum_barrier_mc_chains[(i,j)] is None or len(minimum_barrier_mc_chains[(i,j)]) < 3:
+#     continue
+#   os.makedirs('adelm_result/%d-%d'%(i,j), exist_ok=True)
+#   obj_mesh = get_obj_mesh_by_code(torch.tensor(minimum_barrier_mc_chains[(i,j)][0][0]).cuda())
+#   total = len(minimum_barrier_mc_chains[(i,j)])
+#   step = int(max(total // 40, 1))
+#   for k, state in enumerate(minimum_barrier_mc_chains[(i,j)][::step]):
+#     print(i,j,k, len(minimum_barrier_mc_chains[(i,j)]))
+#     obj_code, z, cp_idx = state
+#     hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
+#     # cp_idx = cp_idx.detach().cpu().numpy()
+#     fig = go.Figure(data=[
+#       go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+#       go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+#       go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+#       ])
+#     # fig.update_layout(scene_camera=dict(
+#     #   up=dict(x=0, y=1, z=0)
+#     # ))
+#     fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
+#   k += 1
+#   state = minimum_barrier_mc_chains[(i,j)][-2]
+#   obj_code, z, cp_idx = state
+#   hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
+#   # cp_idx = cp_idx.detach().cpu().numpy()
+#   fig = go.Figure(data=[
+#     go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+#     go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+#     go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+#     ])
+#   # fig.update_layout(scene_camera=dict(
+#   #   up=dict(x=0, y=1, z=0)
+#   # ))
+#   fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
+#   k += 1
+#   state = minimum_barrier_mc_chains[(i,j)][-1]
+#   obj_code, z, cp_idx = state
+#   hand_verts = hand_model.get_vertices(torch.tensor(z).unsqueeze(0).cuda())[0].detach().cpu().numpy()
+#   # cp_idx = cp_idx.detach().cpu().numpy()
+#   fig = go.Figure(data=[
+#     go.Mesh3d(x=obj_mesh.vertices[:,0], y=obj_mesh.vertices[:,1], z=obj_mesh.vertices[:,2], i=obj_mesh.faces[:,0], j=obj_mesh.faces[:,1], k=obj_mesh.faces[:,2], color='lightblue', opacity=1), 
+#     go.Mesh3d(x=hand_verts[:,0], y=hand_verts[:,1], z=hand_verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2], color='lightpink', opacity=1),
+#     go.Scatter3d(x=hand_verts[cp_idx, 0], y=hand_verts[cp_idx, 1], z=hand_verts[cp_idx,2], mode='markers', marker=dict(size=5, color='red'))
+#     ])
+#   # fig.update_layout(scene_camera=dict(
+#   #   up=dict(x=0, y=1, z=0)
+#   # ))
+#   fig.write_image('adelm_result/%d-%d/%d.png'%(i,j,k))
+#   os.system('ffmpeg -i adelm_result/%d-%d/%%d.png -y -filter_complex "[0:v] palettegen" adelm_result/%d-%d/palette.png'%(i,j,i,j))
+#   os.system('ffmpeg -i adelm_result/%d-%d/%%d.png -i adelm_result/%d-%d/palette.png -y -filter_complex "[0:v][1:v] paletteuse" adelm_result/%d-%d.gif'%(i,j,i,j,i,j))
+#   os.system('rm adelm/%d-%d/palette.png'%(i,j))
 
