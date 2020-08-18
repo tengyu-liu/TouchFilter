@@ -69,7 +69,8 @@ for i in range(len(obj_code)):
   penetration.append(_penetration.detach().cpu().numpy())
   z_norm.append(_z_norm.detach().cpu().numpy())
   normal_alignment.append(_normal_alignment.detach().cpu().numpy())
-  fltr.append(((_force_closure < 1) * (_surface_distance < 0.02) * (_penetration < 0.02)).squeeze().detach().cpu().numpy())
+  # fltr.append(((_force_closure < 0.5) * (_force_closure > 0.4) * (_surface_distance < 0.02) * (_penetration < 0.02) * (_z_norm < 3.5) * (_z_norm > 3)).squeeze().detach().cpu().numpy())
+  fltr.append(((_force_closure < 0.5) * (_surface_distance < 0.02) * (_penetration < 0.02) * (_z_norm < 3.5)).squeeze().detach().cpu().numpy())
 
 print(sum(fltr))
 # exit()

@@ -63,7 +63,7 @@ def get_example_energy(i):
   return barriers[i,i]
 
 # draw image
-R = dendrogram(Z, leaf_font_size=12, show_leaf_counts=True, no_plot=False, truncate_mode='level', p=5)
+R = dendrogram(Z, leaf_font_size=12, show_leaf_counts=True, no_plot=False, truncate_mode='level', p=3)
 
 instance_ids = []
 for cluster_i in range(len(R['ivl'])):

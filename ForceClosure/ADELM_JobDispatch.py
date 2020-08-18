@@ -177,7 +177,7 @@ def load_proposals(path):
         zn.append(z_norm.squeeze().item())
         na.append(normal_alignment.squeeze().item())
         total_energy = (linear_independence + force_closure + surface_distance + penetration + z_norm + normal_alignment).squeeze().detach().cpu().numpy()
-        if force_closure.squeeze().data < 1e-3 and surface_distance.squeeze().data < 1e-2 and penetration.squeeze().data < 1e-2 and z_norm.squeeze().data < 5:
+        if force_closure.squeeze().data < 0.5 and surface_distance.squeeze().data < 1e-2 and penetration.squeeze().data < 1e-2 and z_norm.squeeze().data < 3.5:
           Y.append((obj_code[i], z[i], contact_point_indices[i]))
           energies.append(total_energy)
     energies = np.array(energies)
