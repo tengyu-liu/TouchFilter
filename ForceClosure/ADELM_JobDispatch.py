@@ -30,6 +30,7 @@ np.seterr(all='raise')
 parser = argparse.ArgumentParser()
 # - model parameters
 parser.add_argument('--n_handcode', default=6, type=int)
+parser.add_argument('--n_contact', default=3, type=int)
 parser.add_argument('--mano_path', default='third_party/manopth/mano/models', type=str)
 # - ADELM parameters
 parser.add_argument('--batch_size', default=64, type=int)
@@ -55,7 +56,8 @@ hand_model = HandModel(
   root_rot_mode='ortho6d', 
   robust_rot=False,
   flat_hand_mean=False,
-  mano_path=args.mano_path)
+  mano_path=args.mano_path,
+  n_contact=args.n_contact)
 
 object_model = ObjectModel(
   state_dict_path="data/ModelParameters/2000.pth"
@@ -69,12 +71,12 @@ penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_
 # compute energy
 def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   hand_verts = hand_model.get_vertices(z)
-  contact_point = torch.stack([hand_verts[torch.arange(z.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
+  contact_point = torch.stack([hand_verts[torch.arange(z.shape[0]), contact_point_indices[:,i],:] for i in range(args.n_contact)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
   hand_normal = hand_model.get_surface_normals(verts=hand_verts)
-  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
+  hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(args.n_contact)], dim=1)
   hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
   linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
@@ -124,11 +126,11 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
     directly_update_contact_points = torch.ones(size=[batch_size], device='cuda').bool().detach()
     directly_update_contact_points_flag = torch.zeros(size=[batch_size], device='cuda').detach()
     new_z = z_x.clone()
-  update_indices = torch.randint(0, 3, size=[batch_size], device='cuda')
+  update_indices = torch.randint(0, args.n_contact, size=[batch_size], device='cuda')
   # choose next point smarter
   to_src_dist = hand_model.mano_manifold_distances[contact_point_indices_x]
   to_tgt_dist = hand_model.mano_manifold_distances[contact_point_indices_star]
-  prob = 1 / (to_src_dist + to_tgt_dist.sum(1, keepdim=True))  # B x 3 x V
+  prob = 1 / (to_src_dist + to_tgt_dist.sum(1, keepdim=True))  # B x n_contact x V
   prob = prob[torch.arange(batch_size), update_indices]  # B x V
   update_to = torch.cat([torch.multinomial(prob[b], 1) for b in range(batch_size)])
   # update_to = torch.randint(0, hand_model.num_points, size=[batch_size], device='cuda')
@@ -221,9 +223,6 @@ def combine(Y, x):
   return torch.cat([Y[0], x[0].unsqueeze(0)], dim=0), torch.cat([Y[1], x[1].unsqueeze(0)], dim=0), torch.cat([Y[2], x[2].unsqueeze(0)], dim=0)
 
 examples, example_energies = load_proposals(args.data_path)  # each proposal is already a local minimum
-
-print(len(example_energies))
-exit()
 
 # ADELM
 basin_labels = [-1 for i in range(len(examples))]
