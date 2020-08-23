@@ -39,13 +39,16 @@ class HandModel:
     self.texture_coords = torch.tensor(self.get_texture_coords().reshape([1, 1, -1, 2]) * 2 - 1).float().to(device)
     self.original_faces = self.layer.th_faces.detach().cpu().numpy()
     self.faces = load_faces('mano_no_thumb.obj')
+
+    self.faces_in_new_verts = np.array([[self.keep_verts.index(x) for x in _f] for _f in self.faces])
+
     self.keep_verts = list(set(self.faces.reshape([-1])))
 
     self.num_points = len(self.keep_verts)
     self.verts_eye = torch.tensor(np.eye(self.num_points)).float().to(device)
-    self.n1_mat = torch.tensor(self.verts_eye.detach().cpu().numpy()[self.faces[:,0]]).to(device)   # F x V
-    self.n2_mat = torch.tensor(self.verts_eye.detach().cpu().numpy()[self.faces[:,1]]).to(device)   # F x V
-    self.n3_mat = torch.tensor(self.verts_eye.detach().cpu().numpy()[self.faces[:,2]]).to(device)   # F x V
+    self.n1_mat = self.verts_eye[self.faces_in_new_verts[:,0]]   # F x V
+    self.n2_mat = self.verts_eye[self.faces_in_new_verts[:,1]]   # F x V
+    self.n3_mat = self.verts_eye[self.faces_in_new_verts[:,2]]   # F x V
     self.fv_total = self.n1_mat.sum(0) + self.n2_mat.sum(0) + self.n3_mat.sum(0) # V
     self.neighbors = defaultdict(set)
     for v1,v2,v3 in self.faces:
