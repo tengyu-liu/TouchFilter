@@ -97,7 +97,7 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
-  hand_normal = hand_model.get_surface_normals(verts=hand_verts)
+  hand_normal = hand_model.get_surface_normals(z=z)
   hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(args.n_contact)], dim=1)
   hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
@@ -109,7 +109,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
     return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
   else:
     return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
-
 
 starting_temperature = torch.tensor(args.starting_temperature).float().cuda()
 temperature_decay = torch.tensor(args.temperature_decay).float().cuda()
