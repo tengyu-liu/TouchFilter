@@ -43,9 +43,9 @@ class HandModel:
 
     self.num_points = len(self.keep_verts)
     self.verts_eye = torch.tensor(np.eye(self.num_points)).float().to(device)
-    self.n1_mat = self.verts_eye[self.faces[:,0]]   # F x V
-    self.n2_mat = self.verts_eye[self.faces[:,1]]   # F x V
-    self.n3_mat = self.verts_eye[self.faces[:,2]]   # F x V
+    self.n1_mat = torch.tensor(self.verts_eye.detach().cpu().numpy()[self.faces[:,0]]).to(device)   # F x V
+    self.n2_mat = torch.tensor(self.verts_eye.detach().cpu().numpy()[self.faces[:,1]]).to(device)   # F x V
+    self.n3_mat = torch.tensor(self.verts_eye.detach().cpu().numpy()[self.faces[:,2]]).to(device)   # F x V
     self.fv_total = self.n1_mat.sum(0) + self.n2_mat.sum(0) + self.n3_mat.sum(0) # V
     self.neighbors = defaultdict(set)
     for v1,v2,v3 in self.faces:
