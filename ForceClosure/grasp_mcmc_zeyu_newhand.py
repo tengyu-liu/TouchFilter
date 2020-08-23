@@ -191,8 +191,7 @@ for _iter in range(args.n_iter):
   prob = torch.ones([args.batch_size, hand_model.num_points], device='cuda') # B x V
   prob[np.expand_dims(np.arange(args.batch_size), 1), contact_point_indices] = 0
   # update_to = torch.randint(0, hand_model.num_points, size=[args.batch_size], device='cuda')
-  m = torch.multinomial(prob[0],1)
-  update_to = torch.tensor([hand_model.keep_verts[torch.multinomial(prob[b], 1)] for b in range(args.batch_size)], device='cuda')
+  update_to = torch.cat([torch.multinomial(prob[b], 1) for b in range(args.batch_size)])
   temp_new_contact_point_indices = contact_point_indices.clone()
   temp_new_contact_point_indices[torch.arange(args.batch_size), update_indices] = update_to
   new_contact_point_indices[directly_update_contact_points] = temp_new_contact_point_indices[directly_update_contact_points]
