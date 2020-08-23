@@ -239,9 +239,9 @@ class HandModel:
     fv3 = verts[:,self.faces[:,2],:]
 
     # compute normals
-    vn1 = torch.cross((fv1-fv3), (fv2-fv1))   # B x F x 3
-    vn2 = torch.cross((fv2-fv1), (fv3-fv2))   # B x F x 3
-    vn3 = torch.cross((fv3-fv2), (fv1-fv3))   # B x F x 3
+    vn1 = torch.cross((fv1-fv3), (fv2-fv1)) + 1e-8   # B x F x 3
+    vn2 = torch.cross((fv2-fv1), (fv3-fv2)) + 1e-8   # B x F x 3
+    vn3 = torch.cross((fv3-fv2), (fv1-fv3)) + 1e-8   # B x F x 3
 
     assert (np.all(vn1.detach().cpu().numpy()!=0))
     assert (np.all(vn2.detach().cpu().numpy()!=0))
