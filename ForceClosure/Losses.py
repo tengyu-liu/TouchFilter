@@ -3,13 +3,16 @@ import torch
 
 class FCLoss:
   def __init__(self, object_model):
+
+    self.device = torch.device('cuda')
+    device = self.device
     
-    self.transformation_matrix = torch.tensor(np.array([[0,0,0,0,0,-1,0,1,0], [0,0,1,0,0,0,-1,0,0], [0,-1,0,1,0,0,0,0,0]])).float().cuda()
-    self.eye3 = torch.tensor(np.eye(3).reshape(1, 1, 3, 3)).float().cuda()
-    self.eye6 = torch.tensor(np.eye(6).reshape(1,6,6)).float().cuda()
+    self.transformation_matrix = torch.tensor(np.array([[0,0,0,0,0,-1,0,1,0], [0,0,1,0,0,0,-1,0,0], [0,-1,0,1,0,0,0,0,0]])).float().to(device)
+    self.eye3 = torch.tensor(np.eye(3).reshape(1, 1, 3, 3)).float().to(device)
+    self.eye6 = torch.tensor(np.eye(6).reshape(1,6,6)).float().to(device)
     
-    self.eps = torch.tensor(0.01).float().cuda()
-    self.mu = torch.tensor(0.1).float().cuda()
+    self.eps = torch.tensor(0.01).float().to(device)
+    self.mu = torch.tensor(0.1).float().to(device)
     self.sqrt_sq_mu_1 = torch.sqrt(self.mu*self.mu+1)
     self.relu = torch.nn.ReLU()
 
@@ -42,7 +45,7 @@ class FCLoss:
 
     temp = self.eps * self.eye6
     temp = torch.matmul(G, Gt) - temp
-    eigval = torch.symeig(temp.cpu(), eigenvectors=True)[0].cuda()
+    eigval = torch.symeig(temp.cpu(), eigenvectors=True)[0].to(self.device)
     rnev = self.relu(-eigval)
     result = torch.sum(rnev * rnev, 1)
     return result

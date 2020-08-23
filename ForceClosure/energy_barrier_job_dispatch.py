@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.offsetbox import TextArea, DrawingArea, OffsetImage, AnnotationBbox
 from typing import List, Any
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import floyd_warshall
 
-basin_labels, basin_minima, basin_minima_energies, item_basin_barriers = pickle.load(open('adelm/ADELM_dispatch.pkl', 'rb'))
+basin_labels, basin_minima, basin_minima_energies, item_basin_barriers = pickle.load(open('adelm_7/ADELM_dispatch.pkl', 'rb'))
 
 item_count = [0 for _ in range(len(basin_minima))]
 
@@ -25,10 +27,19 @@ for i_item in range(len(item_basin_barriers)):
     if i_basin == j_basin:
       barriers[i_basin, j_basin] = basin_minima_energies[i_basin]
 
-disconnected_basins = np.isinf(barriers).sum(1) == 86
-barriers = barriers[~disconnected_basins][:,~disconnected_basins]
-barrier_indices = barrier_indices[~disconnected_basins]
-disconnected_basins = np.zeros(len(barriers)).astype(bool)
+for _ in range(10):
+  disconnected_basins = np.isinf(barriers).sum(1) == len(barriers)-1
+  barriers = barriers[~disconnected_basins][:,~disconnected_basins]
+  barrier_indices = barrier_indices[~disconnected_basins]
+
+sparse_barrier = csr_matrix(barriers.shape)
+for i in range(len(barriers)):
+  for j in range(len(barriers)):
+    if not np.isinf(barriers[i,j]):
+      sparse_barrier[i,j] = barriers[i,j]
+
+shortest_distance, shortest_path = floyd_warshall(sparse_barrier, directed=False, return_predecessors=True, unweighted=True)
+disconnected_basins = (shortest_path == -9999).sum(0) == len(shortest_path)-1
 disconnected_basins[26] = True
 barriers = barriers[~disconnected_basins][:,~disconnected_basins]
 barrier_indices = barrier_indices[~disconnected_basins]
@@ -40,8 +51,6 @@ for i_basin in range(len(barriers)):
 
 def consolidate(barriers):
   # input: N x N mat
-  from scipy.sparse import csr_matrix
-  from scipy.sparse.csgraph import floyd_warshall
   sparse_barrier = csr_matrix(barriers.shape)
   for i in range(len(barriers)):
     for j in range(len(barriers)):
@@ -135,7 +144,7 @@ for i in range(len(R['ivl'])-1):
     y[0] = get_example_energy(R['leaves'][i_leaf])
     minima.append(y[0])
     y0 = True
-    _ = ax.text(x[0], y[0] - 0.05, '%d(%d)'%(barrier_indices[R['leaves'][i_leaf]], item_count[barrier_indices[R['leaves'][i_leaf]]]), fontsize='xx-small')
+    # _ = ax.text(x[0], y[0] - 0.2, '%d(%d)'%(barrier_indices[R['leaves'][i_leaf]], item_count[barrier_indices[R['leaves'][i_leaf]]]), fontsize='xx-small')
     # for i_img, instance in enumerate(instance_ids_in_cluster):
     #   img = mpimg.imread('adelm_result/all/%d.png'%instance)
     #   imgbox = OffsetImage(img, zoom=img_zoom)
@@ -147,7 +156,7 @@ for i in range(len(R['ivl'])-1):
     y[3] = get_example_energy(R['leaves'][i_leaf])
     minima.append(y[3])
     y3 = True
-    _ = ax.text(x[3], y[3] - 0.05, '%d(%d)'%(barrier_indices[R['leaves'][i_leaf]], item_count[barrier_indices[R['leaves'][i_leaf]]]), fontsize='xx-small')
+    # _ = ax.text(x[3], y[3] - 0.2, '%d(%d)'%(barrier_indices[R['leaves'][i_leaf]], item_count[barrier_indices[R['leaves'][i_leaf]]]), fontsize='xx-small')
     # for i_img, instance in enumerate(instance_ids_in_cluster):
     #   img = mpimg.imread('adelm_result/all/%d.png'%instance)
     #   imgbox = OffsetImage(img, zoom=img_zoom)
@@ -166,8 +175,8 @@ ax.spines['right'].set_visible(False)
 ax.spines['left'].set_visible(False)
 ax.axes.get_xaxis().set_visible(False)
 # fig.show()
-fig.savefig('dendrogram_with_axis.png')
+fig.savefig('dendrogram_no_text.svg')
 
-pickle.dump([Z, R, instance_ids], open('dendrogram.pkl', 'wb'))
+pickle.dump([Z, R], open('dendrogram_5p_7.pkl', 'wb'))
 # plt.show()
 

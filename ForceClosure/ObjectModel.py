@@ -19,6 +19,9 @@ class ObjectModel:
       weight_norm=True
     )
 
+    self.device = torch.device('cuda')
+    device = self.device
+
     self.decoder = torch.nn.DataParallel(self.decoder)
 
     saved_model_state = torch.load(
@@ -26,7 +29,7 @@ class ObjectModel:
     )
     saved_model_epoch = saved_model_state["epoch"]
     self.decoder.load_state_dict(saved_model_state["model_state_dict"])
-    self.decoder = self.decoder.module.cuda()
+    self.decoder = self.decoder.module.to(device)
     self.decoder.eval()
     pass
 
@@ -40,8 +43,8 @@ class ObjectModel:
     distance = self.decoder(torch.cat([obj_code, x], 1)).reshape([B, P, 1])
     return distance
 
-  def gradient(self, x, distance, retain_graph=False, create_graph=False):
-    return torch.autograd.grad([distance.sum()], [x], retain_graph=retain_graph, create_graph=create_graph)[0]
+  def gradient(self, x, distance, retain_graph=False, create_graph=False, allow_unused=False):
+    return torch.autograd.grad([distance.sum()], [x], retain_graph=retain_graph, create_graph=create_graph, allow_unused=allow_unused)[0]
   
   def closest_point(self, obj_code, x):
     distance = self.distance(obj_code, x)

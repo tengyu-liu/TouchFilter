@@ -1,0 +1,11 @@
+
+
+
+CUDA_VISIBLE_DEVICE=0 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.1 --delta 0.15 --M 1000 --log_path adelm_0 
+CUDA_VISIBLE_DEVICE=1 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.1 --delta 0.20 --M 1000 --log_path adelm_1 
+CUDA_VISIBLE_DEVICE=2 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.1 --delta 0.25 --M 1000 --log_path adelm_2 
+CUDA_VISIBLE_DEVICE=3 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.1 --delta 0.30 --M 1000 --log_path adelm_3 
+CUDA_VISIBLE_DEVICE=4 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.5 --delta 0.15 --M 1000 --log_path adelm_4 
+CUDA_VISIBLE_DEVICE=5 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.5 --delta 0.20 --M 1000 --log_path adelm_5 
+CUDA_VISIBLE_DEVICE=6 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.5 --delta 0.25 --M 1000 --log_path adelm_6 
+CUDA_VISIBLE_DEVICE=7 python ADELM_JobDispatch.py --batch_size 256 --n_contact 5 --data_path logs/zeyu_5p --T 0.5 --delta 0.30 --M 1000 --log_path adelm_7 

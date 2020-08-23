@@ -20,11 +20,13 @@ class HandModel:
     n_handcode=6, root_rot_mode='ortho6d', robust_rot=False, flat_hand_mean=True,
     mano_path='third_party/manopth/mano/models', n_contact=3):
     self.n_contact = n_contact
+    self.device = torch.device('cuda')
+    device = self.device
     self.contact_permutations = [list(p) for p in permutations(np.arange(self.n_contact))]
     if n_handcode == 45:
-      self.layer = ManoLayer(root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, use_pca=False).cuda()
+      self.layer = ManoLayer(root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, use_pca=False).to(device)
     else:
-      self.layer = ManoLayer(ncomps=n_handcode, root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, flat_hand_mean=flat_hand_mean).cuda()
+      self.layer = ManoLayer(ncomps=n_handcode, root_rot_mode=root_rot_mode, robust_rot=robust_rot, mano_root=mano_path, flat_hand_mean=flat_hand_mean).to(device)
     self.code_length = n_handcode + 6
     if root_rot_mode != 'axisang':
       self.code_length += 3
@@ -33,10 +35,10 @@ class HandModel:
     self.sideway_base_ids = [96,115]
     self.facedir_base_ids = [218,95]
 
-    self.texture_coords = torch.tensor(self.get_texture_coords().reshape([1, 1, -1, 2]) * 2 - 1).float().cuda()
+    self.texture_coords = torch.tensor(self.get_texture_coords().reshape([1, 1, -1, 2]) * 2 - 1).float().to(device)
     self.faces = self.layer.th_faces.detach().cpu().numpy()
     self.num_points = self.texture_coords.shape[2]
-    self.verts_eye = torch.tensor(np.eye(self.num_points)).float().cuda()
+    self.verts_eye = torch.tensor(np.eye(self.num_points)).float().to(device)
     self.n1_mat = self.verts_eye[self.faces[:,0]]   # F x V
     self.n2_mat = self.verts_eye[self.faces[:,1]]   # F x V
     self.n3_mat = self.verts_eye[self.faces[:,2]]   # F x V
@@ -62,7 +64,7 @@ class HandModel:
 
   def compute_manifold_distances(self):
     distances = np.zeros([self.num_points, self.num_points])
-    zero_verts = self.get_vertices(torch.normal(0,1,size=[1,15], device='cuda') * 0.001)[0].detach().cpu().numpy()
+    zero_verts = self.get_vertices(torch.normal(0,1,size=[1,15], device=self.device) * 0.001)[0].detach().cpu().numpy()
     for i,js in enumerate(self.neighbors):
       for j in js:
         if i > j:
@@ -73,7 +75,7 @@ class HandModel:
     from scipy.sparse.csgraph import floyd_warshall
     graph = csr_matrix(distances)
     dist_matrix = floyd_warshall(csgraph=graph, directed=False, return_predecessors=False)
-    return torch.tensor(dist_matrix).float().cuda()
+    return torch.tensor(dist_matrix).float().to(self.device)
 
   def load_obj(self, path):
     f = open(path)
@@ -257,29 +259,23 @@ class HandModel:
 if __name__ == "__main__":
   import numpy as np
   import random
-  hand_model = HandModel()
-  z = torch.normal(0,1,size=[1,15]).float().cuda() * 1e-6
-  verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
-
   import plotly
-  from plotly import graph_objects as go
+  import plotly.graph_objects as go
+
+  hand_model = HandModel()
+  z = torch.normal(0,1,size=[1,15]).float().to(hand_model.device) * 1e-6
+  verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
+  all_verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
   fig = plotly.tools.make_subplots(1, 1, specs=[[{'type':'surface'}]])
 
-  src = random.randint(0, 777)
-  tgt = random.randint(0, 777)
-
-  to_src_distances = hand_model.mano_manifold_distances[src].detach().cpu().numpy()
-  to_tgt_distances = hand_model.mano_manifold_distances[tgt].detach().cpu().numpy()
-
-  value = 1 / (to_src_distances + to_tgt_distances)
-
   fig.append_trace(go.Mesh3d(
-    x=verts[:,0], y=verts[:,1], z=verts[:,2], 
-    i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2],
-    intensity=value
+    x=all_verts[:,0], y=all_verts[:,1], z=all_verts[:,2], 
+    i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2]
     ), 1, 1)
-  fig.append_trace(go.Scatter3d(
-    x=verts[[src, tgt],0], y=verts[[src, tgt],1], z=verts[[src, tgt],2], marker=dict(color='red', size=5), mode='markers'
-  ), 1, 1)
-  fig.show()
 
+  normals = hand_model.get_surface_normals(z=z)[0].detach().cpu().numpy()
+  normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+  print(normals.shape)
+  fig.append_trace(go.Cone(x=verts[:,0], y=verts[:,1], z=verts[:,2], u=normals[:,0], v=normals[:,1], w=normals[:,2], sizemode='absolute', sizeref=1), 1, 1)
+
+  fig.show()
