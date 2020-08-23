@@ -39,10 +39,9 @@ class HandModel:
     self.texture_coords = torch.tensor(self.get_texture_coords().reshape([1, 1, -1, 2]) * 2 - 1).float().to(device)
     self.original_faces = self.layer.th_faces.detach().cpu().numpy()
     self.faces = load_faces('mano_no_thumb.obj')
+    self.keep_verts = list(set(self.faces.reshape([-1])))
 
     self.faces_in_new_verts = np.array([[self.keep_verts.index(x) for x in _f] for _f in self.faces])
-
-    self.keep_verts = list(set(self.faces.reshape([-1])))
 
     self.num_points = len(self.keep_verts)
     self.verts_eye = torch.tensor(np.eye(self.num_points)).float().to(device)
@@ -281,8 +280,8 @@ if __name__ == "__main__":
   fig = plotly.tools.make_subplots(1, 1, specs=[[{'type':'surface'}]])
 
   fig.append_trace(go.Mesh3d(
-    x=all_verts[:,0], y=all_verts[:,1], z=all_verts[:,2], 
-    i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2]
+    x=verts[:,0], y=verts[:,1], z=verts[:,2], 
+    i=hand_model.faces_in_new_verts[:,0], j=hand_model.faces_in_new_verts[:,1], k=hand_model.faces_in_new_verts[:,2]
     ), 1, 1)
 
   normals = hand_model.get_surface_normals(z=z)[0].detach().cpu().numpy()
