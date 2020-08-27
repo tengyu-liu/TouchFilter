@@ -84,7 +84,7 @@ for _iter in range(10000):
     grad = grad * (1-accept.unsqueeze(1)) + new_grad * accept.unsqueeze(1)
     grad_ema.apply(grad)
     if _iter % 100 == 0:
-        print(_iter, (energy-old_energy).mean().detach().cpu().numpy())
+        print(_iter, (energy-old_energy).mean().detach().cpu().numpy(), accept.mean().detach().cpu().numpy())
 
 pickle.dump([obj_code, z, contact_point_indices], open(fn[:-4] + '_optim.pkl', 'wb'))
 print(j)
