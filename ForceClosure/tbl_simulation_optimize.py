@@ -13,7 +13,7 @@ from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
 from EMA import EMA
 
-batch_size = 256
+batch_size = 32
 step_size = 0.1
 annealing_period = 3000
 starting_temperature = 0.1
@@ -26,6 +26,9 @@ _id = sys.argv[1]
 fn = 'logs/zeyu_5p/final_' + _id + '.pkl'
 
 obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history = pickle.load(open(fn, 'rb'))
+obj_code = obj_code[:batch_size]
+z = z[:batch_size]
+contact_point_indices = contact_point_indices[:batch_size]
 
 hand_model = HandModel(
   root_rot_mode='ortho6d', 
@@ -47,7 +50,7 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, sd_weight=
   hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
   linear_independence, force_closure = fc_loss.fc_loss(contact_point, contact_normal, obj_code)
-  surface_distance = fc_loss.dist_loss(obj_code, contact_point)
+  surface_distance = fc_loss.dist_loss(obj_code, contact_point) * sd_weight
   penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
   z_norm = torch.norm(z[:,-6:], dim=-1) * 0.1
   if verbose:
