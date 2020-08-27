@@ -43,7 +43,8 @@ parser.add_argument('--T', default=0.1, type=float)
 parser.add_argument('--stepsize', default=0.1, type=float)
 # - data loading
 parser.add_argument('--data_path', default='logs/sample_0/optimized_998000.pkl', type=str)
-parser.add_argument('--log_path', default='adelm', type=str)
+parser.add_argument('--log_path', default='data', type=str)
+parser.add_argument('--time', action='store_true')
 args = parser.parse_args()
 
 os.makedirs(args.log_path, exist_ok=True)
@@ -154,7 +155,7 @@ def MCMC(X, Xstar, T, alpha, directly_update_contact_points_flag):
   return [object_x.detach(), z_x.detach(), contact_point_indices_x.detach()], d.detach(), energy.detach(), directly_update_contact_points_flag.detach()
 
 def load_proposals(path):
-  if os.path.exists(os.path.join(args.log_path, 'proposals.pkl')) and False:
+  if os.path.exists(os.path.join(args.log_path, 'proposals.pkl')):
     Y, energies = pickle.load(open(os.path.join(args.log_path, 'proposals.pkl'), 'rb'))
   else:
     Y = []
@@ -184,7 +185,7 @@ def load_proposals(path):
           energies.append(total_energy)
     energies = np.array(energies)
     pickle.dump([Y, energies], open(os.path.join(args.log_path, 'proposals.pkl'), 'wb'))
-  return Y, energies
+  return Y[:10], energies[:10]
 
 def tile(Y, size):
   obj_code, z, contact_point_indices = Y
@@ -223,6 +224,8 @@ def combine(Y, x):
   return torch.cat([Y[0], x[0].unsqueeze(0)], dim=0), torch.cat([Y[1], x[1].unsqueeze(0)], dim=0), torch.cat([Y[2], x[2].unsqueeze(0)], dim=0)
 
 examples, example_energies = load_proposals(args.data_path)  # each proposal is already a local minimum
+
+t0 = time.time()
 
 # ADELM
 basin_labels = [-1 for i in range(len(examples))]
@@ -280,7 +283,6 @@ B = torch.max(YET, ZET)
 success_step = 0
 
 while (len(job_queue) + len(current_job)) > 0:
-  t0 = time.time()
   # removal
   success = d <= args.delta
   failure = m > args.M
@@ -293,20 +295,24 @@ while (len(job_queue) + len(current_job)) > 0:
         # update basin label
         if B[i].item() < min(item_basin_barriers[item_id]):
           if basin_labels[item_id] > -1:
-            os.remove(os.path.join(args.log_path, 'adelm_result', str(basin_labels[item_id]), '%d.png'%item_id))
+            if not args.time:
+              os.remove(os.path.join(args.log_path, 'adelm_result', str(basin_labels[item_id]), '%d.png'%item_id))
           basin_labels[item_id] = basin_label
-          draw(examples[item_id], basin_label, item_id)
+          if not args.time:
+            draw(examples[item_id], basin_label, item_id)
           print('successful AD from item #%d to basin #%d with barrier %f'%(item_id, basin_label, B[i].item()))
           # if is new basin minima: 
           if example_energies[item_id] < basin_minima_energies[basin_label]:
             basin_minima_energies[basin_label] = example_energies[item_id]
             basin_minima[basin_label] = examples[item_id]
             print('    item #%d is the new basin minima'%item_id)
-            shutil.copy(os.path.join(args.log_path, 'adelm_result', str(basin_label), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(basin_label), 'minima.png'))
+            if not args.time:
+              shutil.copy(os.path.join(args.log_path, 'adelm_result', str(basin_label), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(basin_label), 'minima.png'))
         # update basin barrier
         item_basin_barriers[item_id][basin_label] = min(item_basin_barriers[item_id][basin_label], B[i].item())
     # save basin barrier
-    pickle.dump(item_basin_barriers, open(os.path.join(args.log_path, 'item_basin_barriers/%d.pkl'%success_step), 'wb'))
+    if not args.time:
+      pickle.dump(item_basin_barriers, open(os.path.join(args.log_path, 'item_basin_barriers/%d.pkl'%success_step), 'wb'))
     success_step += 1
   if failure.sum() > 0:
     for i in range(len(failure)):
@@ -332,9 +338,10 @@ while (len(job_queue) + len(current_job)) > 0:
             else:             
               item_basin_barriers[_item_id].append(float('inf'))
           print('    assign new basin #%d for item #%d'%(num_basins, item_id))
-          os.makedirs(os.path.join(args.log_path, 'adelm_result', str(num_basins)), exist_ok=True)
-          draw(examples[item_id], num_basins, item_id)
-          shutil.copy(os.path.join(args.log_path, 'adelm_result', str(num_basins), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(num_basins), 'minima.png'))
+          if not args.time:
+            os.makedirs(os.path.join(args.log_path, 'adelm_result', str(num_basins)), exist_ok=True)
+            draw(examples[item_id], num_basins, item_id)
+            shutil.copy(os.path.join(args.log_path, 'adelm_result', str(num_basins), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(num_basins), 'minima.png'))
           num_basins += 1
   if success.sum() + failure.sum() > 0:
     for i in range(len(success)-1,-1,-1):
@@ -385,5 +392,8 @@ while (len(job_queue) + len(current_job)) > 0:
   m[d<dstar] = 0
   dstar[d<dstar] = d[d<dstar]
 
-pickle.dump([basin_labels, basin_minima, basin_minima_energies, item_basin_barriers], open(os.path.join(args.log_path, 'ADELM_dispatch.pkl'), 'wb'))
- 
+if not args.time:
+  pickle.dump([basin_labels, basin_minima, basin_minima_energies, item_basin_barriers], open(os.path.join(args.log_path, 'ADELM_dispatch.pkl'), 'wb'))
+
+t1 = time.time()
+print('Total time:', t1 - t0)

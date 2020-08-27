@@ -27,3 +27,6 @@ profile.txt
 *.xlxs
 *.ai
 ForceClosure/aaai
+*.html
+*.npy
+*.obj

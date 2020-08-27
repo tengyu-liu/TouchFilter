@@ -249,23 +249,12 @@ for _iter in range(args.n_iter):
       ax3.cla()
       ax3.plot(stepsize_history)
       ax3.set_yscale('log')
-      ax4.cla()
-      verts = hand_model.get_vertices(z).detach().cpu().numpy()
-      cpi = contact_point_indices[i_item].detach().cpu().numpy()
-      ax4.scatter(verts[i_item, :,0], verts[i_item, :,1], verts[i_item, :,2], color='lightpink', s=2)
-      ax4.scatter(mesh.vertices[:,0], mesh.vertices[:,1], mesh.vertices[:,2], color='lightblue', s=2)
-      ax4.scatter(verts[i_item, cpi, 0], verts[i_item, cpi, 1], verts[i_item, cpi, 2], color='red', s=5)
-      ax4.set_xlim([-1,1])
-      ax4.set_ylim([-1,1])
-      ax4.set_zlim([-1,1])
-      ax4.axis('off')
 
       plt.title(args.name)
       plt.pause(1e-5)
 
   if _iter % 2000 == 0:
     pickle.dump([obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
-    np.save("energy_hist_grasp"+args.save_number+".npy", energy_history)
     end_time = time.perf_counter()
     print(f"These steps for this method takes {end_time - start_time:0.4f} seconds")
 

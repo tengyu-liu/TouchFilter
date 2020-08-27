@@ -264,18 +264,17 @@ if __name__ == "__main__":
 
   hand_model = HandModel()
   z = torch.normal(0,1,size=[1,15]).float().to(hand_model.device) * 1e-6
-  verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
-  all_verts = hand_model.get_vertices(z)[0].detach().cpu().numpy()
-  fig = plotly.tools.make_subplots(1, 1, specs=[[{'type':'surface'}]])
+  verts = hand_model.get_vertices(z)
 
-  fig.append_trace(go.Mesh3d(
-    x=all_verts[:,0], y=all_verts[:,1], z=all_verts[:,2], 
-    i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2]
-    ), 1, 1)
+  back_direction = hand_model.back_direction(verts=verts)[0].detach().cpu().numpy()
+  side_direction = hand_model.side_direction(verts=verts)[0].detach().cpu().numpy()
+  forward_direction = hand_model.forward_direction(verts=verts)[0].detach().cpu().numpy()
 
-  normals = hand_model.get_surface_normals(z=z)[0].detach().cpu().numpy()
-  normals /= np.linalg.norm(normals, axis=1, keepdims=True)
-  print(normals.shape)
-  fig.append_trace(go.Cone(x=verts[:,0], y=verts[:,1], z=verts[:,2], u=normals[:,0], v=normals[:,1], w=normals[:,2], sizemode='absolute', sizeref=1), 1, 1)
+  verts = verts[0].detach().cpu().numpy()
+
+  fig = go.Figure(data=[
+    go.Mesh3d(x=verts[:,0], y=verts[:,1], z=verts[:,2], i=hand_model.faces[:,0], j=hand_model.faces[:,1], k=hand_model.faces[:,2]),
+    go.Scatter3d(x=[0, back_direction[0]], y=[0, back_direction[1]], z=[0,back_direction[2]])
+  ])
 
   fig.show()

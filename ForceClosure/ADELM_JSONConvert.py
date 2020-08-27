@@ -27,3 +27,12 @@ for i in range(8):
                         fig = go.Figure(data=data['data'], layout=data['layout'])
                         fig.write_image('adelm_%d/adelm_result/%s/%s.png'%(i, g, fn[:-5]))
                         path_dict[fn] = 'adelm_%d/adelm_result/%s/%s.png'%(i, g, fn[:-5])
+
+import json
+import plotly
+import plotly.graph_objects as go
+
+def draw(i,j):
+ p = json.load(open('ForceClosure/adelm_7/adelm_result/%d/%d.json'%(i,j)))
+ fig = go.Figure(data=p['data'], layout=p['layout'])
+ fig.show()

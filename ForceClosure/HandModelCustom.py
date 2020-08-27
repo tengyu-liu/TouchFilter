@@ -281,12 +281,12 @@ if __name__ == "__main__":
 
   fig.append_trace(go.Mesh3d(
     x=verts[:,0], y=verts[:,1], z=verts[:,2], 
-    i=hand_model.faces_in_new_verts[:,0], j=hand_model.faces_in_new_verts[:,1], k=hand_model.faces_in_new_verts[:,2]
+    i=hand_model.faces_in_new_verts[:,0], j=hand_model.faces_in_new_verts[:,1], k=hand_model.faces_in_new_verts[:,2], color='lightpink'
     ), 1, 1)
 
-  normals = hand_model.get_surface_normals(z=z)[0].detach().cpu().numpy()
-  normals /= np.linalg.norm(normals, axis=1, keepdims=True)
-  print(normals.shape)
-  fig.append_trace(go.Cone(x=verts[:,0], y=verts[:,1], z=verts[:,2], u=normals[:,0], v=normals[:,1], w=normals[:,2], sizemode='absolute', sizeref=1), 1, 1)
+  # normals = hand_model.get_surface_normals(z=z)[0].detach().cpu().numpy()
+  # normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+  # print(normals.shape)
+  # fig.append_trace(go.Cone(x=verts[:,0], y=verts[:,1], z=verts[:,2], u=normals[:,0], v=normals[:,1], w=normals[:,2], sizemode='absolute', sizeref=1), 1, 1)
 
   fig.show()

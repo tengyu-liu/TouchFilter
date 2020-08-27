@@ -42,6 +42,7 @@ parser.add_argument('--T', default=0.1, type=float)
 parser.add_argument('--stepsize', default=0.1, type=float)
 # - data loading
 parser.add_argument('--data_path', default='logs/sample_0/optimized_998000.pkl', type=str)
+parser.add_argument('--time', action='store_true')
 args = parser.parse_args()
 
 # prepare models
@@ -193,7 +194,7 @@ def load_proposals(path):
           energies.append(total_energy)
     energies = np.array(energies)
     pickle.dump([Y, energies], open('data/proposals.pkl', 'wb'))
-  return Y, energies
+  return Y[:10], energies[:10]
 
 def tile(Y, size):
   obj_code, z, contact_point_indices = Y
@@ -225,11 +226,13 @@ def draw(Y, l, i):
       yaxis=dict(showticklabels=False, title_text=''), 
       zaxis=dict(showticklabels=False, title_text=''), 
       ))
-  os.makedirs('adelm_result/%d'%l, exist_ok=True)
-  fig.write_image('adelm_result/%d/%d.png'%(l, i))
+  if not args.time:
+    os.makedirs('adelm_result/%d'%l, exist_ok=True)
+    fig.write_image('adelm_result/%d/%d.png'%(l, i))
 
 examples, example_energies = load_proposals(args.data_path)  # each proposal is already a local minimum
 
+t00 = time.time()
 # ADELM
 basin_labels = []
 basin_minima = []
@@ -327,9 +330,14 @@ for n in range(len(examples)):
       print('barrier(%d,%d): %f'%(current_label, j, barrier_to_basins[j]))
 
   print('%d-th data falls in basin #%d (total: %d). Time: %f'%(n, basin_labels[n], max(basin_labels) + 1, time.time() - t0))
-  draw(examples[n], basin_labels[n], n)
-  pickle.dump([basin_labels[n], barrier_to_basins], open('adelm_result/%d/%d.pkl'%(basin_labels[n], n), 'wb'))
-  if minima_updated:
-    pickle.dump([basin_minima[basin_labels[n]], basin_minima_energies[basin_labels[n]]], open('adelm_result/%d/minima.pkl'%(basin_labels[n]), 'wb'))
+  if not args.time:
+    draw(examples[n], basin_labels[n], n)
+    pickle.dump([basin_labels[n], barrier_to_basins], open('adelm_result/%d/%d.pkl'%(basin_labels[n], n), 'wb'))
+    if minima_updated:
+      pickle.dump([basin_minima[basin_labels[n]], basin_minima_energies[basin_labels[n]]], open('adelm_result/%d/minima.pkl'%(basin_labels[n]), 'wb'))
 
-pickle.dump([basin_labels, basin_minima, basin_minima_energies, energy_barriers, mc_chains], open('ADELM.pkl', 'wb'))
+if not args.time:
+  pickle.dump([basin_labels, basin_minima, basin_minima_energies, energy_barriers, mc_chains], open('ADELM.pkl', 'wb'))
+
+t1 = time.time()
+print('Total time: ', t1-t00)
