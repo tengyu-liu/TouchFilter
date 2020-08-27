@@ -65,6 +65,7 @@ mask = torch.tensor(np.eye(15)).float().cuda().unsqueeze(0)  # 1 x 6 x 6
 # mask = torch.cat([torch.zeros([1,6,9]).float().cuda(), mask], dim=2)
 
 energy = compute_energy(obj_code, z, contact_point_indices, sd_weight=100)
+old_energy = energy.clone()
 grad = torch.autograd.grad(energy.sum(), z)[0]
 grad_ema = EMA(0.98)
 grad_ema.apply(grad)
@@ -82,7 +83,8 @@ for _iter in range(10000):
     energy = energy * (1-accept) + new_energy * accept
     grad = grad * (1-accept.unsqueeze(1)) + new_grad * accept.unsqueeze(1)
     grad_ema.apply(grad)
-    print(_iter, energy.mean().detach().cpu().numpy())
+    if _iter % 100 == 0:
+        print(_iter, (energy-old_energy).mean().detach().cpu().numpy())
 
 pickle.dump([obj_code, z, contact_point_indices], open(fn[:-4] + '_optim.pkl', 'wb'))
 print(j)
