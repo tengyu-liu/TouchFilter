@@ -12,6 +12,7 @@ mesh_path = 'data/Reconstructions/2000/Meshes/ShapeNetCore.v2/02876657'
 
 _codes = []
 _meshes = []
+_mesh_fns = []
 _fns = os.listdir(code_path)
 
 skip = [
@@ -133,6 +134,7 @@ for fn in _fns:
     continue
   _codes.append(torch.load(os.path.join(code_path, fn)).squeeze().float().cuda())
   _meshes.append(trimesh.load(os.path.join(mesh_path, fn[:-3] + 'ply')))
+  _mesh_fns.append(os.path.join(mesh_path, fn[:-3] + 'obj'))
 
 codes = torch.stack(_codes, 0)
 
@@ -148,6 +150,11 @@ def get_obj_mesh_by_code(code) -> trimesh.Trimesh:
   for i, c in enumerate(codes):
     if torch.norm(code - c) < 1e-8:
       return _meshes[i]
+
+def get_obj_fn_by_code(code) -> trimesh.Trimesh:
+  for i, c in enumerate(codes):
+    if torch.norm(code - c) < 1e-8:
+      return _mesh_fns[i]
 
 def get_grasp_code_random(batch_size, code_length):
   code = torch.normal(mean=0, std=1, size=[batch_size, code_length], device='cuda').float()

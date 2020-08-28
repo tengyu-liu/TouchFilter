@@ -13,17 +13,6 @@ import torch
 import torch.nn as nn
 import torch.utils.tensorboard
 
-np.seterr(all='raise')
-#np.random.seed(0)
-#torch.manual_seed(0)
-
-from CodeUtil import *
-from EMA import EMA
-from HandModel import HandModel
-from Losses import FCLoss
-from ObjectModel import ObjectModel
-from PenetrationModel import PenetrationModel
-
 # prepare argument
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=16, type=int)
@@ -38,12 +27,24 @@ parser.add_argument('--znorm_weight', default=0.1, type=float)
 parser.add_argument('--stepsize_period', default=10000, type=int)
 parser.add_argument('--noise_size', default=0.1, type=float)
 parser.add_argument('--name', default='exp', type=str)
+parser.add_argument('--id', default=0, type=int)
 parser.add_argument('--mano_path', default='third_party/manopth/mano/models', type=str)
 parser.add_argument('--viz', action='store_true')
 parser.add_argument('--save_number', default="0", type=str)
 
-
 args = parser.parse_args()
+
+np.seterr(all='raise')
+random.seed(args.id)
+np.random.seed(args.id)
+torch.manual_seed(args.id)
+
+from CodeUtil import *
+from EMA import EMA
+from HandModel import HandModel
+from Losses import FCLoss
+from ObjectModel import ObjectModel
+from PenetrationModel import PenetrationModel
 
 if args.viz:
   import matplotlib.pyplot as plt
@@ -171,11 +172,6 @@ for _iter in range(args.n_iter):
   step_size = S(_iter)
   temperature = T(_iter)
   directly_update_contact_points = directly_update_contact_points_flag > update_contact_pts_threshold
-  #print("\n\n\n")
-  #print(directly_update_contact_points_flag)
-  #print(directly_update_contact_points.int())
-  #print(contact_point_indices) 
-
   new_z = torch.zeros(size=z.shape, device='cuda').float()
   new_contact_point_indices = contact_point_indices.clone()
   if rand < langevin_possibility:
@@ -192,23 +188,12 @@ for _iter in range(args.n_iter):
   update_indices = torch.randint(0, args.n_contact, size=[args.batch_size], device='cuda')
   prob = torch.ones([args.batch_size, hand_model.num_points], device='cuda') # B x V
   prob[np.expand_dims(np.arange(args.batch_size), 1), contact_point_indices] = 0
-  # update_to = torch.randint(0, hand_model.num_points, size=[args.batch_size], device='cuda')
   update_to = torch.cat([torch.multinomial(prob[b], 1) for b in range(args.batch_size)])
   temp_new_contact_point_indices = contact_point_indices.clone()
   temp_new_contact_point_indices[torch.arange(args.batch_size), update_indices] = update_to
   new_contact_point_indices[directly_update_contact_points] = temp_new_contact_point_indices[directly_update_contact_points]
   new_z[directly_update_contact_points] = z[directly_update_contact_points]
   directly_update_contact_points_flag[directly_update_contact_points] = 0 # not accepted changes may not be 0
-
-  #print(rand)
-  #print(directly_update_contact_points_flag)
-  #print(directly_update_contact_points.int())
-  #print(update_indices)
-  #print(update_to)
-  #print(contact_point_indices)  
-  #print(new_contact_point_indices)
-  #print(temp_new_contact_point_indices)
-
   # compute new energy
   new_energy = compute_energy(obj_code, new_z, new_contact_point_indices)
   new_grad = torch.autograd.grad(new_energy.sum(), new_z)[0]
@@ -218,16 +203,8 @@ for _iter in range(args.n_iter):
     accept = alpha < torch.exp((energy - new_energy) / temperature)
     directly_update_contact_points_flag[~accept] += 1
     z[accept] = new_z[accept]
-    #print("\n\n\n")
-    #print(accept)
-    #print(contact_point_indices)
-    #print(new_contact_point_indices)
     contact_point_indices[accept] = new_contact_point_indices[accept]
-    #print(contact_point_indices)
-    #print(energy)
-    #print(new_energy)
     energy[accept] = new_energy[accept]
-    #print(energy)
     grad[accept] = new_grad[accept]
     grad_ema.apply(grad)
 
@@ -252,7 +229,7 @@ for _iter in range(args.n_iter):
 
       plt.title(args.name)
       plt.pause(1e-5)
-
+    exit()
   if _iter % 2000 == 0:
     pickle.dump([obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
     end_time = time.perf_counter()

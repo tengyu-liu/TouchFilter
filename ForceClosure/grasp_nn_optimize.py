@@ -23,15 +23,6 @@ from PenetrationModel import PenetrationModel
 import torch
 from torch import nn
 
-class GraspOptimize(nn.Module):
-    """
-    input: z, code, cpi
-    output: delta_z
-    """
-    def __init__(self):
-        super(GraspOptimize, self).__init__()
-
-
 fn = sys.argv[1]
 
 hand_model = HandModel(flat_hand_mean=False)

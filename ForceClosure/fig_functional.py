@@ -161,7 +161,7 @@ for j in range(2):
   grad_ema = EMA(0.98)
   grad_ema.apply(grad)
   mean_energy = []
-  for _iter in range(3000):
+  for _iter in range(10000):
     step_size = 0.1
     temperature = 1e-3
     noise = torch.normal(mean=0, std=1, size=z.shape, device='cuda').float() * step_size
