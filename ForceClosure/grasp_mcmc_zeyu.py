@@ -38,6 +38,7 @@ np.seterr(all='raise')
 random.seed(args.id)
 np.random.seed(args.id)
 torch.manual_seed(args.id)
+args.name = args.name + '_%d'%args.id
 
 from CodeUtil import *
 from EMA import EMA
@@ -229,7 +230,7 @@ for _iter in range(args.n_iter):
 
       plt.title(args.name)
       plt.pause(1e-5)
-    exit()
+
   if _iter % 2000 == 0:
     pickle.dump([obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
     end_time = time.perf_counter()
