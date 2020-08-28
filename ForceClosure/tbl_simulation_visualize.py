@@ -21,15 +21,6 @@ temperature_decay = 0.95
 stepsize_period = 3000
 noise_size = 0.1
 
-os.makedirs('optimize', exist_ok=True)
-_id = sys.argv[1]
-fn = 'logs/zeyu_5p/final_' + _id + '.pkl'
-
-obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history = pickle.load(open(fn, 'rb'))
-obj_code = obj_code[:batch_size]
-z = z[:batch_size]
-contact_point_indices = contact_point_indices[:batch_size]
-
 hand_model = HandModel(
   root_rot_mode='ortho6d', 
   robust_rot=False,
@@ -58,37 +49,9 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, sd_weight=
   else:
     return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
-def T(t):
-  return starting_temperature * temperature_decay ** (t // annealing_period)
-
-def S(t):
-  return noise_size * temperature_decay ** (t // stepsize_period)
-
-mask = torch.tensor(np.eye(15)).float().cuda().unsqueeze(0)  # 1 x 6 x 6
-# mask = torch.cat([torch.zeros([1,6,9]).float().cuda(), mask], dim=2)
-
-energy = compute_energy(obj_code, z, contact_point_indices, sd_weight=100)
-old_energy = energy.clone()
-grad = torch.autograd.grad(energy.sum(), z)[0]
-grad_ema = EMA(0.98)
-grad_ema.apply(grad)
-mean_energy = []
-for _iter in range(10000):
-    step_size = 0.1
-    temperature = 1e-3
-    noise = torch.normal(mean=0, std=1, size=z.shape, device='cuda').float() * step_size
-    new_z = z - 0.5 * grad * mask[:,_iter%15,:] / grad_ema.average.unsqueeze(0) * step_size * step_size + noise
-    new_energy = compute_energy(obj_code, new_z, contact_point_indices, sd_weight=100)
-    new_grad = torch.autograd.grad(new_energy.sum(), new_z)[0]
-    alpha = torch.rand(batch_size, device='cuda').float()
-    accept = (alpha < torch.exp((energy - new_energy) / temperature)).long()
-    z = z * (1-accept.unsqueeze(1)) + new_z * accept.unsqueeze(1)
-    energy = energy * (1-accept) + new_energy * accept
-    grad = grad * (1-accept.unsqueeze(1)) + new_grad * accept.unsqueeze(1)
-    grad_ema.apply(grad)
-    if _iter % 100 == 0:
-        print(_iter, (energy-old_energy).mean().detach().cpu().numpy(), accept.float().mean().detach().cpu().numpy())
-
-pickle.dump([obj_code, z, contact_point_indices], open(fn[:-4] + '_optim.pkl', 'wb'))
-
-
+data = []
+fltr = []
+for i in range(batch_size):
+  linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code[[i]], z[[i]], contact_point_indices[[i]], sd_weight=1, verbose=True)
+  if force_closure.sum() < 0.5 and surface_distance.sum() < 0.01 and penetration < 0.01:
+    fltr.append(i)
