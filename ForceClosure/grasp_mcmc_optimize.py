@@ -45,7 +45,7 @@ obj_code, z, contact_point_indices, energy, energy_history, temperature_history,
 
 def compute_energy(obj_code, z, contact_point_indices, verbose=False, sd_weight=1):
   hand_verts = hand_model.get_vertices(z)
-  contact_point = torch.stack([hand_verts[torch.arange(batch_size), contact_point_indices[:,i],:] for i in range(args.n_contact)], dim=1)
+  contact_point = torch.stack([hand_verts[torch.arange(args.batch_size), contact_point_indices[:,i],:] for i in range(args.n_contact)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
