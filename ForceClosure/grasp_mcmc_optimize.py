@@ -53,8 +53,8 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, sd_weight=
   hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(args.n_contact)], dim=1)
   hand_normal = hand_normal / torch.norm(hand_normal, dim=-1, keepdim=True)    
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
-  linear_independence, force_closure = fc_loss.fc_loss(contact_point, contact_normal, obj_code)
-  surface_distance = fc_loss.dist_loss(obj_code, contact_point) * sd_weight
+  linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
+  surface_distance = fc_loss_model.dist_loss(obj_code, contact_point) * sd_weight
   penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
   z_norm = torch.norm(z[:,-6:], dim=-1) * 0.1
   if verbose:
