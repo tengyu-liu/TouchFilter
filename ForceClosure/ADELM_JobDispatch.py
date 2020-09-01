@@ -17,6 +17,10 @@ import torch.utils.tensorboard
 import plotly 
 import plotly.graph_objects as go
 
+random.seed(0)
+np.random.seed(0)
+torch.manual_seed(0)
+
 from CodeUtil import *
 from EMA import EMA
 from HandModel import HandModel
@@ -185,7 +189,7 @@ def load_proposals(path):
           energies.append(total_energy)
     energies = np.array(energies)
     pickle.dump([Y, energies], open(os.path.join(args.log_path, 'proposals.pkl'), 'wb'))
-  return Y[:10], energies[:10]
+  return Y, energies
 
 def tile(Y, size):
   obj_code, z, contact_point_indices = Y

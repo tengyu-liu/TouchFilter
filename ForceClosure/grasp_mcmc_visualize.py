@@ -35,7 +35,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   contact_point = torch.stack([hand_verts[torch.arange(z.shape[0]), contact_point_indices[:,i],:] for i in range(3)], dim=1)
   contact_distance = object_model.distance(obj_code, contact_point)
   contact_normal = object_model.gradient(contact_point, contact_distance)
-
   contact_normal = contact_normal / torch.norm(contact_normal, dim=-1, keepdim=True)
   hand_normal = hand_model.get_surface_normals(z=z)
   hand_normal = torch.stack([hand_normal[torch.arange(z.shape[0]), contact_point_indices[:,i], :] for i in range(3)], dim=1)
@@ -51,16 +50,16 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
     return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
 img_count = 0
-for fn in [0]:
-  old_data = pickle.load(open('logs/redo/saved_98000.pkl', 'rb'))
-  obj_code, old_z, contact_point_indices, old_energy = old_data[:4]
+linear_independence = []
+force_closure = []
+surface_distance = []
+penetration = []
+z_norm = []
+normal_alignment = []
+for fn in [0,1,2,3,4,5,6]:
+  old_data = pickle.load(open('logs/rerun/mcmc_%d.pkl'%fn, 'rb'))
+  obj_code, old_z, contact_point_indices = old_data[:3]
   fltr = []
-  linear_independence = []
-  force_closure = []
-  surface_distance = []
-  penetration = []
-  z_norm = []
-  normal_alignment = []
   for i in range(len(obj_code)):
     _linear_independence, _force_closure, _surface_distance, _penetration, _z_norm, _normal_alignment = compute_energy(obj_code[[i]], old_z[[i]], contact_point_indices[[i]], verbose=True)
     linear_independence.append(_linear_independence.detach().cpu().numpy())
@@ -71,6 +70,7 @@ for fn in [0]:
     normal_alignment.append(_normal_alignment.detach().cpu().numpy())
     fltr.append(((_force_closure < 0.5) * (_surface_distance < 0.02) * (_penetration < 0.02) * (_z_norm < 3.5)).squeeze().detach().cpu().numpy())
   print(sum(fltr))
+  continue
   for i_item in range(len(obj_code)):
     if fltr[i_item]:
       obj_mesh = get_obj_mesh_by_code(obj_code[i_item])
@@ -92,7 +92,7 @@ for fn in [0]:
       ), 1, 1)
       fig.show()
       img_count += 1
-      print(i_item, old_energy[i_item].detach().cpu().numpy())
+      # print(i_item, old_energy[i_item].detach().cpu().numpy())
       print('linear_independence', linear_independence[i_item])
       print('force_closure', force_closure[i_item])
       print('surface_distance', surface_distance[i_item])
@@ -100,3 +100,19 @@ for fn in [0]:
       print('z_norm', z_norm[i_item])
       print('normal_alignment', normal_alignment[i_item])
       input()
+
+import matplotlib.pyplot as plt
+plt.title('mcmc')
+plt.subplot(231)
+plt.hist(np.array(linear_independence).reshape([-1]), bins=100)
+plt.subplot(232)
+plt.hist(np.array(force_closure).reshape([-1]), bins=100)
+plt.subplot(233)
+plt.hist(np.array(surface_distance).reshape([-1]), bins=100)
+plt.subplot(234)
+plt.hist(np.array(penetration).reshape([-1]), bins=100)
+plt.subplot(235)
+plt.hist(np.array(z_norm).reshape([-1]), bins=100)
+plt.subplot(236)
+plt.hist(np.array(normal_alignment).reshape([-1]), bins=100)
+plt.show()
