@@ -237,7 +237,7 @@ YE = []
 ZE = []
 
 draw(examples[0], 0, 0)
-shutil.copy(os.path.join(args.log_path, 'adelm_result', '0', '0.png'), os.path.join(args.log_path, 'adelm_result', '0', 'minima.png'))
+shutil.copy(os.path.join(args.log_path, 'adelm_result', '0', '0.html'), os.path.join(args.log_path, 'adelm_result', '0', 'minima.html'))
 
 job_queue_item_count = np.zeros([len(examples)])
 for i in range(1, len(examples)):
@@ -290,7 +290,7 @@ while (len(job_queue) + len(current_job)) > 0:
         if B[i].item() < min(item_basin_barriers[item_id]):
           if basin_labels[item_id] > -1:
             if not args.time:
-              os.remove(os.path.join(args.log_path, 'adelm_result', str(basin_labels[item_id]), '%d.png'%item_id))
+              os.remove(os.path.join(args.log_path, 'adelm_result', str(basin_labels[item_id]), '%d.html'%item_id))
           basin_labels[item_id] = basin_label
           if not args.time:
             draw(examples[item_id], basin_label, item_id)
@@ -301,7 +301,7 @@ while (len(job_queue) + len(current_job)) > 0:
             basin_minima[basin_label] = examples[item_id]
             print('    item #%d is the new basin minima'%item_id)
             if not args.time:
-              shutil.copy(os.path.join(args.log_path, 'adelm_result', str(basin_label), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(basin_label), 'minima.png'))
+              shutil.copy(os.path.join(args.log_path, 'adelm_result', str(basin_label), '%d.html'%item_id), os.path.join(args.log_path, 'adelm_result', str(basin_label), 'minima.html'))
         # update basin barrier
         item_basin_barriers[item_id][basin_label] = min(item_basin_barriers[item_id][basin_label], B[i].item())
     # save basin barrier
@@ -335,7 +335,7 @@ while (len(job_queue) + len(current_job)) > 0:
           if not args.time:
             os.makedirs(os.path.join(args.log_path, 'adelm_result', str(num_basins)), exist_ok=True)
             draw(examples[item_id], num_basins, item_id)
-            shutil.copy(os.path.join(args.log_path, 'adelm_result', str(num_basins), '%d.png'%item_id), os.path.join(args.log_path, 'adelm_result', str(num_basins), 'minima.png'))
+            shutil.copy(os.path.join(args.log_path, 'adelm_result', str(num_basins), '%d.html'%item_id), os.path.join(args.log_path, 'adelm_result', str(num_basins), 'minima.html'))
           num_basins += 1
   if success.sum() + failure.sum() > 0:
     for i in range(len(success)-1,-1,-1):
