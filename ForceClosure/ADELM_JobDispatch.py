@@ -96,16 +96,6 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
 def distance(X, Y):
   object_x, z_x, contact_point_indices_x = X
   object_y, z_y, contact_point_indices_y = Y
-  # hand_verts_x = hand_model.get_vertices(z_x)
-  # hand_verts_y = hand_model.get_vertices(z_y)
-  # sdx = object_model.distance(object_x, hand_verts_x).squeeze()
-  # sdy = object_model.distance(object_y, hand_verts_y).squeeze()
-  # px = 1 / torch.abs(sdx)
-  # py = 1 / torch.abs(sdy)
-  # px = px / px.sum(1, keepdim=True)
-  # py = py / py.sum(1, keepdim=True)
-  # distance = py * (torch.log(py) - torch.log(px))
-  # return distance.sum(1)
   distance = hand_model.manifold_distance(contact_point_indices_x, contact_point_indices_y)
   return distance
 
@@ -222,7 +212,7 @@ def draw(Y, l, i):
       zaxis=dict(showticklabels=False, title_text=''), 
       ))
   os.makedirs(os.path.join(args.log_path, 'adelm_result/%d'%l), exist_ok=True)
-  fig.write_image(os.path.join(args.log_path, 'adelm_result/%d/%d.png'%(l, i)))
+  fig.write_html(os.path.join(args.log_path, 'adelm_result/%d/%d.html'%(l, i)))
 
 def combine(Y, x):
   return torch.cat([Y[0], x[0].unsqueeze(0)], dim=0), torch.cat([Y[1], x[1].unsqueeze(0)], dim=0), torch.cat([Y[2], x[2].unsqueeze(0)], dim=0)
