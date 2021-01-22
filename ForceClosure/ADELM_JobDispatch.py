@@ -46,7 +46,7 @@ parser.add_argument('--mu', default=0.98, type=float)
 parser.add_argument('--T', default=0.1, type=float)
 parser.add_argument('--stepsize', default=0.1, type=float)
 # - data loading
-parser.add_argument('--data_path', default='logs/sample_0/optimized_998000.pkl', type=str)
+parser.add_argument('--data_path', default='logs/mcmc', type=str)
 parser.add_argument('--log_path', default='data', type=str)
 parser.add_argument('--time', action='store_true')
 args = parser.parse_args()

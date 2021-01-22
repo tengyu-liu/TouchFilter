@@ -48,13 +48,13 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False, sd_weight=
   else:
     return linear_independence + force_closure + surface_distance.sum(1) + penetration.sum(1) + z_norm + normal_alignment
 
-if os.path.exists('logs/zeyu_5p/final_optim.pkl'):
-  obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = pickle.load(open('logs/zeyu_5p/final_optim.pkl', 'rb'))
+if os.path.exists('logs/rerun/final_optim.pkl'):
+  obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = pickle.load(open('logs/rerun/final_optim.pkl', 'rb'))
 else:
   obj_code, z, contact_point_indices = [], [], []
   linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = [],[],[],[],[],[]
-  for _id in range(8):
-    fn = 'logs/zeyu_5p/final_%d_optim.pkl'%_id
+  for _id in [0,1,2,3,4,5,7]:
+    fn = 'logs/rerun/optim_%d.pkl'%_id
     _obj_code, _z, _contact_point_indices = pickle.load(open(fn, 'rb'))
     fltr = []
     for i in range(len(_z)):
@@ -74,7 +74,7 @@ else:
   obj_code = torch.stack(obj_code, dim=0)
   z = torch.stack(z, dim=0)
   contact_point_indices = torch.stack(contact_point_indices, dim=0)
-  pickle.dump([obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment], open('logs/zeyu_5p/final_optim.pkl', 'wb'))
+  pickle.dump([obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment], open('logs/rerun/final_optim.pkl', 'wb'))
 
 print(len(z))
 
@@ -86,8 +86,8 @@ hand_verts = hand_model.get_vertices(z).detach().cpu().numpy()
 cpi = contact_point_indices.detach().cpu().numpy()
 
 for i in range(len(z)):
-  if i != 180 and i!= 232:
-    continue
+  # if i != 180 and i!= 232:
+  #   continue
   print(i, '/', len(z))
   print('\tlinear_independence', linear_independence[i])
   print('\tforce_closure', force_closure[i])

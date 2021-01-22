@@ -3,9 +3,9 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 
-obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = pickle.load(open('logs/zeyu_5p/final_optim.pkl', 'rb'))
+obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = pickle.load(open('logs/rerun/final_optim.pkl', 'rb'))
 
-results = np.load('simulate_result/%f_%d.npy'%(0.0,1))
+results = np.load('simulate_result/%f_%d.npy'%(0,1))
 
 linear_independence = torch.stack(linear_independence)
 force_closure = torch.stack(force_closure)
@@ -29,8 +29,9 @@ def find(th):
   for i in range(len(idx)):
     if energy[idx[i]] > th:
       return success_rates[i-1]
+  return success_rates[-1]
     
-for th in np.linspace(0.000, 0.0045, 6):
+for th in [0.0002,0.0005,0.0015,0.0025,0.0035,0.0045,0.02]:
   print(th, find(th))
 
 plt.plot(energy[idx], success_rates)

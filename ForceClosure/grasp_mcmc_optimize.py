@@ -35,7 +35,7 @@ from Losses import FCLoss
 from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
 
-hand_model = HandModel(flat_hand_mean=False)
+hand_model = HandModel(flat_hand_mean=False, n_contact=args.n_contact)
 object_model = ObjectModel()
 fc_loss_model = FCLoss(object_model=object_model)
 penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)

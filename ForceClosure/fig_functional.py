@@ -14,7 +14,7 @@ from ObjectModel import ObjectModel
 from PenetrationModel import PenetrationModel
 from EMA import EMA
 
-batch_size = 64
+batch_size = 256
 step_size = 0.1
 annealing_period = 3000
 starting_temperature = 0.1
@@ -89,15 +89,15 @@ contact_point_indices = []
 adelm_base_path = 'adelm_7/ADELM_dispatch.pkl'
 basin_labels, basin_minima, basin_minima_energies, item_basin_barriers = pickle.load(open(adelm_base_path, 'rb'))
 
-for i, idx in enumerate(np.argsort(basin_minima_energies)[:batch_size]):
+for i, idx in enumerate(np.argsort(basin_minima_energies)):
+  print(i)
   _, _, cpi = basin_minima[idx]
-  contact_point_indices.append(cpi)
+  contact_point_indices = cpi
   _z = torch.normal(0,1,size=[hand_model.code_length]).float().cuda() * 1e-6
   draw_no_obj(_z, cpi, 'aaai/figs/functional/%d/query'%i)
 
-contact_point_indices = torch.stack(contact_point_indices, dim=0)
+  contact_point_indices = torch.unsqueeze(contact_point_indices, dim=0).repeat(batch_size, 1)
 
-for j in range(10):
   obj_code, obj_idx = get_obj_code_random(batch_size, 256)
   z = torch.normal(mean=0, std=1, size=[batch_size, hand_model.code_length], requires_grad=True).float().cuda() * 1e-5
   # align palm facing direction
@@ -132,35 +132,18 @@ for j in range(10):
     z = z * (1-accept.unsqueeze(1)) + new_z * accept.unsqueeze(1)
     energy = energy * (1-accept) + new_energy * accept
     grad = grad * (1-accept.unsqueeze(1)) + new_grad * accept.unsqueeze(1)
-    grad_ema.apply(grad)
+    grad_ema.apply(new_grad)
     mean_energy.append(energy.mean().detach().cpu().numpy())
     if _iter % 10 == 0:
       _ = plt.clf()
       _ = plt.plot(mean_energy)
       _ = plt.yscale('log')
       _ = plt.pause(1e-5)
-  for i in range(batch_size):
-    draw_with_obj(obj_code[i], z[i], contact_point_indices[i], 'aaai/figs/functional/%d/syn_%d'%(i,j))
-    pickle.dump([obj_code[i], z[i], contact_point_indices[i]], open('aaai/figs/functional/%d/syn_%d.pkl'%(i,j), 'wb'))
 
-mask = torch.tensor(np.eye(15)).float().cuda().unsqueeze(0)  # 1 x 6 x 6
-# mask = torch.cat([torch.zeros([1,6,9]).float().cuda(), mask], dim=2)
+  mask = torch.tensor(np.eye(15)).float().cuda().unsqueeze(0)  # 1 x 6 x 6
 
-for j in range(2):
-  obj_code, z, contact_point_indices = [], [], []
-  for i in range(batch_size):
-    o, _z, i = pickle.load(open('aaai/figs/functional/%d/syn_%d.pkl'%(i,j), 'rb'))
-    obj_code.append(o)
-    z.append(_z)
-    contact_point_indices.append(i)
-  obj_code = torch.stack(obj_code, 0)
-  z = torch.stack(z, 0)
-  contact_point_indices = torch.stack(contact_point_indices, 0)
   energy = compute_energy(obj_code, z, contact_point_indices, sd_weight=100)
   grad = torch.autograd.grad(energy.sum(), z)[0]
-  grad_ema = EMA(0.98)
-  grad_ema.apply(grad)
-  mean_energy = []
   for _iter in range(10000):
     step_size = 0.1
     temperature = 1e-3
@@ -173,20 +156,17 @@ for j in range(2):
     z = z * (1-accept.unsqueeze(1)) + new_z * accept.unsqueeze(1)
     energy = energy * (1-accept) + new_energy * accept
     grad = grad * (1-accept.unsqueeze(1)) + new_grad * accept.unsqueeze(1)
-    grad_ema.apply(grad)
+    grad_ema.apply(new_grad)
     mean_energy.append(energy.mean().detach().cpu().numpy())
     if _iter % 10 == 0:
       _ = plt.clf()
       _ = plt.plot(mean_energy)
+      _ = plt.yscale('log')
       _ = plt.pause(1e-5)
-  plt.savefig('aaai/figs/functional/%d.png'%j)
-  for i in range(batch_size):
-    draw_with_obj(obj_code[i], z[i], contact_point_indices[i], 'aaai/figs/functional/%d/syn2_%d'%(i,j))
-    pickle.dump([obj_code[i], z[i], contact_point_indices[i]], open('aaai/figs/functional/%d/syn2_%d.pkl'%(i,j), 'wb'))
-  print(j)
-
-
-for j in range(10):
-  for i in range(batch_size):
-    o,z,c = pickle.load(open('aaai/figs/functional/%d/syn2_%d.pkl'%(i,j), 'rb'))
-    draw_with_obj(o,z,c, 'aaai/figs/functional/%d/syn2_%d'%(i,j))
+  linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = compute_energy(obj_code, z, contact_point_indices, verbose=True)
+  for j in range(batch_size):
+    if force_closure[j] < 0.5 and surface_distance[j] < 1e-2 and penetration[j] < 1e-2:
+      draw_with_obj(obj_code[j], z[j], contact_point_indices[j], 'aaai/figs/functional/%d/syn_%d'%(i,j))
+      pickle.dump([obj_code[j], z[j], contact_point_indices[j]], open('aaai/figs/functional/%d/syn_%d.pkl'%(i,j), 'wb'))
+    else:
+      print(force_closure[j], surface_distance[j], penetration[j])

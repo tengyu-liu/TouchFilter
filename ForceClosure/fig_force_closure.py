@@ -8,7 +8,7 @@ import torch
 
 n_contact_points = 5
 ball_radius = 1
-stepsize = 0.01
+stepsize = 0.1
 batch_size = 32
 
 object_model = ObjectModel()
@@ -16,12 +16,10 @@ object_model = ObjectModel()
 while True:
     code, idx = get_obj_code_random(batch_size)
     loss = FCLoss(object_model)
-
     pts = torch.rand([batch_size, n_contact_points, 3], device='cuda')
     pts -= pts.mean(dim=1, keepdim=True)
     pts /= torch.norm(pts, dim=-1, keepdim=True)
     pts.requires_grad_()
-
 
     for step in range(10000):
         T = 0.98 ** step
@@ -38,6 +36,9 @@ while True:
                     (linear_independency2+force_closure2+torch.square(dist2).sum(1).squeeze()))/T)
         accept = accept.unsqueeze(1).unsqueeze(1)
         pts = pts * (~accept) + pts2 * accept
+        if step % 100 == 0:
+            print('optimization %d/10000'%step, end='', flush=True)
+            print('\tFC:%f D:%f\n'%((linear_independency + force_closure).mean().detach().cpu().numpy(), dist.mean().detach().cpu().numpy()))
 
     dist = object_model.distance(code, pts)
     grad = object_model.gradient(pts, dist)
@@ -46,15 +47,17 @@ while True:
     pts = pts.detach().cpu().numpy()
 
     for i in range(batch_size):
-        print(linear_independency[i].sum().item(), force_closure[i].sum().item(), torch.square(dist[i]).sum().item())
-        data = []
-        mesh = get_obj_mesh(idx[i])
-        data.append(go.Mesh3d(x=mesh.vertices[:,0], y=mesh.vertices[:,1], z=mesh.vertices[:,2], i=mesh.faces[:,0], j=mesh.faces[:,1], k=mesh.faces[:,2], color='lightblue'))
+        # print(linear_independency[i].sum().item(), force_closure[i].sum().item(), torch.square(dist[i]).sum().item())
+        if force_closure[i] < 1e-3 and torch.square(dist[i]).sum() < 1e-3:
+            data = []
+            mesh = get_obj_mesh(idx[i])
+            data.append(go.Mesh3d(x=mesh.vertices[:,0], y=mesh.vertices[:,1], z=mesh.vertices[:,2], i=mesh.faces[:,0], j=mesh.faces[:,1], k=mesh.faces[:,2], color='lightblue'))
 
-        data.append(go.Cone(x=pts[i,:,0], y=pts[i,:,1], z=pts[i,:,2], u=-grad[i,:,0], v=-grad[i,:,1], w=-grad[i,:,2], anchor='tip',
-                        colorscale=[(0,'lightpink'), (1,'lightpink')], sizemode='absolute', sizeref=0.2, opacity=0.5))
+            data.append(go.Cone(x=pts[i,:,0], y=pts[i,:,1], z=pts[i,:,2], u=-grad[i,:,0], v=-grad[i,:,1], w=-grad[i,:,2], anchor='tip',
+                            colorscale=[(0,'lightpink'), (1,'lightpink')], sizemode='absolute', sizeref=0.2, opacity=0.5))
 
-        fig = go.Figure(data=data)
-        fig.update_layout(dict(scene=dict(aspectmode='data')), showlegend=False)
-        fig.show()
-        input()
+            fig = go.Figure(data=data)
+            fig.update_layout(dict(scene=dict(aspectmode='data')), showlegend=False)
+            fig.show()
+            print('Press ENTER to show next result')
+            input()

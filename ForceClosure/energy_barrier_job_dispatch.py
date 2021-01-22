@@ -9,6 +9,7 @@ from typing import List, Any
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import floyd_warshall
 
+# Load pADELM results
 basin_labels, basin_minima, basin_minima_energies, item_basin_barriers = pickle.load(open('adelm_7/ADELM_dispatch.pkl', 'rb'))
 
 item_count = [0 for _ in range(len(basin_minima))]
@@ -16,6 +17,7 @@ item_count = [0 for _ in range(len(basin_minima))]
 for basin_label in basin_labels:
   item_count[basin_label] += 1
 
+# collect barriers between basins
 n_basin = len(basin_minima)
 barriers = np.zeros([n_basin, n_basin]) + np.inf
 barrier_indices = np.arange(len(barriers))
@@ -27,6 +29,7 @@ for i_item in range(len(item_basin_barriers)):
     if i_basin == j_basin:
       barriers[i_basin, j_basin] = basin_minima_energies[i_basin]
 
+# remove disconnected basins
 for _ in range(10):
   disconnected_basins = np.isinf(barriers).sum(1) == len(barriers)-1
   barriers = barriers[~disconnected_basins][:,~disconnected_basins]
@@ -48,7 +51,7 @@ for i_basin in range(len(barriers)):
   for j_basin in range(len(barriers)):
     barriers[i_basin, j_basin] = min(barriers[i_basin, j_basin], barriers[j_basin, i_basin])
 
-
+# collect minimum energy barriers between basins
 def consolidate(barriers):
   # input: N x N mat
   sparse_barrier = csr_matrix(barriers.shape)
@@ -74,10 +77,9 @@ def consolidate(barriers):
   return min_barrier
 
 barriers = consolidate(barriers)
-
 barriers_backup = barriers.copy()
 
-# TODO: use ADELM method instead of the default methods in dendrogram()
+# prepare datastructure for visualization
 # output: Z: N x 4: left-child, right-child, height, num-children
 Z = []
 total_examples = len(barriers)
@@ -144,25 +146,11 @@ for i in range(len(R['ivl'])-1):
     y[0] = get_example_energy(R['leaves'][i_leaf])
     minima.append(y[0])
     y0 = True
-    # _ = ax.text(x[0], y[0] - 0.2, '%d(%d)'%(barrier_indices[R['leaves'][i_leaf]], item_count[barrier_indices[R['leaves'][i_leaf]]]), fontsize='xx-small')
-    # for i_img, instance in enumerate(instance_ids_in_cluster):
-    #   img = mpimg.imread('adelm_result/all/%d.png'%instance)
-    #   imgbox = OffsetImage(img, zoom=img_zoom)
-    #   ab = AnnotationBbox(imgbox, (x[0], y[0] - img_size - img_size * 2 * i_img))
-    #   _ = ax.add_artist(ab)
-    #   min_y = min(min_y, y[0] - img_size * 2 - img_size * 2 * i_img)
   if y[3] == 0:
     i_leaf = int((x[3] - 5) / 10)
     y[3] = get_example_energy(R['leaves'][i_leaf])
     minima.append(y[3])
     y3 = True
-    # _ = ax.text(x[3], y[3] - 0.2, '%d(%d)'%(barrier_indices[R['leaves'][i_leaf]], item_count[barrier_indices[R['leaves'][i_leaf]]]), fontsize='xx-small')
-    # for i_img, instance in enumerate(instance_ids_in_cluster):
-    #   img = mpimg.imread('adelm_result/all/%d.png'%instance)
-    #   imgbox = OffsetImage(img, zoom=img_zoom)
-    #   ab = AnnotationBbox(imgbox, (x[3], y[3] - img_size - img_size * 2 * i_img))
-    #   _ = ax.add_artist(ab)
-    #   min_y = min(min_y, y[3] - img_size * 2 - img_size * 2 * i_img)
   _ = ax.plot(x, y, c='k')
   if y0:
     _ = ax.scatter(x[0], y[0], s=item_count[barrier_indices[R['leaves'][i_leaf]]] * 10, facecolor='white', edgecolor='black')
@@ -174,9 +162,9 @@ ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.spines['left'].set_visible(False)
 ax.axes.get_xaxis().set_visible(False)
-# fig.show()
-fig.savefig('dendrogram_no_text.svg')
+plt.show()
+# fig.savefig('dendrogram_no_text.svg')
 
-pickle.dump([Z, R], open('dendrogram_5p_7.pkl', 'wb'))
+# pickle.dump([Z, R], open('dendrogram_5p_7.pkl', 'wb'))
 # plt.show()
 

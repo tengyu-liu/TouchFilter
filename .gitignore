@@ -30,3 +30,5 @@ ForceClosure/aaai
 *.html
 *.npy
 *.obj
+FC2.0/*
+VariationalFC/*

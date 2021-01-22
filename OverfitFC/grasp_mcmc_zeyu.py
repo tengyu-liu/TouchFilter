@@ -12,6 +12,7 @@ import tensorboard
 import torch
 import torch.nn as nn
 import torch.utils.tensorboard
+from torch.utils.data import DataLoader
 
 # prepare argument
 parser = argparse.ArgumentParser()
@@ -40,11 +41,12 @@ np.random.seed(args.id)
 torch.manual_seed(args.id)
 args.name = args.name + '_%d'%args.id
 
-from CodeUtil import *
+# from CodeUtil import *
 from EMA import EMA
 from HandModel import HandModel
 from Losses import FCLoss
 from ObjectModel import ObjectModel
+from ObjectDataset import ObjectDataset
 from PenetrationModel import PenetrationModel
 
 if args.viz:
@@ -84,14 +86,17 @@ hand_model = HandModel(
 hand_verts_eye = torch.tensor(np.eye(hand_model.num_points)).float().cuda() # 778 x 778
 
 object_model = ObjectModel(
-  state_dict_path="data/ModelParameters/2000.pth"
+  state_dict_path='F:\\OverfitSDF\\weights\\2049999.pth'
 )
+dataloader = DataLoader(ObjectDataset('F:\\dataset\\ShapeNetCore.v2', 'F:\\OverfitSDF\\weights\\names.pkl', 'F:\\OverfitSDF\\weights\\pointclouds.pth'), batch_size=args.batch_size, shuffle=True)
 
 fc_loss_model = FCLoss(object_model=object_model)
 penetration_model = PenetrationModel(hand_model=hand_model, object_model=object_model)
 
 # get obj_code
-obj_code, obj_idx = get_obj_code_random(args.batch_size)
+# obj_code, obj_idx = get_obj_code_random(args.batch_size)
+step, data = next(enumerate(dataloader))
+point_cloud, obj_code = data
 
 def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   hand_verts = hand_model.get_vertices(z)
@@ -106,7 +111,7 @@ def compute_energy(obj_code, z, contact_point_indices, verbose=False):
   normal_alignment = ((hand_normal * contact_normal).sum(-1) + 1).sum(-1)
   linear_independence, force_closure = fc_loss_model.fc_loss(contact_point, contact_normal, obj_code)
   surface_distance = fc_loss_model.dist_loss(obj_code, contact_point)
-  penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts)  # B x V
+  penetration = penetration_model.get_penetration_from_verts(obj_code, hand_verts) * 10  # B x V
   z_norm = torch.norm(z[:,-args.n_handcode:], dim=-1) * args.znorm_weight
   if verbose:
     return linear_independence, force_closure, surface_distance.sum(1), penetration.sum(1), z_norm, normal_alignment
@@ -225,7 +230,8 @@ for _iter in range(args.n_iter):
     
     if args.viz:
       i_item = random.randint(0, args.batch_size-1)
-      mesh = get_obj_mesh(obj_idx[i_item])
+      # obj_cat, obj_name = dataloader.dataset.cats_and_names[obj_code[i]]
+      # obj = tm.load(os.path.join(dataloader.dataset.base_path, obj_cat, obj_name, 'models/model_normalized.obj'))
       ax1.cla()
       ax1.plot(energy_history)
       ax1.set_yscale('log')
@@ -242,8 +248,8 @@ for _iter in range(args.n_iter):
   if _iter % 2000 == 0:
     pickle.dump([
       obj_code, z, contact_point_indices, energy, energy_history, temperature_history, stepsize_history, 
-      z_history, contact_point_history, individual_energy_history
+      z_history, contact_point_history, individual_energy_history, dataloader.dataset.cats_and_names
       ], open(os.path.join(log_dir, 'saved_%d.pkl'%_iter), 'wb'))
     end_time = time.perf_counter()
-    print(f"These steps for this method takes {end_time - start_time:0.4f} seconds")
+    print(f"Each step takes {(end_time - start_time)/(_iter+1):0.4f} seconds on average")
 

@@ -30,19 +30,29 @@ plt.ion()
 
 def update(i, node_coordinates):
     node_coordinates_torch = torch.tensor(node_coordinates, requires_grad=True).cuda()
-    for _ in range(i):
+    stepsize = 1
+    for step in range(i):
+        T = 0.9995 ** step * 10
         pairwise_distance = (node_coordinates_torch.unsqueeze(0) - node_coordinates_torch.unsqueeze(1)).norm(dim=2)
         loss = (pairwise_distance * edge_weights_torch).sum()
         grad = torch.autograd.grad(loss, node_coordinates_torch)[0]
-        node_coordinates_torch = node_coordinates_torch - 0.5 * grad + torch.normal(mean=0,std=0.001,size=node_coordinates_torch.shape,device='cuda')
-        node_coordinates_torch = node_coordinates_torch - node_coordinates_torch.mean()
-        node_coordinates_torch = node_coordinates_torch / node_coordinates_torch.std()
-        loss = (pairwise_distance * edge_weights_torch).sum()
-        print('\r%d: %f'%(_, loss), end='')
+        node_coordinates_torch2 = node_coordinates_torch - 0.5 * grad * stepsize * stepsize + torch.normal(mean=0,std=stepsize,size=node_coordinates_torch.shape,device='cuda')
+        node_coordinates_torch2 = node_coordinates_torch2 - node_coordinates_torch2.mean()
+        node_coordinates_torch2 = node_coordinates_torch2 / node_coordinates_torch2.std()
+        pairwise_distance2 = (node_coordinates_torch2.unsqueeze(0) - node_coordinates_torch2.unsqueeze(1)).norm(dim=2)
+        loss2 = (pairwise_distance2 * edge_weights_torch).sum()
+        if loss2 < loss:
+            node_coordinates_torch = node_coordinates_torch2
+        else:
+            alpha = torch.rand(1, device='cuda').float()
+            accept = alpha < torch.exp((loss - loss2) / T)
+            if accept:
+                node_coordinates_torch = node_coordinates_torch2
+        print('\r%d: %f'%(step, loss), end='')
     node_coordinates = node_coordinates_torch.detach().cpu().numpy()
     return node_coordinates
 
-node_coordinates = update(1500, node_coordinates)
+node_coordinates = update(5000, node_coordinates)
 
 def find(_i):
     _i = list(ids).index(_i)
@@ -55,6 +65,7 @@ def find(_i):
     _ = plt.text(node_coordinates[_i,0], node_coordinates[_i,1], str(ids[_i]))
     plt.axis('off')
 
+# manually labeled grasp types
 basin_type = {}
 basin_type[0] = ['adduction grip', 'intermediate']
 basin_type[48] = ['power disk']
@@ -143,11 +154,10 @@ for term, c in [('power', 'red'), ('precision', 'green'), ('intermediate', 'oran
     for i in range(len(basin_basin_barriers)):
         if ids[i] in basin_type and any(term in x for x in basin_type[ids[i]]):
             _ = ax.scatter(node_coordinates[i,0], node_coordinates[i,1], s=scatter_size, c=c, zorder=2)
-        if ids[i] not in basin_type:
-            print(ids[i])
 
 ax.axis('off')
-fig.savefig('taxonomy-power-precision.png')
+plt.show()
+# fig.savefig('taxonomy-power-precision.png')
 
 
 
@@ -163,11 +173,10 @@ for term, c in [('diameter', 'green'), ('wrap', 'green'), ('power disk', 'blue')
     for i in range(len(basin_basin_barriers)):
         if ids[i] in basin_type and any(term in x for x in basin_type[ids[i]]):
             _ = ax.scatter(node_coordinates[i,0], node_coordinates[i,1], s=scatter_size, c=c, zorder=2)
-        if ids[i] not in basin_type:
-            print(ids[i])
 
 ax.axis('off')
-fig.savefig('taxonomy-within-power.png')
+plt.show()
+# fig.savefig('taxonomy-within-power.png')
 
 
 fig = plt.figure(figsize=(16,9))
@@ -182,8 +191,8 @@ for term, c in [('sphere', 'red'), ('pod', 'green')]:
     for i in range(len(basin_basin_barriers)):
         if ids[i] in basin_type and any(term in x for x in basin_type[ids[i]]):
             _ = ax.scatter(node_coordinates[i,0], node_coordinates[i,1], s=scatter_size, c=c, zorder=2)
-        if ids[i] not in basin_type:
-            print(ids[i])
+
 ax.axis('off')
-fig.savefig('taxonomy-sphere-pod.png')
+plt.show()
+# fig.savefig('taxonomy-sphere-pod.png')
 

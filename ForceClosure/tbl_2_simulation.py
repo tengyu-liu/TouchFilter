@@ -17,7 +17,7 @@ hand_model = HandModel(
   n_contact=5)
 object_model = ObjectModel()
 
-obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = pickle.load(open('aaai/supplementary/code_and_data/results/ADELM_candidate.pkl', 'rb'))
+obj_code, z, contact_point_indices, linear_independence, force_closure, surface_distance, penetration, z_norm, normal_alignment = pickle.load(open('data/final_optim.pkl', 'rb'))
 
 linear_independence = torch.tensor(linear_independence).float()
 force_closure = torch.tensor(force_closure).float()
@@ -27,28 +27,13 @@ z_norm = torch.tensor(z_norm).float()
 normal_alignment = torch.tensor(normal_alignment).float()
 
 pb.connect(pb.DIRECT)
-growth = 0
+# uncomment the following line to visualize each simulation (significantly slower)
+# pb.connect(pb.GUI) 
 decompose_obj = True
 
-# inflate hand 
 hand_verts = hand_model.get_vertices(z).detach().cpu().numpy()
-hand_normals = hand_model.get_surface_normals(z=z).detach().cpu().numpy()
-hand_verts += hand_normals * growth
-# compute h-o distance
-obj_dist = []
-batch_size = 64
-batch_num = len(hand_verts) // batch_size + 1
-for i in range(batch_num):
-    v = torch.tensor(hand_verts[i*batch_size:(i+1)*batch_size], requires_grad=True).float().cuda()
-    d = object_model.distance(obj_code[i*batch_size:(i+1)*batch_size], v).squeeze()
-    # g = torch.autograd.grad(d.sum(), v)[0]
-    # v[d<0] = v[d<0] + g[d<0]
-    # d = object_model.distance(obj_code[i*batch_size:(i+1)*batch_size], v)
-    # print(d.min())
-    obj_dist.append(d.detach().cpu().numpy())
 
-obj_dist = np.concatenate(obj_dist, axis=0)
-
+# make hand mesh water tight
 hand_faces = hand_model.faces
 hand_ceal = np.asarray([[93,39,123 ],[93,123,119],[93,119,118],[93,118,120],[93,120,121],[93,121,109],\
                             [93,109,80 ],[93,80,79  ],[93,79,122 ],[93,122,215],[93,215,216],[93,216,280],[93,280,240],[93,240,235]]) - 1
@@ -56,10 +41,8 @@ hand_faces = np.concatenate([hand_ceal, hand_faces])
 
 results = []
 energies = []
-
+ 
 for i in range(len(z)):
-    # if i != 15:
-    #     continue
     pb.resetSimulation()
     pb.setGravity(0, 0, -10)
     # load hand
@@ -114,4 +97,29 @@ for i in range(len(z)):
         results.append(1)
     print('\r', i, np.mean(results), end='', flush=True, file=sys.stderr)
 
-np.save('simulate_result/%f_%d.npy'%(growth, int(decompose_obj)), np.array(results))
+linear_independence = torch.stack(linear_independence)
+force_closure = torch.stack(force_closure)
+surface_distance = torch.stack(surface_distance)
+penetration = torch.stack(penetration)
+z_norm = torch.stack(z_norm)
+normal_alignment = torch.stack(normal_alignment)
+
+energy = (surface_distance).detach().cpu().numpy()
+
+idx = np.argsort(energy)
+
+success_rates = []
+for i in range(1, len(idx)+1):
+  success_rates.append(results[idx[:i]].mean())
+
+for i in range(100):
+  print(i, idx[i], success_rates[i], energy[idx[i]])
+
+def find(th):
+  for i in range(len(idx)):
+    if energy[idx[i]] > th:
+      return success_rates[i-1]
+  return success_rates[-1]
+    
+for th in [0.0005,0.0015,0.0025,0.0035,0.0045]:
+  print(th, find(th))
